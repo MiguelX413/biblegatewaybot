@@ -1,11 +1,14 @@
 import unittest
 
 from parsing import (
+    TELEGRAM_MESSAGE_LIMIT,
     build_passage_from_ref,
     canonicalize_reference,
     decode_linked_reference,
     extract_leading_book_name,
     find_requested_book,
+    format_inline_passage_entities,
+    format_passage_chunks,
     format_passage_entities,
     get_version_provider,
     normalize_book_name,
@@ -33,6 +36,28 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("expandable_blockquote", entities[1].type)
         self.assertEqual(len("John 3:16 NIV\n"), entities[1].offset)
         self.assertEqual(len("For God so loved the world."), entities[1].length)
+
+    def test_format_passage_chunks_splits_long_messages(self):
+        paragraph = "x" * 3000
+        chunks = format_passage_chunks(f"1 Nephi 1 BOM\n\n{paragraph}\n\n{paragraph}")
+        self.assertEqual(2, len(chunks))
+        self.assertTrue(chunks[0][0].startswith("1 Nephi 1 BOM\n"))
+        self.assertEqual("expandable_blockquote", chunks[0][1][-1].type)
+        self.assertEqual("expandable_blockquote", chunks[1][1][0].type)
+        self.assertLessEqual(len(chunks[0][0]), TELEGRAM_MESSAGE_LIMIT)
+        self.assertLessEqual(len(chunks[1][0]), TELEGRAM_MESSAGE_LIMIT)
+
+    def test_format_inline_passage_entities_truncates_long_messages(self):
+        paragraph = "x" * 3000
+        text, entities = format_inline_passage_entities(
+            f"1 Nephi 1 BOM\n\n{paragraph}\n\n{paragraph}"
+        )
+        self.assertTrue(text.startswith("1 Nephi 1 BOM\n"))
+        self.assertIn("…continued; use /get for the full passage.", text)
+        self.assertLessEqual(len(text), TELEGRAM_MESSAGE_LIMIT)
+        self.assertEqual(2, len(entities))
+        self.assertEqual("bold", entities[0].type)
+        self.assertEqual("expandable_blockquote", entities[1].type)
 
     def test_parse_get_uses_default_version(self):
         version, passage, explicit = parse_get_request("/get John 3:16", "NIV")

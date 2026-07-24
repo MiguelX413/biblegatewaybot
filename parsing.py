@@ -16,6 +16,7 @@ from versions import (
 
 _RuntimeMessageEntity: type[Any]
 _RuntimeMessageEntityType: type[Any]
+_RuntimeMessageLimit: Any
 
 try:
     telegram_module = import_module("telegram")
@@ -45,13 +46,15 @@ except (
 else:
     _RuntimeMessageEntity = telegram_module.MessageEntity
     _RuntimeMessageEntityType = telegram_constants.MessageEntityType
+    _RuntimeMessageLimit = telegram_constants.MessageLimit
 
 if TYPE_CHECKING:
     from telegram import MessageEntity
-    from telegram.constants import MessageEntityType
+    from telegram.constants import MessageEntityType, MessageLimit
 else:
     MessageEntity = Any
     MessageEntityType = Any
+    MessageLimit = Any
 
 
 def ensure_text(value) -> str:
@@ -67,23 +70,32 @@ def build_bot_handle(application: Any) -> str:
     return f"@{username}"
 
 
-def format_passage_entities(text: str) -> tuple[str, Sequence[MessageEntity]]:
-    blocks = text.split("\n\n", 1)
-    if len(blocks) == 2:
-        header, body = blocks
-    else:
-        header, body = text, ""
+TELEGRAM_MESSAGE_LIMIT = (
+    int(_RuntimeMessageLimit.MAX_TEXT_LENGTH)
+    if "_RuntimeMessageLimit" in globals()
+    else 4096
+)
+INLINE_CONTINUATION_NOTICE = "…continued; use /get for the full passage."
 
+
+def _build_passage_message(
+    header: str, body: str, *, include_header: bool = True
+) -> tuple[str, Sequence[MessageEntity]]:
     header = header.strip()
     body = body.strip()
-    message_text = f"{header}\n{body}" if body else header
-    entities = [
-        _RuntimeMessageEntity(
-            type=_RuntimeMessageEntityType.BOLD, offset=0, length=len(header)
-        )
-    ]
+    if include_header:
+        message_text = f"{header}\n{body}" if body else header
+        entities = [
+            _RuntimeMessageEntity(
+                type=_RuntimeMessageEntityType.BOLD, offset=0, length=len(header)
+            )
+        ]
+    else:
+        message_text = body
+        entities = []
+
     if body:
-        body_offset = len(header) + 1
+        body_offset = len(header) + 1 if include_header else 0
         entities.append(
             _RuntimeMessageEntity(
                 type=_RuntimeMessageEntityType.EXPANDABLE_BLOCKQUOTE,
@@ -95,6 +107,128 @@ def format_passage_entities(text: str) -> tuple[str, Sequence[MessageEntity]]:
         message_text, entities
     )
     return message_text, cast(Sequence[MessageEntity], utf16_entities)
+
+
+def format_passage_entities(text: str) -> tuple[str, Sequence[MessageEntity]]:
+    blocks = text.split("\n\n", 1)
+    if len(blocks) == 2:
+        header, body = blocks
+    else:
+        header, body = text, ""
+    return _build_passage_message(header, body)
+
+
+def format_passage_chunks(text: str) -> list[tuple[str, Sequence[MessageEntity]]]:
+    blocks = text.split("\n\n", 1)
+    if len(blocks) == 2:
+        header, body = blocks
+    else:
+        header, body = text, ""
+
+    full_message, full_entities = _build_passage_message(header, body)
+    if len(full_message) <= TELEGRAM_MESSAGE_LIMIT:
+        return [(full_message, full_entities)]
+
+    if not body:
+        return [(full_message[:TELEGRAM_MESSAGE_LIMIT], full_entities)]
+
+    chunks: list[tuple[str, Sequence[MessageEntity]]] = []
+    paragraphs = [
+        paragraph.strip() for paragraph in body.split("\n\n") if paragraph.strip()
+    ]
+    if not paragraphs:
+        paragraphs = [body.strip()]
+
+    current_parts: list[str] = []
+    current_header = True
+    for paragraph in paragraphs:
+        candidate_parts = current_parts + [paragraph]
+        candidate_body = "\n\n".join(candidate_parts)
+        candidate_text, candidate_entities = _build_passage_message(
+            header, candidate_body, include_header=current_header
+        )
+        if len(candidate_text) <= TELEGRAM_MESSAGE_LIMIT:
+            current_parts = candidate_parts
+            current_chunk = (candidate_text, candidate_entities)
+            continue
+
+        if current_parts:
+            chunks.append(current_chunk)
+            current_parts = []
+            current_header = False
+
+        if len(paragraph) <= TELEGRAM_MESSAGE_LIMIT:
+            current_parts = [paragraph]
+            current_chunk = _build_passage_message(
+                header, paragraph, include_header=current_header
+            )
+            continue
+
+        lines = paragraph.splitlines() or [paragraph]
+        line_buffer: list[str] = []
+        for line in lines:
+            line_candidate = "\n".join(line_buffer + [line]).strip()
+            line_text, line_entities = _build_passage_message(
+                header, line_candidate, include_header=current_header
+            )
+            if len(line_text) <= TELEGRAM_MESSAGE_LIMIT:
+                line_buffer.append(line)
+                current_chunk = (line_text, line_entities)
+                continue
+
+            if line_buffer:
+                chunks.append(current_chunk)
+                current_header = False
+                line_buffer = []
+
+            remaining = line.strip()
+            available = TELEGRAM_MESSAGE_LIMIT - (
+                len(header) + 1 if current_header else 0
+            )
+            while remaining:
+                piece = remaining[:available].rstrip()
+                chunk_text, chunk_entities = _build_passage_message(
+                    header, piece, include_header=current_header
+                )
+                chunks.append((chunk_text, chunk_entities))
+                current_header = False
+                remaining = remaining[len(piece) :].lstrip()
+
+        current_parts = ["\n".join(line_buffer).strip()] if line_buffer else []
+
+    if current_parts:
+        final_body = "\n\n".join(current_parts)
+        chunks.append(
+            _build_passage_message(header, final_body, include_header=current_header)
+        )
+    return chunks
+
+
+def format_inline_passage_entities(text: str) -> tuple[str, Sequence[MessageEntity]]:
+    chunks = format_passage_chunks(text)
+    if len(chunks) == 1:
+        return chunks[0]
+
+    blocks = text.split("\n\n", 1)
+    if len(blocks) == 2:
+        header, body = blocks
+    else:
+        header, body = text, ""
+
+    header = header.strip()
+    body = body.strip()
+    reserved = len(header) + 2 + len(INLINE_CONTINUATION_NOTICE)
+    available = max(0, TELEGRAM_MESSAGE_LIMIT - reserved)
+    preview_body = body[:available].rstrip()
+    if preview_body and not preview_body.endswith((" ", "\n")):
+        preview_body = preview_body.rstrip(" ,;:")
+
+    if preview_body:
+        preview_body = f"{preview_body}\n{INLINE_CONTINUATION_NOTICE}"
+    else:
+        preview_body = INLINE_CONTINUATION_NOTICE
+
+    return _build_passage_message(header, preview_body)
 
 
 def build_passage_header(reference: str, version: str) -> str:

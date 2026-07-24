@@ -27,6 +27,7 @@ from parsing import (
     decode_linked_reference,
     ensure_text,
     find_requested_book,
+    format_passage_chunks,
     format_passage_entities,
     get_version_provider,
     other_version,
@@ -93,7 +94,7 @@ def get_try_inline_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 InlineKeyboardButton(
-                    "Try inline mode", switch_inline_query_current_chat="john 3:16 nlt"
+                    "Try inline mode", switch_inline_query_current_chat="John 3:16 NLT"
                 )
             ]
         ]
@@ -235,12 +236,13 @@ async def reply_with_passage_result(
             reply_markup=reply_markup,
         )
         return
-    message_text, entities = format_passage_entities(str(response))
-    await message.reply_text(
-        message_text,
-        entities=entities,
-        reply_markup=reply_markup,
-    )
+    chunks = format_passage_chunks(str(response))
+    for index, (message_text, entities) in enumerate(chunks):
+        await message.reply_text(
+            message_text,
+            entities=entities,
+            reply_markup=reply_markup if index == 0 else None,
+        )
 
 
 async def reply_with_search_results(
