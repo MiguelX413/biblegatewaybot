@@ -10,12 +10,13 @@ from telegram import (
     InlineQueryResultsButton,
     InputTextMessageContent,
     Message,
+    MessageEntity,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     Update,
     User,
 )
-from telegram.constants import ChatAction
+from telegram.constants import ChatAction, MessageEntityType
 from telegram.ext import CallbackContext, ContextTypes, ConversationHandler
 
 from config import BotConfig
@@ -56,6 +57,45 @@ from versions import VERSION_DATA, VERSION_LOOKUP, VERSIONS
 def build_input_message_content(text: str) -> InputTextMessageContent:
     message_text, entities = format_passage_entities(text)
     return InputTextMessageContent(message_text=message_text, entities=entities)
+
+
+def build_welcome_message(
+    greeting: str, application: Any
+) -> tuple[str, list[MessageEntity]]:
+    source_links = [
+        ("BibleGateway", "https://biblegateway.com"),
+        ("Sefaria", "https://sefaria.org"),
+        ("LDS scriptures", "https://churchofjesuschrist.org/study/scriptures"),
+    ]
+    sources_text = ", ".join(label for label, _ in source_links[:-1])
+    sources_text += f", and {source_links[-1][0]}"
+    message_text = (
+        f"{greeting} This bot can fetch Bible passages from {sources_text}, "
+        "and optional local offline files.\n\n"
+        "To get started, enter one of the following commands:\n"
+        f"{command_list(application)}"
+    )
+
+    entities: list[MessageEntity] = []
+    search_start = message_text.find("from ") + len("from ")
+    for label, url in source_links:
+        offset = message_text.find(label, search_start)
+        if offset == -1:
+            continue
+        entities.append(
+            MessageEntity(
+                type=MessageEntityType.TEXT_LINK,
+                offset=offset,
+                length=len(label),
+                url=url,
+            )
+        )
+        search_start = offset + len(label)
+
+    utf16_entities = MessageEntity.adjust_message_entities_to_utf_16(
+        message_text, entities
+    )
+    return message_text, list(utf16_entities)
 
 
 def require_message(update: Update) -> Message:
@@ -296,10 +336,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         if is_group
         else f"Hello, {sender_name}! Welcome!"
     )
+    welcome_text, welcome_entities = build_welcome_message(
+        greeting, context.application
+    )
     await message.reply_text(
-        f"{greeting} This bot can fetch Bible passages from biblegateway.com.\n\n"
-        "To get started, enter one of the following commands:\n"
-        f"{command_list(context.application)}",
+        welcome_text,
+        entities=welcome_entities,
         reply_markup=get_try_inline_keyboard(),
     )
 
