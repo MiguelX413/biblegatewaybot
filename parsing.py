@@ -1,7 +1,13 @@
+import re
 from typing import Any
 
 from state import DEFAULT_VERSION
-from versions import VERSIONS
+from versions import (
+    APOCRYPHA_BOOK_DATA,
+    APOCRYPHA_VERSION_CODES,
+    VERSION_SUPPORTED_APOCRYPHA_BOOKS,
+    VERSIONS,
+)
 
 
 def ensure_text(value) -> str:
@@ -39,6 +45,80 @@ def build_passage_from_ref(ref) -> str:
     if book == "Revelation of Jesus Christ":
         book = "Revelation"
     return f"{book} {ref[1]}:{ref[2]}-{ref[3]}:{ref[4]}"
+
+
+def _compile_alias_pattern(alias: str) -> re.Pattern[str]:
+    escaped = re.escape(alias)
+    escaped = escaped.replace(r"\ ", r"\s+")
+    return re.compile(rf"(?i)\b{escaped}\b")
+
+
+APOCRYPHA_ALIAS_PATTERNS = [
+    (_compile_alias_pattern(alias), book["title"])
+    for book in APOCRYPHA_BOOK_DATA
+    for alias in book["aliases"]
+]
+APOCRYPHA_ALIAS_PATTERNS.sort(key=lambda item: len(item[0].pattern), reverse=True)
+APOCRYPHA_SLUG_TO_TITLE = {book["slug"]: book["title"] for book in APOCRYPHA_BOOK_DATA}
+
+
+def find_apocrypha_book(text: str) -> str | None:
+    for pattern, title in APOCRYPHA_ALIAS_PATTERNS:
+        if pattern.search(text):
+            return title
+    return None
+
+
+def passage_uses_apocrypha(text: str) -> bool:
+    return find_apocrypha_book(text) is not None
+
+
+def version_supports_apocrypha(version: str) -> bool:
+    return version.upper() in APOCRYPHA_VERSION_CODES
+
+
+def supported_apocrypha_books(version: str) -> frozenset[str]:
+    return VERSION_SUPPORTED_APOCRYPHA_BOOKS.get(version.upper(), frozenset())
+
+
+def version_supports_apocrypha_book(version: str, book_title: str) -> bool:
+    return book_title in supported_apocrypha_books(version)
+
+
+def parse_apocrypha_reference(text: str) -> str | None:
+    for pattern, title in APOCRYPHA_ALIAS_PATTERNS:
+        match = re.search(
+            rf"(?i)\b{pattern.pattern[4:-2]}\b\s+(\d+)(?::(\d+)(?:-(\d+)(?::(\d+))?)?)?",
+            text,
+        )
+        if not match:
+            continue
+
+        start_chapter = match.group(1)
+        start_verse = match.group(2)
+        end_number = match.group(3)
+        end_verse = match.group(4)
+
+        if start_verse is None:
+            return f"{title} {start_chapter}"
+        if end_number is None:
+            return f"{title} {start_chapter}:{start_verse}"
+        if end_verse is None:
+            return f"{title} {start_chapter}:{start_verse}-{end_number}"
+        return f"{title} {start_chapter}:{start_verse}-{end_number}:{end_verse}"
+    return None
+
+
+def decode_linked_reference(reference: str) -> str:
+    for slug, title in sorted(
+        APOCRYPHA_SLUG_TO_TITLE.items(), key=lambda item: len(item[0]), reverse=True
+    ):
+        if reference.lower().startswith(slug):
+            remainder = reference[len(slug) :].replace("V", ":")
+            if remainder:
+                return f"{title} {remainder}"
+            return title
+    return reference.replace("V", ":")
 
 
 def parse_get_request(

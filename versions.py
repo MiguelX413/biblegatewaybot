@@ -597,3 +597,121 @@ BOOKS = (
     "jude",
     "revelation",
 )
+
+APOCRYPHA_BOOK_DATA = (
+    {"title": "Tobit", "slug": "tobit", "aliases": ("tobit", "tob")},
+    {"title": "Judith", "slug": "judith", "aliases": ("judith", "jdt")},
+    {
+        "title": "Additions to Esther",
+        "slug": "additionstoesther",
+        "aliases": ("additions to esther", "greek esther"),
+    },
+    {
+        "title": "Wisdom",
+        "slug": "wisdom",
+        "aliases": ("wisdom", "wisdom of solomon", "wis"),
+    },
+    {
+        "title": "Sirach",
+        "slug": "sirach",
+        "aliases": ("sirach", "ecclesiasticus", "sir"),
+    },
+    {"title": "Baruch", "slug": "baruch", "aliases": ("baruch", "bar")},
+    {
+        "title": "Letter of Jeremiah",
+        "slug": "letterofjeremiah",
+        "aliases": ("letter of jeremiah", "epistle of jeremiah"),
+    },
+    {
+        "title": "Prayer of Azariah",
+        "slug": "prayerofazariah",
+        "aliases": ("prayer of azariah",),
+    },
+    {"title": "Susanna", "slug": "susanna", "aliases": ("susanna",)},
+    {
+        "title": "Bel and the Dragon",
+        "slug": "belandthedragon",
+        "aliases": ("bel and the dragon",),
+    },
+    {
+        "title": "Prayer of Manasseh",
+        "slug": "prayerofmanasseh",
+        "aliases": ("prayer of manasseh",),
+    },
+    {"title": "1 Esdras", "slug": "1esdras", "aliases": ("1 esdras", "1esdras")},
+    {"title": "2 Esdras", "slug": "2esdras", "aliases": ("2 esdras", "2esdras")},
+    {
+        "title": "1 Maccabees",
+        "slug": "1maccabees",
+        "aliases": ("1 maccabees", "1maccabees", "i maccabees"),
+    },
+    {
+        "title": "2 Maccabees",
+        "slug": "2maccabees",
+        "aliases": ("2 maccabees", "2maccabees", "ii maccabees"),
+    },
+    {"title": "Psalm 151", "slug": "psalm151", "aliases": ("psalm 151", "ps151")},
+)
+
+APOCRYPHA_BOOK_SLUGS = tuple(book["slug"] for book in APOCRYPHA_BOOK_DATA)
+APOCRYPHA_VERSION_CODES = frozenset(
+    {
+        "CEB",
+        "DHH",
+        "DRA",
+        "GNT",
+        "NABRE",
+        "NCB",
+        "NRSVA",
+        "NRSVACE",
+        "NRSVCE",
+        "NRSVUE",
+        "RSV",
+        "RSVCE",
+        "TLA",
+        "WYC",
+    }
+)
+CORE_DEUTEROCANON_BOOK_TITLES = frozenset(
+    {
+        "Tobit",
+        "Judith",
+        "Additions to Esther",
+        "Wisdom",
+        "Sirach",
+        "Baruch",
+        "Letter of Jeremiah",
+        "Prayer of Azariah",
+        "Susanna",
+        "Bel and the Dragon",
+        "1 Maccabees",
+        "2 Maccabees",
+    }
+)
+EXTENDED_APOCRYPHA_BOOK_TITLES = frozenset(
+    CORE_DEUTEROCANON_BOOK_TITLES
+    | {
+        "1 Esdras",
+        "2 Esdras",
+        "Prayer of Manasseh",
+        "Psalm 151",
+    }
+)
+VERSION_SUPPORTED_APOCRYPHA_BOOKS = {
+    "CEB": CORE_DEUTEROCANON_BOOK_TITLES,
+    "DHH": CORE_DEUTEROCANON_BOOK_TITLES,
+    "DRA": CORE_DEUTEROCANON_BOOK_TITLES,
+    "GNT": CORE_DEUTEROCANON_BOOK_TITLES,
+    "NABRE": CORE_DEUTEROCANON_BOOK_TITLES,
+    "NCB": CORE_DEUTEROCANON_BOOK_TITLES,
+    "NRSV": EXTENDED_APOCRYPHA_BOOK_TITLES,
+    "NRSVA": EXTENDED_APOCRYPHA_BOOK_TITLES,
+    "NRSVACE": CORE_DEUTEROCANON_BOOK_TITLES,
+    "NRSVCE": CORE_DEUTEROCANON_BOOK_TITLES,
+    "NRSVUE": EXTENDED_APOCRYPHA_BOOK_TITLES,
+    "RSV": EXTENDED_APOCRYPHA_BOOK_TITLES,
+    "RSVCE": CORE_DEUTEROCANON_BOOK_TITLES,
+    "TLA": CORE_DEUTEROCANON_BOOK_TITLES,
+    "WYC": CORE_DEUTEROCANON_BOOK_TITLES,
+}
+BOOKS = BOOKS + APOCRYPHA_BOOK_SLUGS
