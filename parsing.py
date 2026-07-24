@@ -336,13 +336,14 @@ def command_list(application: Any) -> str:
         "/get <reference> <version>\n"
         "/get <reference> <fallbacks>&<parallel versions>\n"
         "/search <keyword>\n"
-        "/setdefault <version>\n\n"
+        "/setdefault <version selection>\n\n"
         "Examples:\n"
         "/get John 3:16\n"
         "/get 1 cor 13:4-7 NLT\n"
         "/get 1 Maccabees 1 NIV,NRSVue&GNADC\n"
         "/search the greatest commandment\n"
-        "/setdefault NASB\n\n"
+        "/setdefault NASB\n"
+        "/setdefault NIV,NRSVue&GNADC\n\n"
         f"Inline mode:\n{bot_handle} john 3:16\n"
         f"{bot_handle} 1co13 nasb"
     )
@@ -357,6 +358,12 @@ def build_passage_from_ref(ref) -> str:
 
 def single_version_selection(version: str) -> VersionSelection:
     return ((version,),)
+
+
+def coerce_version_selection(value: str | VersionSelection) -> VersionSelection:
+    if isinstance(value, str):
+        return single_version_selection(value)
+    return value
 
 
 def parse_version_selection(token: str) -> VersionSelection | None:
@@ -387,18 +394,18 @@ def format_version_selection(selection: VersionSelection) -> str:
 
 
 def parse_reference_version_query(
-    text: str, default_version: str = DEFAULT_BIBLE_VERSION
+    text: str, default_version: str | VersionSelection = DEFAULT_BIBLE_VERSION
 ) -> tuple[VersionSelection, str, bool]:
     normalized = ensure_text(text).strip()
     if not normalized:
-        return single_version_selection(default_version), "", False
+        return coerce_version_selection(default_version), "", False
 
     words = normalized.split()
     selection = parse_version_selection(words[-1]) if len(words) > 1 else None
     if selection is not None:
         return selection, " ".join(words[:-1]).strip(), True
 
-    return single_version_selection(default_version), normalized, False
+    return coerce_version_selection(default_version), normalized, False
 
 
 APOCRYPHA_SLUG_TO_TITLE: dict[str, str] = {
@@ -667,7 +674,7 @@ def decode_linked_reference(reference: str) -> str:
 
 
 def parse_get_request(
-    text: str, default_version: str = DEFAULT_BIBLE_VERSION
+    text: str, default_version: str | VersionSelection = DEFAULT_BIBLE_VERSION
 ) -> tuple[VersionSelection | None, str | None, bool]:
     words = text.split()
     if not words:
@@ -680,13 +687,13 @@ def parse_get_request(
 
     arguments = words[1:]
     if not arguments:
-        return single_version_selection(default_version), None, False
+        return coerce_version_selection(default_version), None, False
 
     selection = parse_version_selection(arguments[0]) if len(arguments) == 1 else None
     if selection is not None:
         return selection, None, True
 
-    selection = single_version_selection(default_version)
+    selection = coerce_version_selection(default_version)
     explicit_version = False
     parsed_selection = parse_version_selection(arguments[-1])
     if parsed_selection is not None:

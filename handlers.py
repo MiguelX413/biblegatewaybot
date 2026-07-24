@@ -77,10 +77,8 @@ from versions import (
     VERSION_LOOKUP,
     ScriptureSystemId,
     format_version_full_label,
-    format_version_inline_label,
     get_scripture_system,
     get_version_system,
-    resolve_version_code,
 )
 
 
@@ -175,9 +173,11 @@ def require_user_data(context: CallbackContext[Any, Any, Any, Any]) -> dict[Any,
     return user_data
 
 
-def build_inline_results_button(default_version: str) -> InlineQueryResultsButton:
+def build_inline_results_button(
+    default_selection: VersionSelection,
+) -> InlineQueryResultsButton:
     return InlineQueryResultsButton(
-        text=f"Default version: {format_version_inline_label(default_version)}",
+        text=f"Default versions: {format_version_selection(default_selection)}",
         start_parameter="setdefault",
     )
 
@@ -260,35 +260,56 @@ async def reply_choose_lds_version(message: Message) -> None:
 
 def get_user_default_version(
     context: CallbackContext, scripture_system: ScriptureSystemId
-) -> str:
+) -> VersionSelection:
     user_data = require_user_data(context)
-    return ensure_text(
-        user_data.get(USER_DEFAULT_VERSION_KEY_BY_SYSTEM[scripture_system])
-        or DEFAULT_VERSION_BY_SYSTEM[scripture_system]
-    ).upper()
+    stored_default = user_data.get(
+        USER_DEFAULT_VERSION_KEY_BY_SYSTEM[scripture_system],
+        DEFAULT_VERSION_BY_SYSTEM[scripture_system],
+    )
+    if isinstance(stored_default, str):
+        return ((stored_default.upper(),),)
+    if isinstance(stored_default, tuple):
+        return stored_default
+    return ((DEFAULT_VERSION_BY_SYSTEM[scripture_system],),)
 
 
-def get_bible_default_version(context: CallbackContext) -> str:
+def get_bible_default_version(context: CallbackContext) -> VersionSelection:
     return get_user_default_version(context, "bible")
 
 
-def get_lds_default_version(context: CallbackContext) -> str:
+def get_lds_default_version(context: CallbackContext) -> VersionSelection:
     return get_user_default_version(context, "lds")
 
 
-def get_passage_default_version(context: CallbackContext, passage: str | None) -> str:
+def get_passage_default_version(
+    context: CallbackContext, passage: str | None
+) -> VersionSelection:
     scripture_system = get_passage_scripture_system(passage or "") or "bible"
     return get_user_default_version(context, scripture_system)
 
 
-def set_user_default_version(context: CallbackContext, version: str) -> None:
+def set_user_default_version(
+    context: CallbackContext, selection: VersionSelection
+) -> ScriptureSystemId:
     user_data = require_user_data(context)
-    normalized = version.upper()
-    scripture_system = get_version_system(normalized)
-    if scripture_system is None:
-        message = "Version does not belong to a configured scripture system"
-        raise ValueError(f"{message}: {version}")
-    user_data[USER_DEFAULT_VERSION_KEY_BY_SYSTEM[scripture_system]] = normalized
+    systems = {
+        get_version_system(version)
+        for candidates in selection
+        for version in candidates
+    }
+    if len(systems) != 1 or None in systems:
+        raise ValueError("Default versions must belong to one scripture system")
+    scripture_system = systems.pop()
+    assert scripture_system is not None
+    user_data[USER_DEFAULT_VERSION_KEY_BY_SYSTEM[scripture_system]] = selection
+    return scripture_system
+
+
+def format_default_selection(selection: VersionSelection) -> str:
+    return " & ".join(
+        " → ".join(format_version_full_label(version) for version in candidates)
+        for candidates in selection
+    )
 
 
 def get_identity(update: Update) -> tuple[str, str, bool]:
@@ -380,7 +401,14 @@ def resolve_version_selection(
 ) -> VersionSelection:
     if explicit_version:
         return selection
-    return tuple((resolve_auto_version(version, passage),) for (version,) in selection)
+    return tuple(
+        (
+            (resolve_auto_version(candidates[0], passage),)
+            if len(candidates) == 1
+            else candidates
+        )
+        for candidates in selection
+    )
 
 
 async def fetch_version_group(
@@ -514,9 +542,9 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     message = require_message(update)
     await message.reply_text(
         "Current defaults:\n"
-        f"Bible: {format_version_full_label(get_bible_default_version(context))}\n"
+        f"Bible: {format_default_selection(get_bible_default_version(context))}\n"
         "LDS scriptures: "
-        f"{format_version_full_label(get_lds_default_version(context))}\n\n"
+        f"{format_default_selection(get_lds_default_version(context))}\n\n"
         "Use /setdefault to change them."
     )
 
@@ -551,7 +579,7 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     if passage:
         if not explicit_version:
-            selection = ((get_passage_default_version(context, passage),),)
+            selection = get_passage_default_version(context, passage)
         if is_book_only_request(passage):
             await message.reply_text(
                 f"Sorry {display_name}, please specify at least a chapter. "
@@ -589,9 +617,9 @@ async def get_conversation_message(
     display_name, _, _ = get_identity(update)
     passage = ensure_text(message.text).strip()
     if not isinstance(selection, tuple) or not selection:
-        selection = ((get_bible_default_version(context),),)
+        selection = get_bible_default_version(context)
     if not explicit_version:
-        selection = ((get_passage_default_version(context, passage),),)
+        selection = get_passage_default_version(context, passage)
     if is_book_only_request(passage):
         await message.reply_text(
             f"Sorry {display_name}, please specify at least a chapter. "
@@ -671,21 +699,28 @@ async def setdefault_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     display_name, _, _ = get_identity(update)
 
     if len(parts) > 1:
-        version = resolve_version_code(parts[1].strip())
-        if version is None:
+        selection = parse_version_selection(parts[1].strip())
+        if selection is None:
             await message.reply_text(
                 f"Sorry {display_name}, I couldn't find that version. "
                 "Use /setdefault to view all available versions.\n\n"
-                f"Current Bible default is {get_bible_default_version(context)}.\n"
-                f"Current LDS default is {get_lds_default_version(context)}."
+                "Current Bible default is "
+                f"{format_default_selection(get_bible_default_version(context))}.\n"
+                "Current LDS default is "
+                f"{format_default_selection(get_lds_default_version(context))}."
             )
             return ConversationHandler.END
-        set_user_default_version(context, version)
-        scripture_system = get_version_system(version) or "bible"
+        try:
+            scripture_system = set_user_default_version(context, selection)
+        except ValueError:
+            await message.reply_text(
+                "Sorry, default versions must belong to the same scripture system."
+            )
+            return ConversationHandler.END
         await message.reply_text(
             "Success! "
             f"{get_scripture_system(scripture_system).display_name} default is now "
-            f"{format_version_full_label(version)}."
+            f"{format_default_selection(selection)}."
         )
         return ConversationHandler.END
 
@@ -753,13 +788,12 @@ async def setdefault_version_message(
         return SETDEFAULT_VERSION_STATE
 
     version = VERSION_LOOKUP[raw_text]
-    set_user_default_version(context, version)
-    scripture_system = get_version_system(version)
-    assert scripture_system is not None
+    selection = ((version,),)
+    scripture_system = set_user_default_version(context, selection)
     await message.reply_text(
         "Success! "
         f"{get_scripture_system(scripture_system).display_name} default is now "
-        f"{format_version_full_label(version)}.",
+        f"{format_default_selection(selection)}.",
         reply_markup=ReplyKeyboardRemove(),
     )
     return ConversationHandler.END
@@ -800,7 +834,7 @@ async def handle_inline_query(
         explicit_version = True
     else:
         passage = query
-        selection = ((get_passage_default_version(context, passage),),)
+        selection = get_passage_default_version(context, passage)
         explicit_version = False
 
     selection = resolve_version_selection(
@@ -879,7 +913,7 @@ async def linked_passage_handler(
         update,
         context,
         passage,
-        ((get_passage_default_version(context, passage),),),
+        get_passage_default_version(context, passage),
         display_name,
         explicit_version=False,
     )
@@ -910,7 +944,7 @@ async def quick_lookup_handler(
     if refs:
         passage = build_passage_from_ref(refs[0])
         if not explicit_version:
-            selection = ((get_passage_default_version(context, passage),),)
+            selection = get_passage_default_version(context, passage)
         await reply_with_passage_result(
             update,
             context,
@@ -926,7 +960,7 @@ async def quick_lookup_handler(
     canonical_passage = canonicalize_reference(to_lookup)
     if canonical_passage and find_requested_book(canonical_passage):
         if not explicit_version:
-            selection = ((get_passage_default_version(context, canonical_passage),),)
+            selection = get_passage_default_version(context, canonical_passage)
         await reply_with_passage_result(
             update,
             context,
