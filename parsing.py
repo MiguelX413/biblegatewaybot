@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 from state import DEFAULT_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
+    APOCRYPHA_BOOK_SLUGS,
     BOOK_OF_MORMON_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
@@ -429,6 +430,13 @@ def resolve_auto_version(
     supported_versions = supported_versions_for_book_slug(book_slug)
     if len(supported_versions) == 1:
         return next(iter(supported_versions))
+
+    if (
+        book_slug in APOCRYPHA_BOOK_SLUGS
+        and not version_supports_book_slug(version, book_slug)
+        and not version_supports_book_slug("NIV", book_slug)
+    ):
+        return "NRSVUE"
     return version
 
 

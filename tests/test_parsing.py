@@ -187,6 +187,15 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual("NIV", resolve_auto_version("NIV", "John 3:16"))
 
+    def test_resolve_auto_version_falls_back_to_nrsvue_for_missing_apocrypha(self):
+        self.assertEqual("NRSVUE", resolve_auto_version("NIV", "1 Esdras 1:1"))
+        self.assertEqual("NRSVUE", resolve_auto_version("KJV", "Wisdom 3:5"))
+        self.assertEqual("NABRE", resolve_auto_version("NABRE", "Tobit 4:7"))
+        self.assertEqual(
+            "NIV",
+            resolve_auto_version("NIV", "1 Esdras 1:1", explicit_version=True),
+        )
+
     def test_version_supports_passage(self):
         self.assertEqual((False, "John"), version_supports_passage("JPS", "John 3:16"))
         self.assertEqual((False, "John"), version_supports_passage("JPS", "jn3:16"))
