@@ -1,4 +1,12 @@
 from collections import OrderedDict
+from typing import TypedDict
+
+
+class BookData(TypedDict):
+    title: str
+    slug: str
+    aliases: tuple[str, ...]
+
 
 VERSION_DATA = OrderedDict(
     [
@@ -282,7 +290,8 @@ VERSION_DATA = OrderedDict(
             [
                 "New Russian Translation (NRT)",
                 "Священное Писание (Восточный Перевод) (CARS)",
-                "Священное Писание (Восточный перевод), версия для Таджикистана (CARST)",
+                "Священное Писание (Восточный перевод), версия для "
+                "Таджикистана (CARST)",
                 "Священное Писание (Восточный перевод), версия с «Аллахом» (CARSA)",
                 "Russian New Testament: Easy-to-Read Version (ERV-RU)",
                 "Russian Synodal Version (RUSV)",
@@ -606,7 +615,7 @@ PROTESTANT_CANON_BOOK_SLUGS = (
 OLD_TESTAMENT_BOOK_SLUGS = PROTESTANT_CANON_BOOK_SLUGS[:39]
 NEW_TESTAMENT_BOOK_SLUGS = PROTESTANT_CANON_BOOK_SLUGS[39:]
 
-APOCRYPHA_BOOK_DATA = (
+APOCRYPHA_BOOK_DATA: tuple[BookData, ...] = (
     {"title": "Tobit", "slug": "tobit", "aliases": ("tobit", "tob")},
     {"title": "Judith", "slug": "judith", "aliases": ("judith", "jdt")},
     {
@@ -661,9 +670,13 @@ APOCRYPHA_BOOK_DATA = (
     {"title": "Psalm 151", "slug": "psalm151", "aliases": ("psalm 151", "ps151")},
 )
 
-APOCRYPHA_BOOK_SLUGS = tuple(book["slug"] for book in APOCRYPHA_BOOK_DATA)
-APOCRYPHA_TITLE_TO_SLUG = {book["title"]: book["slug"] for book in APOCRYPHA_BOOK_DATA}
-CORE_DEUTEROCANON_BOOK_TITLES = frozenset(
+APOCRYPHA_BOOK_SLUGS: tuple[str, ...] = tuple(
+    book["slug"] for book in APOCRYPHA_BOOK_DATA
+)
+APOCRYPHA_TITLE_TO_SLUG: dict[str, str] = {
+    book["title"]: book["slug"] for book in APOCRYPHA_BOOK_DATA
+}
+CORE_DEUTEROCANON_BOOK_TITLES: frozenset[str] = frozenset(
     {
         "Tobit",
         "Judith",
@@ -679,7 +692,7 @@ CORE_DEUTEROCANON_BOOK_TITLES = frozenset(
         "2 Maccabees",
     }
 )
-EXTENDED_APOCRYPHA_BOOK_TITLES = frozenset(
+EXTENDED_APOCRYPHA_BOOK_TITLES: frozenset[str] = frozenset(
     CORE_DEUTEROCANON_BOOK_TITLES
     | {
         "1 Esdras",
@@ -688,7 +701,7 @@ EXTENDED_APOCRYPHA_BOOK_TITLES = frozenset(
         "Psalm 151",
     }
 )
-VERSION_SUPPORTED_APOCRYPHA_BOOKS = {
+VERSION_SUPPORTED_APOCRYPHA_BOOKS: dict[str, frozenset[str]] = {
     "CEB": CORE_DEUTEROCANON_BOOK_TITLES,
     "DHH": CORE_DEUTEROCANON_BOOK_TITLES,
     "DRA": CORE_DEUTEROCANON_BOOK_TITLES,
@@ -705,13 +718,13 @@ VERSION_SUPPORTED_APOCRYPHA_BOOKS = {
     "TLA": CORE_DEUTEROCANON_BOOK_TITLES,
     "WYC": CORE_DEUTEROCANON_BOOK_TITLES,
 }
-EXTENDED_APOCRYPHA_BOOK_SLUGS = frozenset(
+EXTENDED_APOCRYPHA_BOOK_SLUGS: frozenset[str] = frozenset(
     APOCRYPHA_TITLE_TO_SLUG[title] for title in EXTENDED_APOCRYPHA_BOOK_TITLES
 )
-CORE_DEUTEROCANON_BOOK_SLUGS = frozenset(
+CORE_DEUTEROCANON_BOOK_SLUGS: frozenset[str] = frozenset(
     APOCRYPHA_TITLE_TO_SLUG[title] for title in CORE_DEUTEROCANON_BOOK_TITLES
 )
-VERSION_ADDITIONAL_BOOK_SLUGS = {
+VERSION_ADDITIONAL_BOOK_SLUGS: dict[str, frozenset[str]] = {
     "CEB": CORE_DEUTEROCANON_BOOK_SLUGS,
     "DHH": CORE_DEUTEROCANON_BOOK_SLUGS,
     "DRA": CORE_DEUTEROCANON_BOOK_SLUGS,
@@ -728,14 +741,14 @@ VERSION_ADDITIONAL_BOOK_SLUGS = {
     "TLA": CORE_DEUTEROCANON_BOOK_SLUGS,
     "WYC": CORE_DEUTEROCANON_BOOK_SLUGS,
 }
-VERSION_PROVIDERS = {code: "biblegateway" for code in VERSIONS}
-SEFARIA_VERSION_TITLES = {
+VERSION_PROVIDERS: dict[str, str] = {code: "biblegateway" for code in VERSIONS}
+SEFARIA_VERSION_TITLES: dict[str, str] = {
     "JPS": "The Holy Scriptures: A New Translation (JPS 1917)",
     "NJPS": "Tanakh: The Holy Scriptures, published by JPS",
     "RJPS": "THE JPS TANAKH: Gender-Sensitive Edition",
 }
 VERSION_PROVIDERS.update({code: "sefaria" for code in SEFARIA_VERSION_TITLES})
-VERSION_SUPPORTED_BOOK_SLUGS = {
+VERSION_SUPPORTED_BOOK_SLUGS: dict[str, frozenset[str]] = {
     code: frozenset(PROTESTANT_CANON_BOOK_SLUGS) for code in VERSIONS
 }
 for code, additional_book_slugs in VERSION_ADDITIONAL_BOOK_SLUGS.items():
@@ -743,7 +756,8 @@ for code, additional_book_slugs in VERSION_ADDITIONAL_BOOK_SLUGS.items():
         frozenset(PROTESTANT_CANON_BOOK_SLUGS) | additional_book_slugs
     )
 
-# Known scope overrides for current BibleGateway versions that are not full Bible editions.
+# Known scope overrides for current BibleGateway versions that are not full Bible
+# editions.
 for code in ("DLNT", "MOUNCE", "PHILLIPS", "WE"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["HHH"] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
@@ -751,4 +765,4 @@ VERSION_SUPPORTED_BOOK_SLUGS["WLC"] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
 for code in ("JPS", "NJPS", "RJPS"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
 
-BOOKS = PROTESTANT_CANON_BOOK_SLUGS + APOCRYPHA_BOOK_SLUGS
+BOOKS: tuple[str, ...] = PROTESTANT_CANON_BOOK_SLUGS + APOCRYPHA_BOOK_SLUGS

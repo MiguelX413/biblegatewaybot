@@ -1,28 +1,8 @@
 import re
-from typing import Any
-
-try:
-    from telegram import MessageEntity
-    from telegram.constants import MessageEntityType
-except (
-    ImportError
-):  # pragma: no cover - exercised only in dependency-missing environments
-    from dataclasses import dataclass
-
-    class MessageEntityType:
-        BOLD = "bold"
-        EXPANDABLE_BLOCKQUOTE = "expandable_blockquote"
-
-    @dataclass(frozen=True)
-    class MessageEntity:
-        type: str
-        offset: int
-        length: int
-
-        @staticmethod
-        def adjust_message_entities_to_utf_16(text: str, entities):
-            return entities
-
+from collections.abc import Sequence
+from dataclasses import dataclass
+from importlib import import_module
+from typing import TYPE_CHECKING, Any, cast
 
 from state import DEFAULT_VERSION
 from versions import (
@@ -31,6 +11,45 @@ from versions import (
     VERSION_SUPPORTED_BOOK_SLUGS,
     VERSIONS,
 )
+
+_RuntimeMessageEntity: type[Any]
+_RuntimeMessageEntityType: type[Any]
+
+try:
+    telegram_module = import_module("telegram")
+    telegram_constants = import_module("telegram.constants")
+except (
+    ImportError
+):  # pragma: no cover - exercised only in dependency-missing environments
+
+    class _FallbackMessageEntityType:
+        BOLD = "bold"
+        EXPANDABLE_BLOCKQUOTE = "expandable_blockquote"
+
+    @dataclass(frozen=True)
+    class _FallbackMessageEntity:
+        type: str
+        offset: int
+        length: int
+
+        @staticmethod
+        def adjust_message_entities_to_utf_16(
+            text: str, entities: Sequence[_FallbackMessageEntity]
+        ) -> Sequence[_FallbackMessageEntity]:
+            return entities
+
+    _RuntimeMessageEntity = _FallbackMessageEntity
+    _RuntimeMessageEntityType = _FallbackMessageEntityType
+else:
+    _RuntimeMessageEntity = telegram_module.MessageEntity
+    _RuntimeMessageEntityType = telegram_constants.MessageEntityType
+
+if TYPE_CHECKING:
+    from telegram import MessageEntity
+    from telegram.constants import MessageEntityType
+else:
+    MessageEntity = Any
+    MessageEntityType = Any
 
 
 def ensure_text(value) -> str:
@@ -46,7 +65,7 @@ def build_bot_handle(application: Any) -> str:
     return f"@{username}"
 
 
-def format_passage_entities(text: str) -> tuple[str, list[MessageEntity]]:
+def format_passage_entities(text: str) -> tuple[str, Sequence[MessageEntity]]:
     blocks = text.split("\n\n", 1)
     if len(blocks) == 2:
         header, body = blocks
@@ -57,24 +76,26 @@ def format_passage_entities(text: str) -> tuple[str, list[MessageEntity]]:
     body = body.strip()
     message_text = f"{header}\n\n{body}" if body else header
     entities = [
-        MessageEntity(type=MessageEntityType.BOLD, offset=0, length=len(header))
+        _RuntimeMessageEntity(
+            type=_RuntimeMessageEntityType.BOLD, offset=0, length=len(header)
+        )
     ]
     if body:
         body_offset = len(header) + 2
         entities.append(
-            MessageEntity(
-                type=MessageEntityType.EXPANDABLE_BLOCKQUOTE,
+            _RuntimeMessageEntity(
+                type=_RuntimeMessageEntityType.EXPANDABLE_BLOCKQUOTE,
                 offset=body_offset,
                 length=len(body),
             )
         )
-    return (
-        message_text,
-        MessageEntity.adjust_message_entities_to_utf_16(message_text, entities),
+    utf16_entities = _RuntimeMessageEntity.adjust_message_entities_to_utf_16(
+        message_text, entities
     )
+    return message_text, cast(Sequence[MessageEntity], utf16_entities)
 
 
-def command_list(application: Application) -> str:
+def command_list(application: Any) -> str:
     bot_handle = build_bot_handle(application)
     return (
         "/get <reference>\n"
@@ -98,13 +119,15 @@ def build_passage_from_ref(ref) -> str:
     return f"{book} {ref[1]}:{ref[2]}-{ref[3]}:{ref[4]}"
 
 
-APOCRYPHA_SLUG_TO_TITLE = {book["slug"]: book["title"] for book in APOCRYPHA_BOOK_DATA}
+APOCRYPHA_SLUG_TO_TITLE: dict[str, str] = {
+    book["slug"]: book["title"] for book in APOCRYPHA_BOOK_DATA
+}
 BOOK_SLUG_SPECIAL_CASES = {
     "revelationofjesuschrist": ("revelation", "Revelation"),
     "songofsongs": ("songofsolomon", "Song of Solomon"),
     "psalms": ("psalm", "Psalm"),
 }
-BOOK_NAME_ALIASES = {
+BOOK_NAME_ALIASES: dict[str, tuple[str, str]] = {
     "gen": ("genesis", "Genesis"),
     "ge": ("genesis", "Genesis"),
     "ex": ("exodus", "Exodus"),

@@ -1,15 +1,19 @@
 import logging
+from typing import Any
 
 from scriptures import extract as extract_refs
 from telegram import (
+    Chat,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQueryResultArticle,
+    InlineQueryResultsButton,
     InputTextMessageContent,
-    MessageEntity,
+    Message,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     Update,
+    User,
 )
 from telegram.constants import ChatAction
 from telegram.ext import CallbackContext, ContextTypes, ConversationHandler
@@ -22,11 +26,12 @@ from parsing import (
     command_list,
     decode_linked_reference,
     ensure_text,
+    find_requested_book,
     format_passage_entities,
+    get_version_provider,
     other_version,
     parse_get_request,
     version_supports_passage,
-    get_version_provider,
 )
 from state import (
     BACK_TO_LANGUAGES,
@@ -40,6 +45,7 @@ from state import (
     USER_SEARCH_KEY,
     USER_STARTED_KEY,
     USER_VERSION_KEY,
+    InlinePassageResult,
     SearchState,
 )
 from versions import VERSION_DATA, VERSION_LOOKUP, VERSIONS
@@ -48,6 +54,37 @@ from versions import VERSION_DATA, VERSION_LOOKUP, VERSIONS
 def build_input_message_content(text: str) -> InputTextMessageContent:
     message_text, entities = format_passage_entities(text)
     return InputTextMessageContent(message_text=message_text, entities=entities)
+
+
+def require_message(update: Update) -> Message:
+    message = update.effective_message
+    assert message is not None
+    return message
+
+
+def require_chat(update: Update) -> Chat:
+    chat = update.effective_chat
+    assert chat is not None
+    return chat
+
+
+def require_user(update: Update) -> User:
+    user = update.effective_user
+    assert user is not None
+    return user
+
+
+def require_user_data(context: CallbackContext[Any, Any, Any, Any]) -> dict[Any, Any]:
+    user_data = context.user_data
+    assert user_data is not None
+    return user_data
+
+
+def build_inline_results_button(default_version: str) -> InlineQueryResultsButton:
+    return InlineQueryResultsButton(
+        text=f"Default version: {default_version}",
+        start_parameter="setdefault",
+    )
 
 
 def get_try_inline_keyboard() -> InlineKeyboardMarkup:
@@ -72,18 +109,18 @@ def build_buttons(menu: list[str]) -> ReplyKeyboardMarkup:
 
 
 def get_default_version(context: CallbackContext) -> str:
-    return ensure_text(
-        context.user_data.get(USER_VERSION_KEY) or DEFAULT_VERSION
-    ).upper()
+    user_data = require_user_data(context)
+    return ensure_text(user_data.get(USER_VERSION_KEY) or DEFAULT_VERSION).upper()
 
 
 def set_default_version(context: CallbackContext, version: str) -> None:
-    context.user_data[USER_VERSION_KEY] = version.upper()
+    user_data = require_user_data(context)
+    user_data[USER_VERSION_KEY] = version.upper()
 
 
 def get_identity(update: Update) -> tuple[str, str, bool]:
-    chat = update.effective_chat
-    user = update.effective_user
+    chat = require_chat(update)
+    user = require_user(update)
 
     if chat and chat.type == "private":
         name = ensure_text(user.first_name) or "friend"
@@ -95,12 +132,12 @@ def get_identity(update: Update) -> tuple[str, str, bool]:
 
 
 def is_group_chat(update: Update) -> bool:
-    chat = update.effective_chat
+    chat = require_chat(update)
     return bool(chat and chat.type != "private")
 
 
 def replied_to_bot(update: Update) -> bool:
-    message = update.effective_message
+    message = require_message(update)
     if (
         not message
         or not message.reply_to_message
@@ -111,9 +148,8 @@ def replied_to_bot(update: Update) -> bool:
 
 
 async def send_typing(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id, action=ChatAction.TYPING
-    )
+    chat = require_chat(update)
+    await context.bot.send_chat_action(chat_id=chat.id, action=ChatAction.TYPING)
 
 
 async def notify_admin(context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
@@ -168,10 +204,12 @@ async def reply_with_passage_result(
     *,
     reply_markup: ReplyKeyboardRemove | None = None,
 ) -> None:
+    message = require_message(update)
     supports_passage, requested_book = version_supports_passage(version, passage)
     if not supports_passage and requested_book:
-        await update.effective_message.reply_text(
-            f"Sorry {display_name}, {version} does not appear to include {requested_book}. "
+        await message.reply_text(
+            f"Sorry {display_name}, {version} does not appear to include "
+            f"{requested_book}. "
             "Try a translation that includes that book.",
             reply_markup=reply_markup,
         )
@@ -180,19 +218,20 @@ async def reply_with_passage_result(
     await send_typing(update, context)
     response = await fetch_passage(context, passage, version)
     if response == EMPTY:
-        await update.effective_message.reply_text(
+        await message.reply_text(
             f"Sorry {display_name}, no results were found. Please try again.",
             reply_markup=reply_markup,
         )
         return
     if response is None:
-        await update.effective_message.reply_text(
-            f"Sorry {display_name}, I'm having some difficulty accessing the site. Please try again later.",
+        await message.reply_text(
+            f"Sorry {display_name}, I'm having some difficulty accessing "
+            "the site. Please try again later.",
             reply_markup=reply_markup,
         )
         return
     message_text, entities = format_passage_entities(str(response))
-    await update.effective_message.reply_text(
+    await message.reply_text(
         message_text,
         entities=entities,
         reply_markup=reply_markup,
@@ -208,44 +247,50 @@ async def reply_with_search_results(
     start: int = 0,
     reply_markup: ReplyKeyboardRemove | None = None,
 ) -> None:
+    message = require_message(update)
+    user_data = require_user_data(context)
     await send_typing(update, context)
     response = await fetch_search_results(context, term, start=start)
     if response == EMPTY:
-        context.user_data.pop(USER_SEARCH_KEY, None)
-        await update.effective_message.reply_text(
+        user_data.pop(USER_SEARCH_KEY, None)
+        await message.reply_text(
             f"Sorry {display_name}, no results were found. Please try again.",
             reply_markup=reply_markup,
         )
         return
     if response is None:
-        await update.effective_message.reply_text(
-            f"Sorry {display_name}, I'm having some difficulty accessing the site. Please try again later.",
+        await message.reply_text(
+            f"Sorry {display_name}, I'm having some difficulty accessing "
+            "the site. Please try again later.",
             reply_markup=reply_markup,
         )
         return
 
-    context.user_data[USER_SEARCH_KEY] = SearchState(term=term, start=start)
-    await update.effective_message.reply_text(response, reply_markup=reply_markup)
+    user_data[USER_SEARCH_KEY] = SearchState(term=term, start=start)
+    await message.reply_text(response, reply_markup=reply_markup)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    message = require_message(update)
+    user_data = require_user_data(context)
     sender_name, group_name, is_group = get_identity(update)
-    is_new = not bool(context.user_data.get(USER_STARTED_KEY))
-    context.user_data[USER_STARTED_KEY] = True
+    is_new = not bool(user_data.get(USER_STARTED_KEY))
+    user_data[USER_STARTED_KEY] = True
 
     greeting = (
         f"Hello, friends in {group_name}! Thanks for adding me in!"
         if is_group
         else f"Hello, {sender_name}! Welcome!"
     )
-    await update.effective_message.reply_text(
+    await message.reply_text(
         f"{greeting} This bot can fetch Bible passages from biblegateway.com.\n\n"
-        f"To get started, enter one of the following commands:\n{command_list(context.application)}",
+        "To get started, enter one of the following commands:\n"
+        f"{command_list(context.application)}",
         reply_markup=get_try_inline_keyboard(),
     )
 
     if context.args == ["setdefault"]:
-        await update.effective_message.reply_text(
+        await message.reply_text(
             "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
         )
         return SETDEFAULT_LANGUAGE_STATE
@@ -260,38 +305,46 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = require_message(update)
     display_name, _, _ = get_identity(update)
-    await update.effective_message.reply_text(
-        f"Hi {display_name}! Please enter one of the following commands:\n{command_list(context.application)}",
+    await message.reply_text(
+        f"Hi {display_name}! Please enter one of the following commands:\n"
+        f"{command_list(context.application)}",
         reply_markup=get_try_inline_keyboard(),
     )
 
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.effective_message.reply_text(
-        f"Current default version is {get_default_version(context)}. Use /setdefault to change it."
+    message = require_message(update)
+    await message.reply_text(
+        f"Current default version is {get_default_version(context)}. "
+        "Use /setdefault to change it."
     )
 
 
 async def botfamily_verification_command(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
+    message = require_message(update)
     config: BotConfig = context.application.bot_data["config"]
     if config.botfamily_hash:
-        await update.effective_message.reply_text(config.botfamily_hash)
+        await message.reply_text(config.botfamily_hash)
         await notify_admin(context, "Botfamily verified!")
     else:
-        await update.effective_message.reply_text("BOTFAMILY_HASH is not configured.")
+        await message.reply_text("BOTFAMILY_HASH is not configured.")
 
 
 async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    raw_text = ensure_text(update.effective_message.text).strip()
+    message = require_message(update)
+    user_data = require_user_data(context)
+    raw_text = ensure_text(message.text).strip()
     version, passage = parse_get_request(raw_text, get_default_version(context))
     display_name, _, _ = get_identity(update)
 
     if version is None:
-        await update.effective_message.reply_text(
-            f"Sorry {display_name}, I couldn't find that version. Use /setdefault to view all available versions."
+        await message.reply_text(
+            f"Sorry {display_name}, I couldn't find that version. "
+            "Use /setdefault to view all available versions."
         )
         return ConversationHandler.END
 
@@ -299,12 +352,11 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await reply_with_passage_result(update, context, passage, version, display_name)
         return ConversationHandler.END
 
-    context.user_data["pending_get_version"] = version
-    await update.effective_message.reply_text(
-        "Which Bible passage do you want to lookup? Version: {}\n\n"
-        "Tip: For faster results, use:\n/get John 3:16\n/get{} John 3:16".format(
-            version, other_version(version)
-        )
+    user_data["pending_get_version"] = version
+    await message.reply_text(
+        f"Which Bible passage do you want to lookup? Version: {version}\n\n"
+        "Tip: For faster results, use:\n/get John 3:16\n"
+        f"/get{other_version(version)} John 3:16"
     )
     return GET_PASSAGE_STATE
 
@@ -312,14 +364,16 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def get_conversation_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
+    message = require_message(update)
+    user_data = require_user_data(context)
     version = ensure_text(
-        context.user_data.pop("pending_get_version", get_default_version(context))
+        user_data.pop("pending_get_version", get_default_version(context))
     )
     display_name, _, _ = get_identity(update)
     await reply_with_passage_result(
         update,
         context,
-        ensure_text(update.effective_message.text).strip(),
+        ensure_text(message.text).strip(),
         version,
         display_name,
         reply_markup=ReplyKeyboardRemove(),
@@ -330,12 +384,14 @@ async def get_conversation_message(
 async def search_command_entry(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    raw_text = ensure_text(update.effective_message.text).strip()
+    message = require_message(update)
+    raw_text = ensure_text(message.text).strip()
     parts = raw_text.split(maxsplit=1)
     if len(parts) == 1:
-        await update.effective_message.reply_text(
+        await message.reply_text(
             "Please enter what you wish to search for.\n\n"
-            'Tip: For faster results, use:\n/search make disciples\n/search "love is patient"'
+            "Tip: For faster results, use:\n/search make disciples\n"
+            '/search "love is patient"'
         )
         return SEARCH_STATE
 
@@ -349,11 +405,12 @@ async def search_command_entry(
 async def search_conversation_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
+    message = require_message(update)
     display_name, _, _ = get_identity(update)
     await reply_with_search_results(
         update,
         context,
-        ensure_text(update.effective_message.text).strip(),
+        ensure_text(message.text).strip(),
         display_name,
         reply_markup=ReplyKeyboardRemove(),
     )
@@ -361,10 +418,12 @@ async def search_conversation_message(
 
 
 async def more_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = require_message(update)
+    user_data = require_user_data(context)
     display_name, _, _ = get_identity(update)
-    search_state = context.user_data.get(USER_SEARCH_KEY)
+    search_state = user_data.get(USER_SEARCH_KEY)
     if not isinstance(search_state, SearchState):
-        await update.effective_message.reply_text(
+        await message.reply_text(
             f"Sorry {display_name}, no results were found. Please try again."
         )
         return
@@ -378,27 +437,25 @@ async def more_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def setdefault_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    raw_text = ensure_text(update.effective_message.text).strip()
+    message = require_message(update)
+    raw_text = ensure_text(message.text).strip()
     parts = raw_text.split(maxsplit=1)
     display_name, _, _ = get_identity(update)
 
     if len(parts) > 1:
         version = parts[1].strip().upper()
         if version not in VERSIONS:
-            await update.effective_message.reply_text(
-                "Sorry {}, I couldn't find that version. Use /setdefault to view all available versions.\n\n"
-                "Current default is {}.".format(
-                    display_name, get_default_version(context)
-                )
+            await message.reply_text(
+                f"Sorry {display_name}, I couldn't find that version. "
+                "Use /setdefault to view all available versions.\n\n"
+                f"Current default is {get_default_version(context)}."
             )
             return ConversationHandler.END
         set_default_version(context, version)
-        await update.effective_message.reply_text(
-            f"Success! Default version is now {version}."
-        )
+        await message.reply_text(f"Success! Default version is now {version}.")
         return ConversationHandler.END
 
-    await update.effective_message.reply_text(
+    await message.reply_text(
         "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
     )
     return SETDEFAULT_LANGUAGE_STATE
@@ -407,7 +464,8 @@ async def setdefault_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def start_setdefault_entry(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    await update.effective_message.reply_text(
+    message = require_message(update)
+    await message.reply_text(
         "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
     )
     return SETDEFAULT_LANGUAGE_STATE
@@ -416,14 +474,15 @@ async def start_setdefault_entry(
 async def setdefault_language_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    raw_text = ensure_text(update.effective_message.text).strip()
+    message = require_message(update)
+    raw_text = ensure_text(message.text).strip()
     if raw_text not in VERSION_DATA:
-        await update.effective_message.reply_text(
+        await message.reply_text(
             "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
         )
         return SETDEFAULT_LANGUAGE_STATE
 
-    await update.effective_message.reply_text(
+    await message.reply_text(
         "Select a version:",
         reply_markup=build_buttons(VERSION_DATA[raw_text] + [BACK_TO_LANGUAGES]),
     )
@@ -433,20 +492,21 @@ async def setdefault_language_message(
 async def setdefault_version_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    raw_text = ensure_text(update.effective_message.text).strip()
+    message = require_message(update)
+    raw_text = ensure_text(message.text).strip()
     if raw_text == BACK_TO_LANGUAGES:
-        await update.effective_message.reply_text(
+        await message.reply_text(
             "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
         )
         return SETDEFAULT_LANGUAGE_STATE
 
     if raw_text not in VERSION_LOOKUP:
-        await update.effective_message.reply_text("Select a version:")
+        await message.reply_text("Select a version:")
         return SETDEFAULT_VERSION_STATE
 
     version = VERSION_LOOKUP[raw_text]
     set_default_version(context, version)
-    await update.effective_message.reply_text(
+    await message.reply_text(
         f"Success! Default version is now {version}.",
         reply_markup=ReplyKeyboardRemove(),
     )
@@ -456,10 +516,10 @@ async def setdefault_version_message(
 async def cancel_conversation(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    context.user_data.pop("pending_get_version", None)
-    await update.effective_message.reply_text(
-        "Cancelled.", reply_markup=ReplyKeyboardRemove()
-    )
+    message = require_message(update)
+    user_data = require_user_data(context)
+    user_data.pop("pending_get_version", None)
+    await message.reply_text("Cancelled.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
@@ -476,8 +536,7 @@ async def handle_inline_query(
         await inline_query.answer(
             [],
             cache_time=0,
-            switch_pm_text=f"Default version: {default_version}",
-            switch_pm_parameter="setdefault",
+            button=build_inline_results_button(default_version),
         )
         return
 
@@ -494,8 +553,7 @@ async def handle_inline_query(
         await inline_query.answer(
             [],
             cache_time=0,
-            switch_pm_text=f"Default version: {default_version}",
-            switch_pm_parameter="setdefault",
+            button=build_inline_results_button(default_version),
         )
         return
 
@@ -504,8 +562,7 @@ async def handle_inline_query(
         await inline_query.answer(
             [],
             cache_time=0,
-            switch_pm_text=f"Default version: {default_version}",
-            switch_pm_parameter="setdefault",
+            button=build_inline_results_button(default_version),
         )
         return
 
@@ -522,16 +579,15 @@ async def handle_inline_query(
     await inline_query.answer(
         results,
         cache_time=0,
-        switch_pm_text=f"Default version: {default_version}",
-        switch_pm_parameter="setdefault",
+        button=build_inline_results_button(default_version),
     )
 
 
 async def handle_new_members(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    message = update.effective_message
-    if not message or not message.new_chat_members:
+    message = require_message(update)
+    if not message.new_chat_members:
         return
 
     bot_username = context.application.bot.username
@@ -544,7 +600,8 @@ async def handle_new_members(
 async def linked_passage_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    raw_text = ensure_text(update.effective_message.text).strip()
+    message = require_message(update)
+    raw_text = ensure_text(message.text).strip()
     display_name, _, _ = get_identity(update)
     reference = raw_text[1:]
     bot_handle = build_bot_handle(context.application)
@@ -559,7 +616,8 @@ async def linked_passage_handler(
 async def quick_lookup_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    raw_text = ensure_text(update.effective_message.text).strip()
+    message = require_message(update)
+    raw_text = ensure_text(message.text).strip()
     lowered = raw_text.lower()
     bot_handle = build_bot_handle(context.application).lower()
 
@@ -598,8 +656,9 @@ async def quick_lookup_handler(
         )
         return
 
-    await update.effective_message.reply_text(
-        f"Sorry {display_name}, I couldn't understand that. Please enter one of the following commands:\n"
+    await message.reply_text(
+        f"Sorry {display_name}, I couldn't understand that. "
+        "Please enter one of the following commands:\n"
         f"{command_list(context.application)}",
         reply_markup=get_try_inline_keyboard(),
     )

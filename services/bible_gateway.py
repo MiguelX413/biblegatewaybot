@@ -1,10 +1,12 @@
 import logging
+from importlib import import_module
+from typing import Any
 from urllib.parse import quote
 
 from bs4 import BeautifulSoup
 
 try:
-    import httpx
+    httpx: Any = import_module("httpx")
 except (
     ImportError
 ):  # pragma: no cover - exercised only in dependency-missing environments
@@ -14,9 +16,9 @@ from parsing import ensure_text
 from state import (
     DEFAULT_VERSION,
     EMPTY,
-    InlinePassageResult,
     MAX_SEARCH_RESULTS,
     REQUEST_TIMEOUT_SECONDS,
+    InlinePassageResult,
 )
 
 
@@ -182,9 +184,7 @@ class BibleGatewayClient:
         self, passage: str, version: str = DEFAULT_VERSION, inline_details: bool = False
     ) -> str | InlinePassageResult | None:
         search = quote(ensure_text(passage).lower().strip())
-        url = "https://www.biblegateway.com/passage/?search={}&version={}&interface=print".format(
-            search, version
-        )
+        url = f"https://www.biblegateway.com/passage/?search={search}&version={version}&interface=print"
         html = await self.fetch_text(url)
         if html is None:
             return None

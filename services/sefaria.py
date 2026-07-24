@@ -1,11 +1,13 @@
 import logging
 from collections.abc import Iterable
+from importlib import import_module
+from typing import Any
 from urllib.parse import quote
 
-from state import DEFAULT_VERSION, EMPTY, InlinePassageResult, REQUEST_TIMEOUT_SECONDS
+from state import DEFAULT_VERSION, EMPTY, REQUEST_TIMEOUT_SECONDS, InlinePassageResult
 
 try:
-    import httpx
+    httpx: Any = import_module("httpx")
 except (
     ImportError
 ):  # pragma: no cover - exercised only in dependency-missing environments

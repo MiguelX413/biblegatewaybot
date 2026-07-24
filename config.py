@@ -38,7 +38,7 @@ def load_config() -> BotConfig:
         if offline_bibles_path_value
         else None
     )
-    offline_only = load_secret("OFFLINE_ONLY", "").lower() in {
+    offline_only = (load_secret("OFFLINE_ONLY", "") or "").lower() in {
         "1",
         "true",
         "yes",

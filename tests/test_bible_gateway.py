@@ -14,7 +14,11 @@ PASSAGE_HTML = """
       <span class="bcv">John 3:16</span>
       <div class="passage-text">
         <h3>For God So Loved the World</h3>
-        <p><span class="chapternum">3</span><span class="versenum">16</span><span class="text">For God so loved the world</span><br/><span class="text">that he gave his one and only Son.</span></p>
+        <p>
+          <span class="chapternum">3</span><span class="versenum">16</span>
+          <span class="text">For God so loved the world</span>
+          <br/><span class="text">that he gave his one and only Son.</span>
+        </p>
         <div class="footnote">remove me</div>
       </div>
     </div>
@@ -30,8 +34,16 @@ POETRY_HTML = """
     <div class="passage-col">
       <span class="bcv">Psalm 23:1-2</span>
       <div class="passage-text">
-        <p><span class="chapternum">23</span><span class="versenum">1</span><span class="text">The Lord is my shepherd;</span><br/><span class="text">I shall not want.</span></p>
-        <p><span class="versenum">2</span><span class="text">He maketh me to lie down in green pastures:</span><br/><span class="text">he leadeth me beside the still waters.</span></p>
+        <p>
+          <span class="chapternum">23</span><span class="versenum">1</span>
+          <span class="text">The Lord is my shepherd;</span>
+          <br/><span class="text">I shall not want.</span>
+        </p>
+        <p>
+          <span class="versenum">2</span>
+          <span class="text">He maketh me to lie down in green pastures:</span>
+          <br/><span class="text">he leadeth me beside the still waters.</span>
+        </p>
       </div>
     </div>
   </body>
@@ -70,7 +82,8 @@ class BibleGatewayParsingTests(unittest.TestCase):
         self.assertIn("Psalm 23:1-2 (KJV)", result)
         self.assertIn("The Lord is my shepherd;\nI shall not want.", result)
         self.assertIn(
-            "He maketh me to lie down in green pastures:\nhe leadeth me beside the still waters.",
+            "He maketh me to lie down in green pastures:\n"
+            "he leadeth me beside the still waters.",
             result,
         )
 
