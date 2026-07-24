@@ -16,6 +16,7 @@ type BookSlug = str
 type BookTitle = str
 type ProviderName = str
 type VersionDataMap = OrderedDict[LanguageGroup, list[VersionLabel]]
+type SefariaVersionConfig = str | dict[BookSlug, str]
 
 
 VERSION_DATA = OrderedDict(
@@ -254,6 +255,13 @@ VERSION_DATA = OrderedDict(
                 "Nuova Riveduta 2006 (NR2006)",
             ],
         ),
+        (
+            "—Ladino (LAD)—",
+            [
+                "Biblia de Ferrara (FERRARA)",
+                "Trazladado en la lingua Espanyola, 1873 (BOYADJIAN1873)",
+            ],
+        ),
         ("—Jacalteco, Oriental (JAC)—", ["Jacalteco, Oriental (JAC)"]),
         ("—Kekchi (KEK)—", ["Kekchi (KEK)"]),
         ("—Latīna (LA)—", ["Biblia Sacra Vulgata (VULGATE)"]),
@@ -384,6 +392,13 @@ VERSION_DATA = OrderedDict(
                 "1934 Vietnamese Bible (VIET)",
                 "Bản Dịch 2011 (BD2011)",
                 "Vietnamese Bible: Easy-to-Read Version (BPT)",
+            ],
+        ),
+        (
+            "—ייִדיש (YI)—",
+            [
+                "Tanakh in Yiddish, 1914 (NEUHAUSEN1914)",
+                "Yehoyesh's Yiddish Tanakh Translation (YEHOYESH)",
             ],
         ),
     ]
@@ -848,7 +863,7 @@ VERSION_ADDITIONAL_BOOK_SLUGS: dict[str, frozenset[str]] = {
     "WYC": CORE_DEUTEROCANON_BOOK_SLUGS,
 }
 VERSION_PROVIDERS: dict[str, str] = {code: "biblegateway" for code in VERSIONS}
-SEFARIA_VERSION_TITLES: dict[str, str | dict[str, str]] = {
+SEFARIA_VERSION_CONFIGS: dict[str, SefariaVersionConfig] = {
     "JPS": "The Holy Scriptures: A New Translation (JPS 1917)",
     "NJPS": "Tanakh: The Holy Scriptures, published by JPS",
     "KOREN": "The Koren Jerusalem Bible",
@@ -856,6 +871,16 @@ SEFARIA_VERSION_TITLES: dict[str, str | dict[str, str]] = {
     "FOX": "The Five Books of Moses, by Everett Fox. New York, Schocken Books, 1995",
     "SCOMM": "Sefaria Community Translation",
     "BRENTON": "Brenton's Septuagint",
+    "FERRARA": "ladino|Biblia de Ferrara [lad]",
+    "BOYADJIAN1873": (
+        "ladino|Trazladado en la lingua Espanyola, Estamperia de A. H. "
+        "Boyadjian, Konstantinopla 1873. Transkrito por Yehuda Sidi, 2021 [lad]"
+    ),
+    "NEUHAUSEN1914": (
+        "yiddish|Tanakh in Yiddish. Translated by Ch. Neuhausen, "
+        "A. Hyman Charlap; NY 1914 [yi]"
+    ),
+    "YEHOYESH": "yiddish|Yehoyesh's Yiddish Tanakh Translation [yi]",
     "CHARLES": {
         "jubilees": "The Book of Jubilees, trans. R. H. Charles. London [1917]",
         "testamentsofthetwelvepatriarchs": (
@@ -871,7 +896,7 @@ SEFARIA_VERSION_TITLES: dict[str, str | dict[str, str]] = {
     "METSUDAH": "Metsudah Chumash, Metsudah Publications, 2009",
     "RJPS": "THE JPS TANAKH: Gender-Sensitive Edition",
 }
-VERSION_PROVIDERS.update({code: "sefaria" for code in SEFARIA_VERSION_TITLES})
+VERSION_PROVIDERS.update({code: "sefaria" for code in SEFARIA_VERSION_CONFIGS})
 for code in ("BOM", "DC", "PGP"):
     VERSION_PROVIDERS[code] = "lds"
 for code in ("GNA2025", "GNADC25", "TMA", "TMA-C", "TKA"):
@@ -890,9 +915,9 @@ for code in ("DLNT", "MOUNCE", "PHILLIPS", "WE"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["HHH"] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["WLC"] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
-for code in ("JPS", "NJPS", "KOREN", "RJPS"):
+for code in ("JPS", "NJPS", "KOREN", "RJPS", "YEHOYESH"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
-for code in ("CTJPS", "FOX", "METSUDAH"):
+for code in ("CTJPS", "FOX", "METSUDAH", "FERRARA", "BOYADJIAN1873", "NEUHAUSEN1914"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(TORAH_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["SCOMM"] = frozenset(
     {

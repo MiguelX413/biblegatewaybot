@@ -4,10 +4,10 @@ from services.sefaria import (
     build_sefaria_passage_url,
     normalize_sefaria_passage_reference,
     parse_passage_payload,
-    resolve_sefaria_version_title,
+    resolve_sefaria_version_query,
 )
 from state import EMPTY, InlinePassageResult
-from versions import SEFARIA_VERSION_TITLES
+from versions import SEFARIA_VERSION_CONFIGS
 
 PASSAGE_PAYLOAD = {
     "ref": "Genesis 1:1-2",
@@ -64,15 +64,31 @@ class SefariaParsingTests(unittest.TestCase):
         )
 
     def test_build_sefaria_passage_url_includes_specific_version(self):
-        version_title = resolve_sefaria_version_title(
+        version_query = resolve_sefaria_version_query(
             "Genesis 1:1",
             "JPS",
-            SEFARIA_VERSION_TITLES,
+            SEFARIA_VERSION_CONFIGS,
         )
         self.assertEqual(
             "https://sefaria.org/Genesis.1:1"
             "?lang=bi&ven=english%7CThe%20Holy%20Scriptures%3A%20A%20New%20Translation%20%28JPS%201917%29",
-            build_sefaria_passage_url("Genesis 1:1", "JPS", version_title),
+            build_sefaria_passage_url("Genesis 1:1", "JPS", version_query),
+        )
+
+    def test_build_sefaria_passage_url_includes_yiddish_version(self):
+        version_query = resolve_sefaria_version_query(
+            "Genesis 1:1",
+            "YEHOYESH",
+            SEFARIA_VERSION_CONFIGS,
+        )
+        self.assertEqual(
+            "yiddish|Yehoyesh's Yiddish Tanakh Translation [yi]",
+            version_query,
+        )
+        self.assertEqual(
+            "https://sefaria.org/Genesis.1:1"
+            "?lang=bi&ven=yiddish%7CYehoyesh%27s%20Yiddish%20Tanakh%20Translation%20%5Byi%5D",
+            build_sefaria_passage_url("Genesis 1:1", "YEHOYESH", version_query),
         )
 
 

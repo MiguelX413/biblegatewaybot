@@ -11,6 +11,7 @@ from parsing import (
     format_numbered_verse_text,
 )
 from state import DEFAULT_VERSION, EMPTY, REQUEST_TIMEOUT_SECONDS, InlinePassageResult
+from versions import SefariaVersionConfig
 
 try:
     httpx: Any = import_module("httpx")
@@ -41,15 +42,15 @@ SEFARIA_INDEX_TITLE_BY_BOOK_SLUG = {
 def build_sefaria_passage_url(
     passage: str,
     version: str = DEFAULT_VERSION,
-    version_title: str | None = None,
+    version_query: str | None = None,
 ) -> str:
     normalized = normalize_sefaria_passage_reference(passage, version)
     if not normalized:
         return "https://sefaria.org"
     path = re.sub(r"\s+(\d)", r".\1", normalized, count=1).replace(" ", "_")
     url = f"https://sefaria.org/{quote(path, safe='._:-')}"
-    if version_title:
-        encoded_version = quote(f"english|{version_title}", safe="")
+    if version_query:
+        encoded_version = quote(version_query, safe="")
         return f"{url}?lang=bi&ven={encoded_version}"
     return url
 
@@ -129,12 +130,11 @@ def parse_passage_payload(
 
 
 class SefariaClient:
-    def __init__(self, version_titles: dict[str, str | dict[str, str]], client=None):
+    def __init__(self, version_configs: dict[str, SefariaVersionConfig], client=None):
         if httpx is None:
             raise RuntimeError("httpx is required to use SefariaClient.")
-        self._version_titles = {
-            code.upper(): title_or_titles
-            for code, title_or_titles in version_titles.items()
+        self._version_configs = {
+            code.upper(): config for code, config in version_configs.items()
         }
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(
@@ -150,15 +150,15 @@ class SefariaClient:
     async def get_passage(
         self, passage: str, version: str = DEFAULT_VERSION, inline_details: bool = False
     ) -> str | InlinePassageResult | None:
-        version_title = self._resolve_version_title(passage, version)
-        if not version_title:
-            logging.warning("No Sefaria version title configured for %s", version)
+        version_query = self._resolve_version_query(passage, version)
+        if not version_query:
+            logging.warning("No Sefaria version configured for %s", version)
             return None
 
         normalized_passage = normalize_sefaria_passage_reference(passage, version)
         url = f"{SEFARIA_API_BASE_URL}/{quote(normalized_passage, safe='')}"
         params = {
-            "version": f"english|{version_title}",
+            "version": version_query,
             "return_format": "text_only",
         }
         try:
@@ -182,33 +182,45 @@ class SefariaClient:
             payload, version=version, inline_details=inline_details
         )
 
-    def _resolve_version_title(self, passage: str, version: str) -> str | None:
-        configured = self._version_titles.get(version.upper())
+    def _resolve_version_query(self, passage: str, version: str) -> str | None:
+        configured = self._version_configs.get(version.upper())
         if configured is None:
             return None
         if isinstance(configured, str):
-            return configured
+            return _to_version_query(configured)
 
         requested_book = find_requested_book(passage)
         if requested_book is None:
             return None
         book_slug, _ = requested_book
-        return configured.get(book_slug)
+        resolved = configured.get(book_slug)
+        if resolved is None:
+            return None
+        return _to_version_query(resolved)
 
 
-def resolve_sefaria_version_title(
+def _to_version_query(configured_value: str) -> str:
+    if "|" in configured_value:
+        return configured_value
+    return f"english|{configured_value}"
+
+
+def resolve_sefaria_version_query(
     passage: str,
     version: str,
-    version_titles: dict[str, str | dict[str, str]],
+    version_configs: dict[str, SefariaVersionConfig],
 ) -> str | None:
-    configured = version_titles.get(version.upper())
+    configured = version_configs.get(version.upper())
     if configured is None:
         return None
     if isinstance(configured, str):
-        return configured
+        return _to_version_query(configured)
 
     requested_book = find_requested_book(passage)
     if requested_book is None:
         return None
     book_slug, _ = requested_book
-    return configured.get(book_slug)
+    resolved = configured.get(book_slug)
+    if resolved is None:
+        return None
+    return _to_version_query(resolved)
