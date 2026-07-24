@@ -1,6 +1,6 @@
 # scripturebot
 
-Telegram bot built on `python-telegram-bot` that fetches Bible passages from biblegateway.com.
+Telegram bot built on `python-telegram-bot` that fetches scripture passages from BibleGateway, Sefaria, LDS scripture pages, and optional local/offline files.
 
 This repository now uses `uv` for dependency management.
 
@@ -29,8 +29,9 @@ Configuration:
 Runtime model:
 
 - the bot now runs with `python-telegram-bot` long polling
-- bible scraping uses async `httpx`
+- BibleGateway, Sefaria, and LDS scraping use async `httpx`
 - Book of Mormon, Doctrine and Covenants, and Pearl of Great Price passages are fetched from the official Church scripture pages under versions `BOM`, `DC`, and `PGP`
+- Sefaria-backed versions support JPS-family texts and additional apocrypha not available on BibleGateway
 - optional local/offline passage files are checked before remote providers
 - chat and user state is persisted locally in `scripturebot-state.pkl`
 
@@ -39,10 +40,12 @@ Project layout:
 - `scripturebot.py`: thin entrypoint
 - `bot.py`: PTB application wiring
 - `handlers.py`: command, conversation, inline, and message handlers
-- `services/bible_gateway.py`: BibleGateway and BibleHub scraping/parsing
+- `services/bible_gateway.py`: BibleGateway scraping/parsing
+- `services/sefaria.py`: Sefaria scraping/parsing
 - `services/lds_scriptures.py`: LDS standard works scraping/parsing
 - `services/local_bible.py`: optional local/offline passage loading
 - `parsing.py`: command parsing helpers
+- `versions.py`: version metadata and book/version support tables
 - `state.py`: constants and lightweight state models
 - `config.py`: environment and local-secret loading
 - `tests/`: parsing and scraper normalization tests
@@ -50,7 +53,10 @@ Project layout:
 Notes:
 
 - this codebase uses `python-telegram-bot` instead of the old `webapp2` and Google App Engine services stack.
+- `/get` uses trailing-version syntax: `/get John 3:16 NLT`
+- chapter requests are supported, but whole-book requests are not
 - LDS scripture examples: `/get 1 Nephi 3:7 BOM`, `/get D&C 1:1 DC`, `/get Abraham 3:22 PGP`
-- `/get` now uses standard trailing-version syntax: `/get John 3:16 NLT`
+- apocrypha defaults to `NRSVue` when available and otherwise falls back to supported Sefaria-backed versions
+- Sefaria/apocrypha examples: `/get Tobit 4:7 NABRE`, `/get 3 Maccabees 1:1`, `/get Jubilees 1:1`
 - offline passage files live under `OFFLINE_BIBLES_PATH` as `<VERSION>.json`
 - each offline JSON file should be an object mapping references like `John 3:16` to either a string, a list of paragraph strings, or an object with `title`, `text`, and optional `description`
