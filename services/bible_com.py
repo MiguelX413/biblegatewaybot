@@ -283,6 +283,8 @@ def parse_chapter_content(
         verse_parts: list[str] = []
         for verse in child.select("span.verse[data-usfm]"):
             data_usfm = verse.get("data-usfm", "")
+            if not isinstance(data_usfm, str):
+                continue
             try:
                 verse_number = int(data_usfm.rsplit(".", 1)[-1])
             except ValueError:

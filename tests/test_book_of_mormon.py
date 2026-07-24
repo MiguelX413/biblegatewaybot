@@ -112,6 +112,7 @@ class LdsScripturesParsingTests(unittest.TestCase):
         reference = LdsReference(LDS_BOOK_BY_ALIAS["1nephi"], 3, 7, 3, 8)
         result = parse_passage_html(SAMPLE_HTML, reference)
         self.assertIsInstance(result, str)
+        assert isinstance(result, str)
         self.assertIn("1 Nephi 3:7-8 BOM", result)
         self.assertNotIn("6 Therefore", result)
         self.assertIn("⁷ For I know", result)
@@ -122,6 +123,7 @@ class LdsScripturesParsingTests(unittest.TestCase):
         reference = LdsReference(LDS_BOOK_BY_ALIAS["1nephi"], 3, 7, 3, 7)
         result = parse_passage_html(SAMPLE_HTML, reference, inline_details=True)
         self.assertIsInstance(result, InlinePassageResult)
+        assert isinstance(result, InlinePassageResult)
         self.assertEqual("1 Nephi 3:7 BOM", result.title)
         self.assertIn("⁷ For I know", result.passage)
 

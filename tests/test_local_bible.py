@@ -56,6 +56,7 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
             result = await client.get_passage("gen 1:1", "JPS", inline_details=True)
 
             self.assertIsInstance(result, InlinePassageResult)
+            assert isinstance(result, InlinePassageResult)
             self.assertEqual("Genesis 1:1/JPS", result.result_id)
             self.assertEqual("Offline JPS sample", result.description)
 
