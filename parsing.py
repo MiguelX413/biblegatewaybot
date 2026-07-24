@@ -110,6 +110,8 @@ SUPERSCRIPT_TRANSLATION = str.maketrans(
         "-": "⁻",
     }
 )
+SUPERSCRIPT_DIGITS = "⁰¹²³⁴⁵⁶⁷⁸⁹"
+SUPERSCRIPT_TO_DIGITS = str.maketrans(SUPERSCRIPT_DIGITS, "0123456789")
 
 
 def to_sup(text: str) -> str:
@@ -189,6 +191,27 @@ def format_passage_entities(
     return _build_passage_message(header, body, header_url=header_url)
 
 
+def _chunk_header(header: str, body: str) -> str:
+    """Build a reference header for the verses that occur in one message chunk."""
+
+    verse_numbers = re.findall(f"[{SUPERSCRIPT_DIGITS}]+", body)
+    if not verse_numbers:
+        return header
+
+    first_verse = verse_numbers[0].translate(SUPERSCRIPT_TO_DIGITS)
+    last_verse = verse_numbers[-1].translate(SUPERSCRIPT_TO_DIGITS)
+    reference, separator, version = header.rpartition(" ")
+    if not separator:
+        return header
+
+    chapter_match = re.match(r"^(.*?\d+):[^\s]+$", reference)
+    chapter_reference = chapter_match.group(1) if chapter_match else reference
+    verse_range = (
+        first_verse if first_verse == last_verse else f"{first_verse}-{last_verse}"
+    )
+    return f"{chapter_reference}:{verse_range} {version}"
+
+
 def format_passage_chunks(
     text: str, header_url: str | None = None
 ) -> list[tuple[str, Sequence[MessageEntity]]]:
@@ -208,6 +231,12 @@ def format_passage_chunks(
         return [(full_message[:TELEGRAM_MESSAGE_LIMIT], full_entities)]
 
     chunks: list[tuple[str, Sequence[MessageEntity]]] = []
+
+    def make_chunk(chunk_body: str) -> tuple[str, Sequence[MessageEntity]]:
+        return _build_passage_message(
+            _chunk_header(header, chunk_body), chunk_body, header_url=header_url
+        )
+
     paragraphs = [
         paragraph.strip() for paragraph in body.split("\n\n") if paragraph.strip()
     ]
@@ -215,16 +244,10 @@ def format_passage_chunks(
         paragraphs = [body.strip()]
 
     current_parts: list[str] = []
-    current_header = True
     for paragraph in paragraphs:
         candidate_parts = current_parts + [paragraph]
         candidate_body = "\n\n".join(candidate_parts)
-        candidate_text, candidate_entities = _build_passage_message(
-            header,
-            candidate_body,
-            include_header=current_header,
-            header_url=header_url if current_header else None,
-        )
+        candidate_text, candidate_entities = make_chunk(candidate_body)
         if len(candidate_text) <= TELEGRAM_MESSAGE_LIMIT:
             current_parts = candidate_parts
             current_chunk = (candidate_text, candidate_entities)
@@ -233,28 +256,17 @@ def format_passage_chunks(
         if current_parts:
             chunks.append(current_chunk)
             current_parts = []
-            current_header = False
 
         if len(paragraph) <= TELEGRAM_MESSAGE_LIMIT:
             current_parts = [paragraph]
-            current_chunk = _build_passage_message(
-                header,
-                paragraph,
-                include_header=current_header,
-                header_url=header_url if current_header else None,
-            )
+            current_chunk = make_chunk(paragraph)
             continue
 
         lines = paragraph.splitlines() or [paragraph]
         line_buffer: list[str] = []
         for line in lines:
             line_candidate = "\n".join(line_buffer + [line]).strip()
-            line_text, line_entities = _build_passage_message(
-                header,
-                line_candidate,
-                include_header=current_header,
-                header_url=header_url if current_header else None,
-            )
+            line_text, line_entities = make_chunk(line_candidate)
             if len(line_text) <= TELEGRAM_MESSAGE_LIMIT:
                 line_buffer.append(line)
                 current_chunk = (line_text, line_entities)
@@ -262,37 +274,21 @@ def format_passage_chunks(
 
             if line_buffer:
                 chunks.append(current_chunk)
-                current_header = False
                 line_buffer = []
 
             remaining = line.strip()
-            available = TELEGRAM_MESSAGE_LIMIT - (
-                len(header) + 1 if current_header else 0
-            )
+            available = TELEGRAM_MESSAGE_LIMIT - len(header) - 1
             while remaining:
                 piece = remaining[:available].rstrip()
-                chunk_text, chunk_entities = _build_passage_message(
-                    header,
-                    piece,
-                    include_header=current_header,
-                    header_url=header_url if current_header else None,
-                )
+                chunk_text, chunk_entities = make_chunk(piece)
                 chunks.append((chunk_text, chunk_entities))
-                current_header = False
                 remaining = remaining[len(piece) :].lstrip()
 
         current_parts = ["\n".join(line_buffer).strip()] if line_buffer else []
 
     if current_parts:
         final_body = "\n\n".join(current_parts)
-        chunks.append(
-            _build_passage_message(
-                header,
-                final_body,
-                include_header=current_header,
-                header_url=header_url if current_header else None,
-            )
-        )
+        chunks.append(make_chunk(final_body))
     return chunks
 
 
