@@ -2,8 +2,8 @@ import webapp2
 import logging
 import json
 import textwrap
-import urllib
 import re
+from urllib.parse import quote
 from bs4 import BeautifulSoup
 from scriptures import extract as extract_refs
 from google.appengine.api import urlfetch, urlfetch_errors, taskqueue
@@ -14,12 +14,20 @@ from xml.etree import ElementTree as etree
 EMPTY = "empty"
 
 
+def ensure_text(value):
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "ignore")
+    return str(value)
+
+
 def strip_markdown(string):
     return (
-        string.replace("*", "\*")
-        .replace("_", "\_")
-        .replace("`", "\`")
-        .replace("[", "\[")
+        string.replace("*", "\\*")
+        .replace("_", "\\_")
+        .replace("`", "\\`")
+        .replace("[", "\\[")
     )
 
 
@@ -44,7 +52,7 @@ def get_passage(passage, version="NIV", inline_details=False):
         "https://www.biblegateway.com/passage/?search={}&version={}&interface=print"
     )
 
-    search = urllib.quote(passage.lower().strip())
+    search = quote(ensure_text(passage).lower().strip())
     url = BG_URL.format(search, version)
     try:
         logging.debug("Began fetching from remote")
@@ -54,7 +62,7 @@ def get_passage(passage, version="NIV", inline_details=False):
         logging.warning("Error fetching passage:\n" + str(e))
         return None
 
-    html = result.content
+    html = ensure_text(result.content)
     start = html.find('<div class="passage-col')
     if start == -1:
         return EMPTY
@@ -87,9 +95,9 @@ def get_passage(passage, version="NIV", inline_details=False):
 
     for tag in passage_soup.select("p"):
         tag["class"] = WANTED
-        bad_strings = tag(text=re.compile("(\*|\_|\`|\[)"))
+        bad_strings = tag(text=re.compile(r"(\*|_|\`|\[)"))
         for bad_string in bad_strings:
-            stripped_text = strip_markdown(unicode(bad_string))
+            stripped_text = strip_markdown(ensure_text(bad_string))
             bad_string.replace_with(stripped_text)
             needed_stripping = True
 
@@ -141,7 +149,7 @@ def get_search_results_old(text, start=0):
         + "&oe=UTF-8&ie=UTF-8&site=biblecc&filter=0&start={}"
     )
 
-    query = urllib.quote(text.lower().strip())
+    query = quote(ensure_text(text).lower().strip())
     url = BH_URL.format(query, start)
     try:
         result = urlfetch.fetch(url, deadline=10)
@@ -164,9 +172,9 @@ def get_search_results_old(text, start=0):
 
         soup = BeautifulSoup(content, "lxml")
 
-        bad_strings = soup(text=re.compile("(\*|\_)"))
+        bad_strings = soup(text=re.compile(r"(\*|_)"))
         for bad_string in bad_strings:
-            stripped_text = strip_markdown(unicode(bad_string))
+            stripped_text = strip_markdown(ensure_text(bad_string))
             bad_string.replace_with(stripped_text)
 
         for tag in soup("b"):
@@ -207,7 +215,7 @@ def get_search_results_old(text, start=0):
 def get_search_results(text, start=0):
     BH_URL = "http://biblehub.net/search.php?q={}"
 
-    query = urllib.quote(text.encode("utf-8", "ignore").lower().strip())
+    query = quote(ensure_text(text).lower().strip())
     url = BH_URL.format(query)
     try:
         result = urlfetch.fetch(url, deadline=10)
@@ -215,7 +223,7 @@ def get_search_results(text, start=0):
         logging.warning("Error fetching search results:\n" + str(e))
         return None
 
-    html = result.content
+    html = ensure_text(result.content)
     soup = BeautifulSoup(html, "lxml")
 
     headers = soup.select(".l")
@@ -237,9 +245,9 @@ def get_search_results(text, start=0):
 
         body = bodies[i]
 
-        bad_strings = body(text=re.compile("(\*|\_)"))
+        bad_strings = body(text=re.compile(r"(\*|_)"))
         for bad_string in bad_strings:
-            stripped_text = strip_markdown(unicode(bad_string))
+            stripped_text = strip_markdown(ensure_text(bad_string))
             bad_string.replace_with(stripped_text)
 
         for tag in body("b"):
@@ -363,7 +371,7 @@ class User(db.Model):
 
     def get_name_string(self):
         def prep(string):
-            return string.encode("utf-8", "ignore").strip()
+            return ensure_text(string).strip()
 
         name = prep(self.first_name)
         if self.last_name:
@@ -685,20 +693,20 @@ class MainPage(webapp2.RequestHandler):
 
     def post(self):
         data = json.loads(self.request.body)
-        logging.debug(self.request.body)
+        logging.debug(ensure_text(self.request.body))
 
         inline_query = data.get("inline_query")
         chosen_inline_result = data.get("chosen_inline_result")
 
         if inline_query:
             uid = inline_query.get("from").get("id")
-            if user_exists:
+            if user_exists(uid):
                 user = get_user(uid)
             else:
                 user = None
 
             qid = inline_query.get("id")
-            query = inline_query.get("query").encode("utf-8", "ignore")
+            query = ensure_text(inline_query.get("query")).strip()
 
             if not query:
                 results = []
@@ -777,11 +785,11 @@ class MainPage(webapp2.RequestHandler):
         last_name = msg_from.get("last_name")
         username = msg_from.get("username")
 
-        name = first_name.encode("utf-8", "ignore").strip()
+        name = ensure_text(first_name).strip()
         text = msg.get("text")
         raw_text = text
         if text:
-            text = text.encode("utf-8", "ignore")
+            text = ensure_text(text)
             logging.info(text)
 
         if msg_chat.get("type") == "private":
@@ -790,7 +798,7 @@ class MainPage(webapp2.RequestHandler):
         else:
             group_name = msg_chat.get("title")
             user = update_profile(uid, None, group_name, None)
-            group_name = group_name.encode("utf-8", "ignore")
+            group_name = ensure_text(group_name).strip()
 
         if text == "/botfamily_verification_code":
             send_message(user, BOTFAMILY_HASH)
@@ -800,9 +808,9 @@ class MainPage(webapp2.RequestHandler):
         def get_from_string():
             name_string = name
             if last_name:
-                name_string += " " + last_name.encode("utf-8", "ignore").strip()
+                name_string += " " + ensure_text(last_name).strip()
             if username:
-                name_string += " @" + username.encode("utf-8", "ignore").strip()
+                name_string += " @" + ensure_text(username).strip()
             return name_string
 
         if user.last_sent == None or text == "/start":
@@ -1186,7 +1194,7 @@ class PromoPage(webapp2.RequestHandler):
         query.filter("promo =", False)
         query.filter("created <", three_days_ago)
         for user in query.run(batch_size=500):
-            name = user.first_name.encode("utf-8", "ignore").strip()
+            name = ensure_text(user.first_name).strip()
             if user.is_group():
                 promo_msg = (
                     "Hello, friends in {}! ".format(name)
@@ -1230,6 +1238,7 @@ class VerifyPage(webapp2.RequestHandler):
 
     def post(self):
         uid = self.request.body
+        uid = ensure_text(uid)
         user = get_user(uid)
 
         try:
@@ -1275,3 +1284,15 @@ app = webapp2.WSGIApplication(
     ],
     debug=True,
 )
+
+
+def main():
+    logging.basicConfig(level=logging.INFO)
+    print(
+        "biblegatewaybot module loaded. Run under a WSGI server for request handling."
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
