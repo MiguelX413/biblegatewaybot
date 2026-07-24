@@ -1,8 +1,7 @@
 import logging
 from urllib.parse import quote
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
+import httpx
 from bs4 import BeautifulSoup
 
 from parsing import ensure_text
@@ -142,34 +141,43 @@ def parse_search_results_html(text: str, start: int = 0) -> str:
 
 
 class BibleGatewayClient:
-    async def close(self) -> None:
-        return
+    def __init__(self, client: httpx.AsyncClient | None = None):
+        self._owns_client = client is None
+        self._client = client or httpx.AsyncClient(
+            timeout=REQUEST_TIMEOUT_SECONDS,
+            follow_redirects=True,
+            headers={"User-Agent": "biblegatewaybot/1.0"},
+        )
 
-    def fetch_text(self, url: str) -> str | None:
-        request = Request(url, headers={"User-Agent": "biblegatewaybot/1.0"})
+    async def close(self) -> None:
+        if self._owns_client:
+            await self._client.aclose()
+
+    async def fetch_text(self, url: str) -> str | None:
         try:
-            with urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-                return response.read().decode("utf-8", "ignore")
-        except (HTTPError, URLError, TimeoutError) as exc:
+            response = await self._client.get(url)
+            response.raise_for_status()
+            return response.text
+        except httpx.HTTPError as exc:
             logging.warning("Error fetching %s: %s", url, exc)
             return None
 
-    def get_passage(
+    async def get_passage(
         self, passage: str, version: str = DEFAULT_VERSION, inline_details: bool = False
     ) -> str | InlinePassageResult | None:
         search = quote(ensure_text(passage).lower().strip())
         url = "https://www.biblegateway.com/passage/?search={}&version={}&interface=print".format(
             search, version
         )
-        html = self.fetch_text(url)
+        html = await self.fetch_text(url)
         if html is None:
             return None
         return parse_passage_html(html, version=version, inline_details=inline_details)
 
-    def get_search_results(self, text: str, start: int = 0) -> str | None:
+    async def get_search_results(self, text: str, start: int = 0) -> str | None:
         query = quote(ensure_text(text).lower().strip())
         url = f"http://biblehub.net/search.php?q={query}"
-        html = self.fetch_text(url)
+        html = await self.fetch_text(url)
         if html is None:
             return None
         return parse_search_results_html(html, start=start)
