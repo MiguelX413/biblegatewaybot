@@ -12,7 +12,7 @@ except (
 ):  # pragma: no cover - exercised only in dependency-missing environments
     httpx = None
 
-from parsing import build_passage_header, ensure_text
+from parsing import build_passage_header, ensure_text, to_sup
 from state import (
     DEFAULT_VERSION,
     EMPTY,
@@ -20,23 +20,6 @@ from state import (
     REQUEST_TIMEOUT_SECONDS,
     InlinePassageResult,
 )
-
-
-def to_sup(text: str) -> str:
-    sups = {
-        "0": "⁰",
-        "1": "¹",
-        "2": "²",
-        "3": "³",
-        "4": "⁴",
-        "5": "⁵",
-        "6": "⁶",
-        "7": "⁷",
-        "8": "⁸",
-        "9": "⁹",
-        "-": "⁻",
-    }
-    return "".join(sups.get(char, char) for char in text)
 
 
 def normalize_block_text(text: str) -> str:

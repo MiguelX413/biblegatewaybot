@@ -2,19 +2,23 @@ import json
 import logging
 from pathlib import Path
 
-from parsing import build_passage_header, normalize_reference_lookup_key
+from parsing import (
+    build_passage_header,
+    normalize_reference_lookup_key,
+    superscript_leading_verse_numbers,
+)
 from state import DEFAULT_VERSION, EMPTY, InlinePassageResult
 
 
 def _normalize_local_text(value) -> list[str]:
     if isinstance(value, str):
-        text = value.strip()
+        text = superscript_leading_verse_numbers(value)
         return [text] if text else []
     if isinstance(value, list):
         result = []
         for item in value:
             if isinstance(item, str):
-                text = item.strip()
+                text = superscript_leading_verse_numbers(item)
                 if text:
                     result.append(text)
         return result

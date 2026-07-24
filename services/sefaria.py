@@ -1,10 +1,11 @@
 import logging
+import re
 from collections.abc import Iterable
 from importlib import import_module
 from typing import Any
 from urllib.parse import quote
 
-from parsing import build_passage_header
+from parsing import build_passage_header, format_numbered_verse_text
 from state import DEFAULT_VERSION, EMPTY, REQUEST_TIMEOUT_SECONDS, InlinePassageResult
 
 try:
@@ -28,6 +29,29 @@ def _flatten_text(value) -> Iterable[str]:
             yield from _flatten_text(item)
 
 
+def _extract_start_verse(reference: str) -> int | None:
+    match = re.search(r":(\d+)", reference)
+    if match is None:
+        return None
+    return int(match.group(1))
+
+
+def _format_text_parts(reference: str, value) -> list[str]:
+    start_verse = _extract_start_verse(reference)
+    if (
+        isinstance(value, list)
+        and value
+        and all(isinstance(item, str) for item in value)
+    ):
+        first_verse = start_verse or 1
+        return [
+            formatted
+            for index, item in enumerate(value)
+            if (formatted := format_numbered_verse_text(first_verse + index, item))
+        ]
+    return list(_flatten_text(value))
+
+
 def parse_passage_payload(
     payload: dict, version: str = DEFAULT_VERSION, inline_details: bool = False
 ) -> str | InlinePassageResult:
@@ -35,11 +59,11 @@ def parse_passage_payload(
     if not versions:
         return EMPTY
 
-    text_parts = list(_flatten_text(versions[0].get("text")))
+    reference = str(payload.get("ref") or "").strip() or "Requested passage"
+    text_parts = _format_text_parts(reference, versions[0].get("text"))
     if not text_parts:
         return EMPTY
 
-    reference = str(payload.get("ref") or "").strip() or "Requested passage"
     header = build_passage_header(reference, version)
     final_text = "\n\n".join([header, *text_parts]).strip()
 

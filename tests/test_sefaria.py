@@ -22,7 +22,10 @@ class SefariaParsingTests(unittest.TestCase):
         result = parse_passage_payload(PASSAGE_PAYLOAD, version="JPS")
         self.assertIsInstance(result, str)
         self.assertIn("Genesis 1:1-2 JPS", result)
-        self.assertIn("In the beginning God created the heaven and the earth.", result)
+        self.assertIn(
+            "¹ In the beginning God created the heaven and the earth.", result
+        )
+        self.assertIn("² Now the earth was unformed and void.", result)
 
     def test_parse_passage_payload_inline(self):
         result = parse_passage_payload(

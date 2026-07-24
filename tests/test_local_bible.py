@@ -70,6 +70,17 @@ class LocalBibleFormattingTests(unittest.TestCase):
     def test_format_local_passage_entry_rejects_empty_entry(self):
         self.assertEqual(EMPTY, format_local_passage_entry("John 3:16", {}))
 
+    def test_format_local_passage_entry_superscripts_leading_verse_numbers(self):
+        result = format_local_passage_entry(
+            "John 3:16-17",
+            ["16 For God so loved the world.", "17 For God sent not his Son."],
+            version="NIV",
+        )
+        self.assertEqual(
+            "John 3:16-17 NIV\n\n¹⁶ For God so loved the world.\n\n¹⁷ For God sent not his Son.",
+            result,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

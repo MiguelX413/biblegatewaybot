@@ -6,7 +6,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 
-from parsing import build_passage_header
+from parsing import build_passage_header, format_numbered_verse_text
 from state import EMPTY, REQUEST_TIMEOUT_SECONDS, InlinePassageResult
 
 try:
@@ -298,7 +298,7 @@ def parse_passage_html(
 
         verse_text = _clean_verse_text(verse_tag)
         if verse_text:
-            selected_lines.append(f"{verse_number} {verse_text}")
+            selected_lines.append(format_numbered_verse_text(verse_number, verse_text))
 
     if not selected_lines:
         return EMPTY

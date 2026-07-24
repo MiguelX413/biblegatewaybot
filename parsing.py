@@ -78,6 +78,44 @@ TELEGRAM_MESSAGE_LIMIT = (
 )
 INLINE_CONTINUATION_NOTICE = "…continued; use /get for the full passage."
 
+SUPERSCRIPT_TRANSLATION = str.maketrans(
+    {
+        "0": "⁰",
+        "1": "¹",
+        "2": "²",
+        "3": "³",
+        "4": "⁴",
+        "5": "⁵",
+        "6": "⁶",
+        "7": "⁷",
+        "8": "⁸",
+        "9": "⁹",
+        "-": "⁻",
+    }
+)
+
+
+def to_sup(text: str) -> str:
+    return text.translate(SUPERSCRIPT_TRANSLATION)
+
+
+def format_numbered_verse_text(verse_number: int | str, text: str) -> str:
+    verse_text = ensure_text(text).strip()
+    if not verse_text:
+        return ""
+    return f"{to_sup(str(verse_number))} {verse_text}"
+
+
+def superscript_leading_verse_numbers(text: str) -> str:
+    normalized = ensure_text(text).strip()
+    if not normalized:
+        return ""
+    return re.sub(
+        r"(?m)^(\d+(?:-\d+)?)\s+",
+        lambda match: f"{to_sup(match.group(1))} ",
+        normalized,
+    )
+
 
 def _build_passage_message(
     header: str, body: str, *, include_header: bool = True

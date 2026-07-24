@@ -114,8 +114,8 @@ class LdsScripturesParsingTests(unittest.TestCase):
         self.assertIsInstance(result, str)
         self.assertIn("1 Nephi 3:7-8 BOM", result)
         self.assertNotIn("6 Therefore", result)
-        self.assertIn("7 For I know", result)
-        self.assertIn("8 And it came to pass", result)
+        self.assertIn("⁷ For I know", result)
+        self.assertIn("⁸ And it came to pass", result)
         self.assertNotIn("more", result)
 
     def test_parse_passage_html_inline(self):
@@ -123,7 +123,7 @@ class LdsScripturesParsingTests(unittest.TestCase):
         result = parse_passage_html(SAMPLE_HTML, reference, inline_details=True)
         self.assertIsInstance(result, InlinePassageResult)
         self.assertEqual("1 Nephi 3:7 BOM", result.title)
-        self.assertIn("7 For I know", result.passage)
+        self.assertIn("⁷ For I know", result.passage)
 
     def test_parse_passage_html_returns_empty_when_no_match(self):
         reference = LdsReference(LDS_BOOK_BY_ALIAS["1nephi"], 3, 20, 3, 21)
