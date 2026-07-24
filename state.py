@@ -3,8 +3,8 @@ from pathlib import Path
 
 DEFAULT_BIBLE_VERSION = "NIV"
 DEFAULT_LDS_VERSION = "BOM"
-DEFAULT_VERSION_BY_SYSTEM = {
-    "bible": DEFAULT_BIBLE_VERSION,
+DEFAULT_VERSION_BY_SYSTEM: dict[str, str | tuple[tuple[str, ...], ...]] = {
+    "bible": (("NIV", "NRSVUE"),),
     "lds": DEFAULT_LDS_VERSION,
 }
 EMPTY = "empty"

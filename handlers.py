@@ -309,7 +309,10 @@ def get_user_default_version(
         return ((stored_default.upper(),),)
     if isinstance(stored_default, tuple):
         return stored_default
-    return ((DEFAULT_VERSION_BY_SYSTEM[scripture_system],),)
+    fallback_default = DEFAULT_VERSION_BY_SYSTEM[scripture_system]
+    if isinstance(fallback_default, str):
+        return ((fallback_default,),)
+    return fallback_default
 
 
 def get_bible_default_version(context: CallbackContext) -> VersionSelection:

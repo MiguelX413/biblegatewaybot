@@ -57,6 +57,7 @@ Notes:
 - this codebase uses `python-telegram-bot` instead of the old `webapp2` and Google App Engine services stack.
 - `/get` uses trailing-version syntax: `/get John 3:16 NLT`
 - combine versions with ordered fallbacks and parallels: `/get 1 Maccabees 1 NIV,NRSVue&GNADC` tries `NIV`, then `NRSVue`, and also returns `GNADC`; commas denote fallbacks and `&` denotes separately returned versions
+- the default Bible selection is `NIV,NRSVue`, so apocryphal passages unavailable in NIV naturally fall back to NRSVue
 - the same syntax works for defaults: `/setdefault NIV,NRSVue&GNADC`; all versions in one default selection must belong to the same scripture system
 - `/linkembeds on` or `/linkembeds off` enables or suppresses link previews for passage headers and welcome/source links in the current DM or group; DM settings also apply to that user's inline results
 - chapter requests are supported, but whole-book requests are not
