@@ -251,18 +251,35 @@ def format_parallel_passage_entities(
 def _chunk_header(header: str, body: str) -> str:
     """Build a reference header for the verses that occur in one message chunk."""
 
-    verse_numbers = re.findall(f"[{SUPERSCRIPT_DIGITS}]+", body)
-    if not verse_numbers:
+    verse_matches = list(re.finditer(f"[{SUPERSCRIPT_DIGITS}]+", body))
+    chapter_match = re.search(r"(?m)^(\d+)\s+", body)
+    if not verse_matches and chapter_match is None:
         return header
 
-    first_verse = verse_numbers[0].translate(SUPERSCRIPT_TO_DIGITS)
-    last_verse = verse_numbers[-1].translate(SUPERSCRIPT_TO_DIGITS)
+    chapter_starts_chunk = chapter_match is not None and (
+        not verse_matches or chapter_match.start() < verse_matches[0].start()
+    )
+    first_verse = (
+        "1"
+        if chapter_starts_chunk
+        else verse_matches[0].group().translate(SUPERSCRIPT_TO_DIGITS)
+    )
+    last_verse = (
+        verse_matches[-1].group().translate(SUPERSCRIPT_TO_DIGITS)
+        if verse_matches
+        else "1"
+    )
     reference, separator, version = header.rpartition(" ")
     if not separator:
         return header
 
-    chapter_match = re.match(r"^(.*?\d+):[^\s]+$", reference)
-    chapter_reference = chapter_match.group(1) if chapter_match else reference
+    reference_match = re.match(r"^(.*?)(\d+)(?::|$)", reference)
+    if reference_match is None:
+        chapter_reference = reference
+    elif chapter_match is None:
+        chapter_reference = f"{reference_match.group(1)}{reference_match.group(2)}"
+    else:
+        chapter_reference = f"{reference_match.group(1)}{chapter_match.group(1)}"
     verse_range = (
         first_verse if first_verse == last_verse else f"{first_verse}-{last_verse}"
     )

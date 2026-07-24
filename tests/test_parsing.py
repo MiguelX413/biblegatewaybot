@@ -80,6 +80,16 @@ class ParsingTests(unittest.TestCase):
         self.assertTrue(chunks[0][0].startswith("John 3:1 NIV\n"))
         self.assertTrue(chunks[1][0].startswith("John 3:2 NIV\n"))
 
+    def test_format_passage_chunks_treats_a_chapter_number_as_verse_one(self):
+        first_paragraph = f"3 {'x' * 2500} ² {'x' * 10}"
+        second_paragraph = f"4 {'x' * 2500}"
+        chunks = format_passage_chunks(
+            f"John 3:1-4:1 NIV\n\n{first_paragraph}\n\n{second_paragraph}"
+        )
+        self.assertEqual(2, len(chunks))
+        self.assertTrue(chunks[0][0].startswith("John 3:1-2 NIV\n"))
+        self.assertTrue(chunks[1][0].startswith("John 4:1 NIV\n"))
+
     def test_format_parallel_passage_entities_combines_small_responses(self):
         combined = format_parallel_passage_entities(
             [
