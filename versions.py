@@ -64,8 +64,6 @@ VERSION_DATA = OrderedDict(
                 "The Letter of Aristeas, The Clarendon Press, 1913 (ARISTEAS)",
                 "the Open Siddur Project (OPENSID)",
                 "Translated by Hanan and Esther Eshel (ESHEL)",
-                "The Wisdom of Ben Sira, Cambridge University Press, 1899 "
-                "(BENSIRA1899)",
                 "Metsudah Chumash, Metsudah Publications, 2009 (METSUDAH)",
                 "Revised JPS, 2023 (RJPS)",
                 "King James Version (KJV)",
@@ -892,6 +890,8 @@ SEFARIA_VERSION_CONFIGS: dict[str, SefariaVersionConfig] = {
     "ARISTEAS": "The Letter of Aristeas, The Clarendon Press, 1913",
     "OPENSID": "the Open Siddur Project",
     "ESHEL": "Translated by Hanan and Esther Eshel",
+    # Hidden for now: exact retrieval is currently broken, so keep the config
+    # around without advertising it in VERSION_DATA.
     "BENSIRA1899": "The Wisdom of Ben Sira, Cambridge University Press, 1899",
     "METSUDAH": "Metsudah Chumash, Metsudah Publications, 2009",
     "RJPS": "THE JPS TANAKH: Gender-Sensitive Edition",
