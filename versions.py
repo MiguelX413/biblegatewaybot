@@ -28,7 +28,9 @@ VERSION_DATA = OrderedDict(
                 "International Standard Version (ISV)",
                 "J.B. Phillips New Testament (PHILLIPS)",
                 "Jubilee Bible 2000 (JUB)",
-                "The Holy Scriptures: A New Translation (JPS 1917) (JPS1917)",
+                "JPS 1917 (JPS)",
+                "JPS, 1985 (NJPS)",
+                "Revised JPS, 2023 (RJPS)",
                 "King James Version (KJV)",
                 "Authorized (King James) Version (AKJV)",
                 "Lexham English Bible (LEB)",
@@ -440,7 +442,9 @@ VERSION_LOOKUP = {
     "Thai New Contemporary Bible (TNCV)": "TNCV",
     "Segond 21 (SG21)": "SG21",
     "King James Version (KJV)": "KJV",
-    "The Holy Scriptures: A New Translation (JPS 1917) (JPS1917)": "JPS1917",
+    "JPS 1917 (JPS)": "JPS",
+    "JPS, 1985 (NJPS)": "NJPS",
+    "Revised JPS, 2023 (RJPS)": "RJPS",
     "International Standard Version (ISV)": "ISV",
     "Bible 21 (B21)": "B21",
     "Luther Bibel 1545 (LUTH1545)": "LUTH1545",
@@ -727,7 +731,9 @@ CORE_DEUTEROCANON_BOOK_SLUGS = frozenset(
 )
 VERSION_PROVIDERS = {code: "biblegateway" for code in VERSIONS}
 SEFARIA_VERSION_TITLES = {
-    "JPS1917": "The Holy Scriptures: A New Translation (JPS 1917)",
+    "JPS": "The Holy Scriptures: A New Translation (JPS 1917)",
+    "NJPS": "Tanakh: The Holy Scriptures, published by JPS",
+    "RJPS": "THE JPS TANAKH: Gender-Sensitive Edition",
 }
 VERSION_PROVIDERS.update({code: "sefaria" for code in SEFARIA_VERSION_TITLES})
 VERSION_SUPPORTED_BOOK_SLUGS = {
@@ -753,6 +759,7 @@ for code in ("DLNT", "MOUNCE", "PHILLIPS", "WE"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["HHH"] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["WLC"] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
-VERSION_SUPPORTED_BOOK_SLUGS["JPS1917"] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
+for code in ("JPS", "NJPS", "RJPS"):
+    VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
 
 BOOKS = PROTESTANT_CANON_BOOK_SLUGS + APOCRYPHA_BOOK_SLUGS

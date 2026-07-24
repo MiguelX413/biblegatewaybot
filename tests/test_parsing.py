@@ -66,7 +66,9 @@ class ParsingTests(unittest.TestCase):
 
     def test_version_provider_defaults_to_biblegateway(self):
         self.assertEqual("biblegateway", get_version_provider("NIV"))
-        self.assertEqual("sefaria", get_version_provider("JPS1917"))
+        self.assertEqual("sefaria", get_version_provider("JPS"))
+        self.assertEqual("sefaria", get_version_provider("NJPS"))
+        self.assertEqual("sefaria", get_version_provider("RJPS"))
 
     def test_supported_book_slugs_capture_scope_overrides(self):
         self.assertIn("genesis", supported_book_slugs("NIV"))
@@ -74,8 +76,12 @@ class ParsingTests(unittest.TestCase):
         self.assertIn("john", supported_book_slugs("DLNT"))
         self.assertIn("genesis", supported_book_slugs("WLC"))
         self.assertNotIn("matthew", supported_book_slugs("WLC"))
-        self.assertIn("genesis", supported_book_slugs("JPS1917"))
-        self.assertNotIn("matthew", supported_book_slugs("JPS1917"))
+        self.assertIn("genesis", supported_book_slugs("JPS"))
+        self.assertNotIn("matthew", supported_book_slugs("JPS"))
+        self.assertIn("genesis", supported_book_slugs("NJPS"))
+        self.assertNotIn("matthew", supported_book_slugs("NJPS"))
+        self.assertIn("genesis", supported_book_slugs("RJPS"))
+        self.assertNotIn("matthew", supported_book_slugs("RJPS"))
 
     def test_version_supports_book_slug(self):
         self.assertTrue(version_supports_book_slug("NRSVUE", "1esdras"))
