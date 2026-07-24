@@ -18,6 +18,14 @@ except (
 SEFARIA_API_BASE_URL = "https://www.sefaria.org/api/v3/texts"
 
 
+def build_sefaria_passage_url(passage: str) -> str:
+    normalized = " ".join(str(passage).split()).strip()
+    if not normalized:
+        return "https://www.sefaria.org/"
+    path = re.sub(r"\s+(\d)", r".\1", normalized, count=1).replace(" ", "_")
+    return f"https://www.sefaria.org/{quote(path, safe='._:-')}"
+
+
 def _flatten_text(value) -> Iterable[str]:
     if isinstance(value, str):
         text = " ".join(value.split()).strip()

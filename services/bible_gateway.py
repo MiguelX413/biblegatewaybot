@@ -22,6 +22,11 @@ from state import (
 )
 
 
+def build_bible_gateway_passage_url(passage: str, version: str) -> str:
+    search = quote(ensure_text(passage).strip())
+    return f"https://www.biblegateway.com/passage/?search={search}&version={version.upper()}"
+
+
 def normalize_block_text(text: str) -> str:
     lines = [" ".join(line.split()) for line in text.splitlines()]
     lines = [line for line in lines if line]

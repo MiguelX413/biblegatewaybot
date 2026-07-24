@@ -24,6 +24,7 @@ class InlinePassageResult:
     result_id: str
     title: str
     description: str
+    header_url: str | None = None
 
 
 @dataclass(frozen=True)

@@ -36,6 +36,9 @@ from parsing import (
     resolve_auto_version,
     version_supports_passage,
 )
+from services.bible_gateway import build_bible_gateway_passage_url
+from services.lds_scriptures import build_lds_passage_url
+from services.sefaria import build_sefaria_passage_url
 from state import (
     BACK_TO_LANGUAGES,
     DEFAULT_VERSION,
@@ -54,9 +57,22 @@ from state import (
 from versions import VERSION_DATA, VERSION_LOOKUP, VERSIONS
 
 
-def build_input_message_content(text: str) -> InputTextMessageContent:
-    message_text, entities = format_passage_entities(text)
+def build_input_message_content(
+    text: str, *, header_url: str | None = None
+) -> InputTextMessageContent:
+    message_text, entities = format_passage_entities(text, header_url=header_url)
     return InputTextMessageContent(message_text=message_text, entities=entities)
+
+
+def build_passage_header_url(passage: str, version: str) -> str | None:
+    provider = get_version_provider(version)
+    if provider == "biblegateway":
+        return build_bible_gateway_passage_url(passage, version)
+    if provider == "sefaria":
+        return build_sefaria_passage_url(passage)
+    if provider == "lds":
+        return build_lds_passage_url(passage)
+    return None
 
 
 def build_welcome_message(
@@ -252,6 +268,7 @@ async def reply_with_passage_result(
 ) -> None:
     message = require_message(update)
     version = resolve_auto_version(version, passage, explicit_version=explicit_version)
+    header_url = build_passage_header_url(passage, version)
     supports_passage, requested_book = version_supports_passage(version, passage)
     if not supports_passage and requested_book:
         if silent_failures:
@@ -283,7 +300,7 @@ async def reply_with_passage_result(
             reply_markup=reply_markup,
         )
         return
-    chunks = format_passage_chunks(str(response))
+    chunks = format_passage_chunks(str(response), header_url=header_url)
     for index, (message_text, entities) in enumerate(chunks):
         await message.reply_text(
             message_text,
@@ -640,12 +657,15 @@ async def handle_inline_query(
 
     inline_result = response
     assert isinstance(inline_result, InlinePassageResult)
+    header_url = inline_result.header_url or build_passage_header_url(passage, version)
     results = [
         InlineQueryResultArticle(
             id=inline_result.result_id,
             title=inline_result.title,
             description=inline_result.description,
-            input_message_content=build_input_message_content(inline_result.passage),
+            input_message_content=build_input_message_content(
+                inline_result.passage, header_url=header_url
+            ),
         )
     ]
     await inline_query.answer(

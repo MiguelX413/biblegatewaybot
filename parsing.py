@@ -29,12 +29,14 @@ except (
     class _FallbackMessageEntityType:
         BOLD = "bold"
         EXPANDABLE_BLOCKQUOTE = "expandable_blockquote"
+        TEXT_LINK = "text_link"
 
     @dataclass(frozen=True)
     class _FallbackMessageEntity:
         type: str
         offset: int
         length: int
+        url: str | None = None
 
         @staticmethod
         def adjust_message_entities_to_utf_16(
@@ -118,7 +120,11 @@ def superscript_leading_verse_numbers(text: str) -> str:
 
 
 def _build_passage_message(
-    header: str, body: str, *, include_header: bool = True
+    header: str,
+    body: str,
+    *,
+    include_header: bool = True,
+    header_url: str | None = None,
 ) -> tuple[str, Sequence[MessageEntity]]:
     header = header.strip()
     body = body.strip()
@@ -129,6 +135,15 @@ def _build_passage_message(
                 type=_RuntimeMessageEntityType.BOLD, offset=0, length=len(header)
             )
         ]
+        if header_url:
+            entities.append(
+                _RuntimeMessageEntity(
+                    type=_RuntimeMessageEntityType.TEXT_LINK,
+                    offset=0,
+                    length=len(header),
+                    url=header_url,
+                )
+            )
     else:
         message_text = body
         entities = []
@@ -148,23 +163,29 @@ def _build_passage_message(
     return message_text, cast(Sequence[MessageEntity], utf16_entities)
 
 
-def format_passage_entities(text: str) -> tuple[str, Sequence[MessageEntity]]:
+def format_passage_entities(
+    text: str, header_url: str | None = None
+) -> tuple[str, Sequence[MessageEntity]]:
     blocks = text.split("\n\n", 1)
     if len(blocks) == 2:
         header, body = blocks
     else:
         header, body = text, ""
-    return _build_passage_message(header, body)
+    return _build_passage_message(header, body, header_url=header_url)
 
 
-def format_passage_chunks(text: str) -> list[tuple[str, Sequence[MessageEntity]]]:
+def format_passage_chunks(
+    text: str, header_url: str | None = None
+) -> list[tuple[str, Sequence[MessageEntity]]]:
     blocks = text.split("\n\n", 1)
     if len(blocks) == 2:
         header, body = blocks
     else:
         header, body = text, ""
 
-    full_message, full_entities = _build_passage_message(header, body)
+    full_message, full_entities = _build_passage_message(
+        header, body, header_url=header_url
+    )
     if len(full_message) <= TELEGRAM_MESSAGE_LIMIT:
         return [(full_message, full_entities)]
 
@@ -184,7 +205,10 @@ def format_passage_chunks(text: str) -> list[tuple[str, Sequence[MessageEntity]]
         candidate_parts = current_parts + [paragraph]
         candidate_body = "\n\n".join(candidate_parts)
         candidate_text, candidate_entities = _build_passage_message(
-            header, candidate_body, include_header=current_header
+            header,
+            candidate_body,
+            include_header=current_header,
+            header_url=header_url if current_header else None,
         )
         if len(candidate_text) <= TELEGRAM_MESSAGE_LIMIT:
             current_parts = candidate_parts
@@ -199,7 +223,10 @@ def format_passage_chunks(text: str) -> list[tuple[str, Sequence[MessageEntity]]
         if len(paragraph) <= TELEGRAM_MESSAGE_LIMIT:
             current_parts = [paragraph]
             current_chunk = _build_passage_message(
-                header, paragraph, include_header=current_header
+                header,
+                paragraph,
+                include_header=current_header,
+                header_url=header_url if current_header else None,
             )
             continue
 
@@ -208,7 +235,10 @@ def format_passage_chunks(text: str) -> list[tuple[str, Sequence[MessageEntity]]
         for line in lines:
             line_candidate = "\n".join(line_buffer + [line]).strip()
             line_text, line_entities = _build_passage_message(
-                header, line_candidate, include_header=current_header
+                header,
+                line_candidate,
+                include_header=current_header,
+                header_url=header_url if current_header else None,
             )
             if len(line_text) <= TELEGRAM_MESSAGE_LIMIT:
                 line_buffer.append(line)
@@ -227,7 +257,10 @@ def format_passage_chunks(text: str) -> list[tuple[str, Sequence[MessageEntity]]
             while remaining:
                 piece = remaining[:available].rstrip()
                 chunk_text, chunk_entities = _build_passage_message(
-                    header, piece, include_header=current_header
+                    header,
+                    piece,
+                    include_header=current_header,
+                    header_url=header_url if current_header else None,
                 )
                 chunks.append((chunk_text, chunk_entities))
                 current_header = False
@@ -238,13 +271,20 @@ def format_passage_chunks(text: str) -> list[tuple[str, Sequence[MessageEntity]]
     if current_parts:
         final_body = "\n\n".join(current_parts)
         chunks.append(
-            _build_passage_message(header, final_body, include_header=current_header)
+            _build_passage_message(
+                header,
+                final_body,
+                include_header=current_header,
+                header_url=header_url if current_header else None,
+            )
         )
     return chunks
 
 
-def format_inline_passage_entities(text: str) -> tuple[str, Sequence[MessageEntity]]:
-    chunks = format_passage_chunks(text)
+def format_inline_passage_entities(
+    text: str, header_url: str | None = None
+) -> tuple[str, Sequence[MessageEntity]]:
+    chunks = format_passage_chunks(text, header_url=header_url)
     if len(chunks) == 1:
         return chunks[0]
 
@@ -267,7 +307,7 @@ def format_inline_passage_entities(text: str) -> tuple[str, Sequence[MessageEnti
     else:
         preview_body = INLINE_CONTINUATION_NOTICE
 
-    return _build_passage_message(header, preview_body)
+    return _build_passage_message(header, preview_body, header_url=header_url)
 
 
 def build_passage_header(reference: str, version: str) -> str:

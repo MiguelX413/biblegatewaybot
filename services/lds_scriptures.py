@@ -164,6 +164,23 @@ LDS_BOOK_BY_ALIAS = {
 }
 
 
+def build_lds_passage_url(passage: str) -> str | None:
+    reference = parse_lds_reference(passage)
+    if reference is None:
+        return None
+
+    url = (
+        f"{LDS_SCRIPTURES_BASE_URL}/"
+        f"{reference.book.collection_path}/"
+        f"{reference.book.book_path}/"
+        f"{reference.start_chapter}?lang=eng"
+    )
+    anchor_verse = reference.start_verse
+    if anchor_verse is not None:
+        url = f"{url}&id=p{anchor_verse}#p{anchor_verse}"
+    return url
+
+
 def format_reference_title(reference: LdsReference) -> str:
     if (
         reference.start_chapter == reference.end_chapter
