@@ -66,6 +66,7 @@ from state import (
     SETDEFAULT_LANGUAGE_STATE,
     SETDEFAULT_VERSION_STATE,
     USER_DEFAULT_VERSION_KEY_BY_SYSTEM,
+    USER_INLINE_LINK_EMBEDS_ENABLED_KEY,
     USER_SEARCH_KEY,
     USER_STARTED_KEY,
     InlinePassageResult,
@@ -85,10 +86,17 @@ from versions import (
 
 
 def build_input_message_content(
-    text: str, *, header_url: str | None = None
+    text: str,
+    *,
+    header_url: str | None = None,
+    link_preview_options: LinkPreviewOptions | None = None,
 ) -> InputTextMessageContent:
     message_text, entities = format_passage_entities(text, header_url=header_url)
-    return InputTextMessageContent(message_text=message_text, entities=entities)
+    return InputTextMessageContent(
+        message_text=message_text,
+        entities=entities,
+        link_preview_options=link_preview_options,
+    )
 
 
 def build_passage_header_url(passage: str, version: str) -> str | None:
@@ -186,6 +194,21 @@ def get_link_preview_options(
 ) -> LinkPreviewOptions:
     chat_data = require_chat_data(context)
     enabled = bool(chat_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, True))
+    return LinkPreviewOptions(is_disabled=not enabled)
+
+
+def get_inline_link_preview_options(
+    context: CallbackContext[Any, Any, Any, Any], user_id: int
+) -> LinkPreviewOptions:
+    user_data = require_user_data(context)
+    enabled = user_data.get(USER_INLINE_LINK_EMBEDS_ENABLED_KEY)
+    if enabled is None:
+        # A private chat uses its user's ID as its chat ID. Read the existing
+        # chat-level setting once so DMs configured before inline support keep
+        # their preference too.
+        direct_message_data = context.application.chat_data.get(user_id, {})
+        enabled = direct_message_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, True)
+        user_data[USER_INLINE_LINK_EMBEDS_ENABLED_KEY] = enabled
     return LinkPreviewOptions(is_disabled=not enabled)
 
 
@@ -580,10 +603,14 @@ async def link_embeds_command(
 
     if argument in {"on", "enable", "enabled"}:
         chat_data[CHAT_LINK_EMBEDS_ENABLED_KEY] = True
+        if require_chat(update).type == "private":
+            require_user_data(context)[USER_INLINE_LINK_EMBEDS_ENABLED_KEY] = True
         await message.reply_text("Link embeds are now enabled for this chat.")
         return
     if argument in {"off", "disable", "disabled"}:
         chat_data[CHAT_LINK_EMBEDS_ENABLED_KEY] = False
+        if require_chat(update).type == "private":
+            require_user_data(context)[USER_INLINE_LINK_EMBEDS_ENABLED_KEY] = False
         await message.reply_text("Link embeds are now disabled for this chat.")
         return
 
@@ -911,6 +938,9 @@ async def handle_inline_query(
     header_url = inline_results[0][1].header_url or build_passage_header_url(
         passage, inline_results[0][0]
     )
+    link_preview_options = get_inline_link_preview_options(
+        context, inline_query.from_user.id
+    )
     results = [
         InlineQueryResultArticle(
             id="&".join(result.result_id for _, result in inline_results),
@@ -919,7 +949,9 @@ async def handle_inline_query(
                 description[:150] + "..." if len(description) > 153 else description
             ),
             input_message_content=build_input_message_content(
-                passage_text, header_url=header_url
+                passage_text,
+                header_url=header_url,
+                link_preview_options=link_preview_options,
             ),
         )
     ]
