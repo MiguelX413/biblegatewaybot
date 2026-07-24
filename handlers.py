@@ -32,6 +32,7 @@ from parsing import (
     format_passage_chunks,
     format_passage_entities,
     get_version_provider,
+    is_book_only_request,
     other_version,
     parse_get_request,
     parse_reference_version_query,
@@ -429,6 +430,12 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
 
     if passage:
+        if is_book_only_request(passage):
+            await message.reply_text(
+                f"Sorry {display_name}, please specify at least a chapter. "
+                "Whole-book requests are not supported."
+            )
+            return ConversationHandler.END
         await reply_with_passage_result(
             update,
             context,
@@ -459,10 +466,18 @@ async def get_conversation_message(
     )
     explicit_version = bool(user_data.pop("pending_get_version_explicit", False))
     display_name, _, _ = get_identity(update)
+    passage = ensure_text(message.text).strip()
+    if is_book_only_request(passage):
+        await message.reply_text(
+            f"Sorry {display_name}, please specify at least a chapter. "
+            "Whole-book requests are not supported.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return ConversationHandler.END
     await reply_with_passage_result(
         update,
         context,
-        ensure_text(message.text).strip(),
+        passage,
         version,
         display_name,
         explicit_version=explicit_version,

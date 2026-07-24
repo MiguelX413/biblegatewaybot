@@ -11,6 +11,7 @@ from parsing import (
     format_passage_chunks,
     format_passage_entities,
     get_version_provider,
+    is_book_only_request,
     normalize_book_name,
     normalize_reference_lookup_key,
     other_version,
@@ -182,6 +183,14 @@ class ParsingTests(unittest.TestCase):
             ("songofsolomon", "Song of Solomon"),
             find_requested_book("Song of Songs 1:1"),
         )
+
+    def test_is_book_only_request(self):
+        self.assertTrue(is_book_only_request("John"))
+        self.assertTrue(is_book_only_request("1 Maccabees"))
+        self.assertTrue(is_book_only_request("Jubilees"))
+        self.assertFalse(is_book_only_request("John 3"))
+        self.assertFalse(is_book_only_request("John 3:16"))
+        self.assertFalse(is_book_only_request("1 Maccabees 1"))
 
     def test_normalize_reference_lookup_key(self):
         self.assertEqual("john 3:16", normalize_reference_lookup_key(" jn 3 : 16 "))

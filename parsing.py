@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 from state import DEFAULT_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
+    BOOKS,
     LDS_STANDARD_WORKS_BOOK_DATA,
     NONCANON_BOOK_SLUGS,
     SEFARIA_EXTRA_BOOK_DATA,
@@ -515,6 +516,17 @@ def find_requested_book(text: str) -> tuple[str, str] | None:
     if slug is None:
         return None
     return slug, title
+
+
+def is_book_only_request(text: str) -> bool:
+    normalized = canonicalize_reference(text)
+    if not normalized:
+        return False
+
+    collapsed = re.sub(r"[^a-z0-9]+", "", normalized.lower())
+    if collapsed in BOOK_NAME_ALIASES:
+        return True
+    return collapsed in BOOK_SLUG_SPECIAL_CASES or collapsed in BOOKS
 
 
 def version_supports_passage(version: str, passage: str) -> tuple[bool, str | None]:
