@@ -428,6 +428,12 @@ def _build_version_display_labels(
     }
 
 
+def _build_version_full_labels(
+    version_lookup: dict[VersionLabel, VersionCode],
+) -> dict[VersionCode, VersionLabel]:
+    return {code: label for label, code in version_lookup.items()}
+
+
 VERSION_LOOKUP: Final[dict[VersionLabel, VersionCode]] = _build_version_lookup(
     VERSION_DATA
 )
@@ -435,6 +441,9 @@ VERSIONS: Final[tuple[VersionCode, ...]] = tuple(VERSION_LOOKUP.values())
 VERSIONS_SET: Final[frozenset[VersionCode]] = frozenset(VERSIONS)
 VERSION_DISPLAY_LABELS: Final[dict[VersionCode, VersionCode]] = (
     _build_version_display_labels(VERSION_LOOKUP)
+)
+VERSION_FULL_LABELS: Final[dict[VersionCode, VersionLabel]] = (
+    _build_version_full_labels(VERSION_LOOKUP)
 )
 VERSION_CODE_ALIASES: Final[dict[str, VersionCode]] = {
     "GNADC": "GNADC25",
@@ -451,6 +460,19 @@ VERSION_CODE_ALIASES: Final[dict[str, VersionCode]] = {
 
 def format_version_label(version: str) -> str:
     return VERSION_DISPLAY_LABELS.get(version.upper(), version)
+
+
+def format_version_full_label(version: str) -> str:
+    return VERSION_FULL_LABELS.get(version.upper(), version)
+
+
+def format_version_inline_label(version: str) -> str:
+    code = format_version_label(version)
+    full_label = format_version_full_label(version)
+    suffix = f" ({code})"
+    if full_label.endswith(suffix):
+        return f"{code}: {full_label[: -len(suffix)]}"
+    return code
 
 
 def resolve_version_code(token: str) -> str | None:

@@ -62,7 +62,13 @@ from state import (
     InlinePassageResult,
     SearchState,
 )
-from versions import VERSION_DATA, VERSION_LOOKUP, resolve_version_code
+from versions import (
+    VERSION_DATA,
+    VERSION_LOOKUP,
+    format_version_full_label,
+    format_version_inline_label,
+    resolve_version_code,
+)
 
 
 def build_input_message_content(
@@ -155,7 +161,7 @@ def require_user_data(context: CallbackContext[Any, Any, Any, Any]) -> dict[Any,
 
 def build_inline_results_button(default_version: str) -> InlineQueryResultsButton:
     return InlineQueryResultsButton(
-        text=f"Default version: {default_version}",
+        text=f"Default version: {format_version_inline_label(default_version)}",
         start_parameter="setdefault",
     )
 
@@ -591,7 +597,9 @@ async def setdefault_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             )
             return ConversationHandler.END
         set_default_version(context, version)
-        await message.reply_text(f"Success! Default version is now {version}.")
+        await message.reply_text(
+            f"Success! Default version is now {format_version_full_label(version)}."
+        )
         return ConversationHandler.END
 
     await reply_choose_language(message)
@@ -638,7 +646,7 @@ async def setdefault_version_message(
     version = VERSION_LOOKUP[raw_text]
     set_default_version(context, version)
     await message.reply_text(
-        f"Success! Default version is now {version}.",
+        f"Success! Default version is now {format_version_full_label(version)}.",
         reply_markup=ReplyKeyboardRemove(),
     )
     return ConversationHandler.END
