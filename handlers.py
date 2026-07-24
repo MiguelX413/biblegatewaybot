@@ -92,11 +92,15 @@ def build_welcome_message(
     ]
     sources_text = ", ".join(label for label, _ in source_links[:-1])
     sources_text += f", and {source_links[-1][0]}"
+    welcome_command_list = command_list(application).replace("/search <keyword>\n", "")
+    welcome_command_list = welcome_command_list.replace(
+        "/search the greatest commandment\n", ""
+    )
     message_text = (
         f"{greeting} This bot can fetch Bible passages from {sources_text}, "
         "and optional local offline files.\n\n"
         "To get started, enter one of the following commands:\n"
-        f"{command_list(application)}"
+        f"{welcome_command_list}"
     )
 
     entities: list[MessageEntity] = []
