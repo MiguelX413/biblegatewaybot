@@ -15,5 +15,32 @@ dependencies = [
 [project.scripts]
 scripturebot = "scripturebot:main"
 
+[dependency-groups]
+dev = [
+    "black~=26.0",
+    "mypy~=1.17",
+]
+
 [tool.uv]
 package = false
+
+[tool.black]
+target-version = ["py314"]
+
+[tool.mypy]
+python_version = "3.14"
+files = [
+    "scripturebot.py",
+    "bot.py",
+    "handlers.py",
+    "config.py",
+    "state.py",
+    "parsing.py",
+    "versions.py",
+    "services",
+]
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
