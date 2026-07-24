@@ -13,6 +13,8 @@ Setup:
 Basic commands:
 
 - `uv run python -m py_compile scripturebot.py bot.py handlers.py config.py state.py parsing.py services/bible_gateway.py versions.py`
+- `uv run ruff check .`
+- `uv run ruff format --check .`
 - `uv run scripturebot`
 - `uv run python -m unittest discover -s tests`
 

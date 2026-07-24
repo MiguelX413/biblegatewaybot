@@ -17,15 +17,18 @@ scripturebot = "scripturebot:main"
 
 [dependency-groups]
 dev = [
-    "black~=26.0",
     "mypy~=1.17",
+    "ruff~=0.15.0",
 ]
 
 [tool.uv]
 package = false
 
-[tool.black]
-target-version = ["py314"]
+[tool.ruff]
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
 
 [tool.mypy]
 python_version = "3.14"
