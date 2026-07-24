@@ -35,6 +35,7 @@ from handlers import (
     start_setdefault_entry,
 )
 from services.bible_gateway import BibleGatewayClient
+from services.sefaria import SefariaClient
 from state import (
     GET_PASSAGE_STATE,
     PERSISTENCE_FILE,
@@ -42,12 +43,14 @@ from state import (
     SETDEFAULT_LANGUAGE_STATE,
     SETDEFAULT_VERSION_STATE,
 )
-from versions import BOOKS
+from versions import BOOKS, SEFARIA_VERSION_TITLES
 
 
 async def close_http_client(application: Application) -> None:
-    client: BibleGatewayClient = application.bot_data["bible_client"]
-    await client.close()
+    bible_client: BibleGatewayClient = application.bot_data["bible_client"]
+    sefaria_client: SefariaClient = application.bot_data["sefaria_client"]
+    await bible_client.close()
+    await sefaria_client.close()
 
 
 def build_application() -> Application:
@@ -62,6 +65,7 @@ def build_application() -> Application:
     )
     application.bot_data["config"] = config
     application.bot_data["bible_client"] = BibleGatewayClient()
+    application.bot_data["sefaria_client"] = SefariaClient(SEFARIA_VERSION_TITLES)
 
     get_conversation = ConversationHandler(
         entry_points=[

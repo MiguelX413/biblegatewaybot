@@ -27,6 +27,7 @@ from parsing import (
     parse_get_request,
     version_supports_apocrypha_book,
     version_supports_apocrypha,
+    get_version_provider,
 )
 from state import (
     BACK_TO_LANGUAGES,
@@ -128,7 +129,11 @@ async def fetch_passage(
     *,
     inline_details: bool = False,
 ):
-    client = context.application.bot_data["bible_client"]
+    provider = get_version_provider(version)
+    if provider == "sefaria":
+        client = context.application.bot_data["sefaria_client"]
+    else:
+        client = context.application.bot_data["bible_client"]
     return await client.get_passage(passage, version, inline_details=inline_details)
 
 
