@@ -42,7 +42,7 @@ from parsing import (
 from services.bible_com import build_bible_com_passage_url
 from services.bible_gateway import build_bible_gateway_passage_url
 from services.lds_scriptures import build_lds_passage_url
-from services.sefaria import build_sefaria_passage_url, resolve_sefaria_version_title
+from services.sefaria import build_sefaria_passage_url, resolve_sefaria_version_query
 from state import (
     BACK_TO_LANGUAGES,
     CHOOSE_LANGUAGE_PROMPT,
@@ -63,7 +63,7 @@ from state import (
     SearchState,
 )
 from versions import (
-    SEFARIA_VERSION_TITLES,
+    SEFARIA_VERSION_CONFIGS,
     VERSION_DATA,
     VERSION_LOOKUP,
     format_version_full_label,
@@ -86,10 +86,10 @@ def build_passage_header_url(passage: str, version: str) -> str | None:
     if provider == "biblecom":
         return build_bible_com_passage_url(passage, version)
     if provider == "sefaria":
-        version_title = resolve_sefaria_version_title(
-            passage, version, SEFARIA_VERSION_TITLES
+        version_query = resolve_sefaria_version_query(
+            passage, version, SEFARIA_VERSION_CONFIGS
         )
-        return build_sefaria_passage_url(passage, version, version_title)
+        return build_sefaria_passage_url(passage, version, version_query)
     if provider == "lds":
         return build_lds_passage_url(passage)
     return None

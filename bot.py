@@ -46,7 +46,7 @@ from state import (
     SETDEFAULT_LANGUAGE_STATE,
     SETDEFAULT_VERSION_STATE,
 )
-from versions import BOOKS, SEFARIA_VERSION_TITLES
+from versions import BOOKS, SEFARIA_VERSION_CONFIGS
 
 
 def configure_runtime_services(application: Application, config) -> None:
@@ -54,7 +54,7 @@ def configure_runtime_services(application: Application, config) -> None:
     application.bot_data["bible_client"] = BibleGatewayClient()
     application.bot_data["bible_com_client"] = BibleComClient()
     application.bot_data["lds_client"] = LdsScripturesClient()
-    application.bot_data["sefaria_client"] = SefariaClient(SEFARIA_VERSION_TITLES)
+    application.bot_data["sefaria_client"] = SefariaClient(SEFARIA_VERSION_CONFIGS)
     application.bot_data["local_bible_client"] = (
         LocalBibleClient(config.offline_bibles_path)
         if config.offline_bibles_path

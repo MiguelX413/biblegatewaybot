@@ -4,10 +4,12 @@ from services.sefaria import (
     build_sefaria_passage_url,
     normalize_sefaria_passage_reference,
     parse_passage_payload,
-    resolve_sefaria_version_title,
+    parse_v1_he_passage_payload,
+    parse_v1_text_passage_payload,
+    resolve_sefaria_version_query,
 )
 from state import EMPTY, InlinePassageResult
-from versions import SEFARIA_VERSION_TITLES
+from versions import SEFARIA_VERSION_CONFIGS
 
 PASSAGE_PAYLOAD = {
     "ref": "Genesis 1:1-2",
@@ -19,6 +21,26 @@ PASSAGE_PAYLOAD = {
                 "Now the earth was unformed and void.",
             ],
         }
+    ],
+}
+
+V1_HE_PASSAGE_PAYLOAD = {
+    "ref": "Genesis 1:1-2",
+    "heVersionTitle": (
+        "Tanakh in Yiddish. Translated by Ch. Neuhausen, A. Hyman Charlap; NY 1914 [yi]"
+    ),
+    "he": [
+        "אין אנפאנג האט גאט בעשאפען דעם הימעל און די ערד.",
+        "און די ערד איז געוועזען וויסט און לעעהר.",
+    ],
+}
+
+V1_TEXT_PASSAGE_PAYLOAD = {
+    "ref": "Genesis 1:1-2",
+    "versionTitle": "Biblia de Ferrara [lad]",
+    "text": [
+        "En Prinçipio crio el Dio: à lost çielos, y à la tierra....",
+        "Y la tierra era vazia y vazia.",
     ],
 }
 
@@ -45,6 +67,29 @@ class SefariaParsingTests(unittest.TestCase):
     def test_parse_passage_payload_empty(self):
         self.assertEqual(EMPTY, parse_passage_payload({"versions": []}, version="JPS"))
 
+    def test_parse_v1_he_passage_payload(self):
+        result = parse_v1_he_passage_payload(
+            V1_HE_PASSAGE_PAYLOAD, version="NEUHAUSEN1914"
+        )
+        self.assertIsInstance(result, str)
+        assert isinstance(result, str)
+        self.assertIn("Genesis 1:1-2 NEUHAUSEN1914", result)
+        self.assertIn("¹ אין אנפאנג האט גאט בעשאפען דעם הימעל און די ערד.", result)
+        self.assertIn("² און די ערד איז געוועזען וויסט און לעעהר.", result)
+
+    def test_parse_v1_text_passage_payload(self):
+        result = parse_v1_text_passage_payload(
+            V1_TEXT_PASSAGE_PAYLOAD, version="FERRARA"
+        )
+        self.assertIsInstance(result, str)
+        assert isinstance(result, str)
+        self.assertIn("Genesis 1:1-2 FERRARA", result)
+        self.assertIn(
+            "¹ En Prinçipio crio el Dio: à lost çielos, y à la tierra....",
+            result,
+        )
+        self.assertIn("² Y la tierra era vazia y vazia.", result)
+
     def test_normalize_sefaria_passage_reference_for_apocrypha(self):
         self.assertEqual(
             "The Book of Maccabees I 1:1",
@@ -64,15 +109,31 @@ class SefariaParsingTests(unittest.TestCase):
         )
 
     def test_build_sefaria_passage_url_includes_specific_version(self):
-        version_title = resolve_sefaria_version_title(
+        version_query = resolve_sefaria_version_query(
             "Genesis 1:1",
             "JPS",
-            SEFARIA_VERSION_TITLES,
+            SEFARIA_VERSION_CONFIGS,
         )
         self.assertEqual(
             "https://sefaria.org/Genesis.1:1"
             "?lang=bi&ven=english%7CThe%20Holy%20Scriptures%3A%20A%20New%20Translation%20%28JPS%201917%29",
-            build_sefaria_passage_url("Genesis 1:1", "JPS", version_title),
+            build_sefaria_passage_url("Genesis 1:1", "JPS", version_query),
+        )
+
+    def test_build_sefaria_passage_url_includes_yiddish_version(self):
+        version_query = resolve_sefaria_version_query(
+            "Genesis 1:1",
+            "YEHOYESH",
+            SEFARIA_VERSION_CONFIGS,
+        )
+        self.assertEqual(
+            "yiddish|Yehoyesh's Yiddish Tanakh Translation [yi]",
+            version_query,
+        )
+        self.assertEqual(
+            "https://sefaria.org/Genesis.1:1"
+            "?lang=bi&ven=yiddish%7CYehoyesh%27s%20Yiddish%20Tanakh%20Translation%20%5Byi%5D",
+            build_sefaria_passage_url("Genesis 1:1", "YEHOYESH", version_query),
         )
 
 
