@@ -4,16 +4,18 @@ from dataclasses import dataclass
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
 
-from state import DEFAULT_VERSION
+from state import DEFAULT_BIBLE_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
     BOOKS,
     LDS_STANDARD_WORKS_BOOK_DATA,
+    LDS_STANDARD_WORKS_BOOK_SLUGS,
     NONCANON_BOOK_SLUGS,
     SEFARIA_EXTRA_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
     format_version_label,
+    get_version_corpus,
     resolve_version_code,
 )
 
@@ -348,7 +350,7 @@ def build_passage_from_ref(ref) -> str:
 
 
 def parse_reference_version_query(
-    text: str, default_version: str = DEFAULT_VERSION
+    text: str, default_version: str = DEFAULT_BIBLE_VERSION
 ) -> tuple[str, str, bool]:
     normalized = ensure_text(text).strip()
     if not normalized:
@@ -461,6 +463,18 @@ def get_version_provider(version: str) -> str | None:
     return VERSION_PROVIDERS.get(version.upper())
 
 
+def get_book_corpus(book_slug: str) -> str:
+    return "lds" if book_slug in LDS_STANDARD_WORKS_BOOK_SLUGS else "bible"
+
+
+def get_passage_corpus(passage: str) -> str | None:
+    requested_book = find_requested_book(passage)
+    if requested_book is None:
+        return None
+    book_slug, _ = requested_book
+    return get_book_corpus(book_slug)
+
+
 def supported_book_slugs(version: str) -> frozenset[str]:
     return VERSION_SUPPORTED_BOOK_SLUGS.get(version.upper(), frozenset())
 
@@ -469,11 +483,14 @@ def version_supports_book_slug(version: str, book_slug: str) -> bool:
     return book_slug in supported_book_slugs(version)
 
 
-def supported_versions_for_book_slug(book_slug: str) -> frozenset[str]:
+def supported_versions_for_book_slug(
+    book_slug: str, *, corpus: str | None = None
+) -> frozenset[str]:
     return frozenset(
         version
         for version, book_slugs in VERSION_SUPPORTED_BOOK_SLUGS.items()
         if book_slug in book_slugs
+        and (corpus is None or get_version_corpus(version) == corpus)
     )
 
 
@@ -550,7 +567,9 @@ def resolve_auto_version(
         return version
 
     book_slug, _ = requested_book
-    supported_versions = supported_versions_for_book_slug(book_slug)
+    supported_versions = supported_versions_for_book_slug(
+        book_slug, corpus=get_book_corpus(book_slug)
+    )
     if len(supported_versions) == 1:
         return next(iter(supported_versions))
 
@@ -609,7 +628,7 @@ def decode_linked_reference(reference: str) -> str:
 
 
 def parse_get_request(
-    text: str, default_version: str = DEFAULT_VERSION
+    text: str, default_version: str = DEFAULT_BIBLE_VERSION
 ) -> tuple[str | None, str | None, bool]:
     words = text.split()
     if not words:

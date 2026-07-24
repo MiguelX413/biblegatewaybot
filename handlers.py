@@ -31,6 +31,7 @@ from parsing import (
     find_requested_book,
     format_passage_chunks,
     format_passage_entities,
+    get_passage_corpus,
     get_version_provider,
     is_book_only_request,
     other_version,
@@ -44,9 +45,12 @@ from services.bible_gateway import build_bible_gateway_passage_url
 from services.lds_scriptures import build_lds_passage_url
 from services.sefaria import build_sefaria_passage_url, resolve_sefaria_version_query
 from state import (
+    BACK_TO_COLLECTIONS,
     BACK_TO_LANGUAGES,
+    CHOOSE_COLLECTION_PROMPT,
     CHOOSE_LANGUAGE_PROMPT,
-    DEFAULT_VERSION,
+    DEFAULT_BIBLE_VERSION,
+    DEFAULT_LDS_VERSION,
     EMPTY,
     GET_PASSAGE_STATE,
     MAX_SEARCH_RESULTS,
@@ -54,20 +58,25 @@ from state import (
     PENDING_GET_VERSION_KEY,
     SEARCH_STATE,
     SELECT_VERSION_PROMPT,
+    SETDEFAULT_COLLECTION_STATE,
     SETDEFAULT_LANGUAGE_STATE,
     SETDEFAULT_VERSION_STATE,
+    USER_BIBLE_VERSION_KEY,
+    USER_LDS_VERSION_KEY,
     USER_SEARCH_KEY,
     USER_STARTED_KEY,
-    USER_VERSION_KEY,
     InlinePassageResult,
     SearchState,
 )
 from versions import (
+    BIBLE_VERSION_DATA,
+    LDS_VERSION_LABELS,
+    SCRIPTURE_COLLECTION_LABELS,
     SEFARIA_VERSION_CONFIGS,
-    VERSION_DATA,
     VERSION_LOOKUP,
     format_version_full_label,
     format_version_inline_label,
+    get_version_corpus,
     resolve_version_code,
 )
 
@@ -218,18 +227,52 @@ async def reply_service_unavailable(
 
 async def reply_choose_language(message: Message) -> None:
     await message.reply_text(
-        CHOOSE_LANGUAGE_PROMPT, reply_markup=build_buttons(list(VERSION_DATA.keys()))
+        CHOOSE_LANGUAGE_PROMPT,
+        reply_markup=build_buttons(
+            list(BIBLE_VERSION_DATA.keys()) + [BACK_TO_COLLECTIONS]
+        ),
     )
 
 
-def get_default_version(context: CallbackContext) -> str:
+async def reply_choose_collection(message: Message) -> None:
+    await message.reply_text(
+        CHOOSE_COLLECTION_PROMPT,
+        reply_markup=build_buttons(list(SCRIPTURE_COLLECTION_LABELS.values())),
+    )
+
+
+async def reply_choose_lds_version(message: Message) -> None:
+    await message.reply_text(
+        SELECT_VERSION_PROMPT,
+        reply_markup=build_buttons(list(LDS_VERSION_LABELS) + [BACK_TO_COLLECTIONS]),
+    )
+
+
+def get_default_version(context: CallbackContext, corpus: str = "bible") -> str:
     user_data = require_user_data(context)
-    return ensure_text(user_data.get(USER_VERSION_KEY) or DEFAULT_VERSION).upper()
+    if corpus == "lds":
+        return ensure_text(
+            user_data.get(USER_LDS_VERSION_KEY) or DEFAULT_LDS_VERSION
+        ).upper()
+    return ensure_text(
+        user_data.get(USER_BIBLE_VERSION_KEY) or DEFAULT_BIBLE_VERSION
+    ).upper()
+
+
+def get_default_version_for_passage(
+    context: CallbackContext, passage: str | None
+) -> str:
+    corpus = get_passage_corpus(passage or "") or "bible"
+    return get_default_version(context, corpus)
 
 
 def set_default_version(context: CallbackContext, version: str) -> None:
     user_data = require_user_data(context)
-    user_data[USER_VERSION_KEY] = version.upper()
+    normalized = version.upper()
+    if get_version_corpus(normalized) == "lds":
+        user_data[USER_LDS_VERSION_KEY] = normalized
+        return
+    user_data[USER_BIBLE_VERSION_KEY] = normalized
 
 
 def get_identity(update: Update) -> tuple[str, str, bool]:
@@ -414,11 +457,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
 
     if context.args == ["setdefault"]:
-        await message.reply_text(
-            CHOOSE_LANGUAGE_PROMPT,
-            reply_markup=build_buttons(list(VERSION_DATA.keys())),
-        )
-        return SETDEFAULT_LANGUAGE_STATE
+        await reply_choose_collection(message)
+        return SETDEFAULT_COLLECTION_STATE
 
     if is_new:
         if is_group:
@@ -442,8 +482,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message = require_message(update)
     await message.reply_text(
-        f"Current default version is {get_default_version(context)}. "
-        "Use /setdefault to change it."
+        "Current defaults:\n"
+        f"Bible: {format_version_full_label(get_default_version(context, 'bible'))}\n"
+        "LDS scriptures: "
+        f"{format_version_full_label(get_default_version(context, 'lds'))}\n\n"
+        "Use /setdefault to change them."
     )
 
 
@@ -464,7 +507,7 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     user_data = require_user_data(context)
     raw_text = ensure_text(message.text).strip()
     version, passage, explicit_version = parse_get_request(
-        raw_text, get_default_version(context)
+        raw_text, get_default_version(context, "bible")
     )
     display_name, _, _ = get_identity(update)
 
@@ -476,6 +519,8 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
 
     if passage:
+        if not explicit_version:
+            version = get_default_version_for_passage(context, passage)
         if is_book_only_request(passage):
             await message.reply_text(
                 f"Sorry {display_name}, please specify at least a chapter. "
@@ -507,12 +552,12 @@ async def get_conversation_message(
 ) -> int:
     message = require_message(update)
     user_data = require_user_data(context)
-    version = ensure_text(
-        user_data.pop(PENDING_GET_VERSION_KEY, get_default_version(context))
-    )
+    version = ensure_text(user_data.pop(PENDING_GET_VERSION_KEY, ""))
     explicit_version = bool(user_data.pop(PENDING_GET_VERSION_EXPLICIT_KEY, False))
     display_name, _, _ = get_identity(update)
     passage = ensure_text(message.text).strip()
+    if not explicit_version:
+        version = get_default_version_for_passage(context, passage)
     if is_book_only_request(passage):
         await message.reply_text(
             f"Sorry {display_name}, please specify at least a chapter. "
@@ -597,25 +642,45 @@ async def setdefault_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await message.reply_text(
                 f"Sorry {display_name}, I couldn't find that version. "
                 "Use /setdefault to view all available versions.\n\n"
-                f"Current default is {get_default_version(context)}."
+                f"Current Bible default is {get_default_version(context, 'bible')}.\n"
+                f"Current LDS default is {get_default_version(context, 'lds')}."
             )
             return ConversationHandler.END
         set_default_version(context, version)
+        corpus = get_version_corpus(version) or "bible"
         await message.reply_text(
-            f"Success! Default version is now {format_version_full_label(version)}."
+            "Success! "
+            f"{SCRIPTURE_COLLECTION_LABELS[corpus]} default is now "
+            f"{format_version_full_label(version)}."
         )
         return ConversationHandler.END
 
-    await reply_choose_language(message)
-    return SETDEFAULT_LANGUAGE_STATE
+    await reply_choose_collection(message)
+    return SETDEFAULT_COLLECTION_STATE
 
 
 async def start_setdefault_entry(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     message = require_message(update)
-    await reply_choose_language(message)
-    return SETDEFAULT_LANGUAGE_STATE
+    await reply_choose_collection(message)
+    return SETDEFAULT_COLLECTION_STATE
+
+
+async def setdefault_collection_message(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    message = require_message(update)
+    raw_text = ensure_text(message.text).strip()
+    if raw_text == SCRIPTURE_COLLECTION_LABELS["bible"]:
+        await reply_choose_language(message)
+        return SETDEFAULT_LANGUAGE_STATE
+    if raw_text == SCRIPTURE_COLLECTION_LABELS["lds"]:
+        await reply_choose_lds_version(message)
+        return SETDEFAULT_VERSION_STATE
+
+    await reply_choose_collection(message)
+    return SETDEFAULT_COLLECTION_STATE
 
 
 async def setdefault_language_message(
@@ -623,13 +688,16 @@ async def setdefault_language_message(
 ) -> int:
     message = require_message(update)
     raw_text = ensure_text(message.text).strip()
-    if raw_text not in VERSION_DATA:
+    if raw_text == BACK_TO_COLLECTIONS:
+        await reply_choose_collection(message)
+        return SETDEFAULT_COLLECTION_STATE
+    if raw_text not in BIBLE_VERSION_DATA:
         await reply_choose_language(message)
         return SETDEFAULT_LANGUAGE_STATE
 
     await message.reply_text(
         SELECT_VERSION_PROMPT,
-        reply_markup=build_buttons(VERSION_DATA[raw_text] + [BACK_TO_LANGUAGES]),
+        reply_markup=build_buttons(BIBLE_VERSION_DATA[raw_text] + [BACK_TO_LANGUAGES]),
     )
     return SETDEFAULT_VERSION_STATE
 
@@ -639,6 +707,9 @@ async def setdefault_version_message(
 ) -> int:
     message = require_message(update)
     raw_text = ensure_text(message.text).strip()
+    if raw_text == BACK_TO_COLLECTIONS:
+        await reply_choose_collection(message)
+        return SETDEFAULT_COLLECTION_STATE
     if raw_text == BACK_TO_LANGUAGES:
         await reply_choose_language(message)
         return SETDEFAULT_LANGUAGE_STATE
@@ -675,7 +746,7 @@ async def handle_inline_query(
         return
 
     query = ensure_text(inline_query.query).strip()
-    default_version = get_default_version(context)
+    default_version = get_default_version(context, "bible")
     if not query:
         await inline_query.answer(
             [],
@@ -692,7 +763,7 @@ async def handle_inline_query(
         explicit_version = True
     else:
         passage = query
-        version = default_version
+        version = get_default_version_for_passage(context, passage)
         explicit_version = False
 
     version = resolve_auto_version(version, passage, explicit_version=explicit_version)

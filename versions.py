@@ -15,6 +15,7 @@ type LanguageGroup = str
 type BookSlug = str
 type BookTitle = str
 type ProviderName = str
+type ScriptureCorpus = str
 type VersionDataMap = OrderedDict[LanguageGroup, list[VersionLabel]]
 type SefariaVersionConfig = str | dict[BookSlug, str]
 
@@ -401,6 +402,38 @@ VERSION_DATA = OrderedDict(
         ),
     ]
 )
+LDS_VERSION_LABELS: Final[tuple[VersionLabel, ...]] = (
+    "Book of Mormon (BOM)",
+    "Doctrine and Covenants (DC)",
+    "Pearl of Great Price (PGP)",
+)
+
+
+def _build_bible_version_data(version_data: VersionDataMap) -> VersionDataMap:
+    bible_version_data: VersionDataMap = OrderedDict()
+    lds_labels = set(LDS_VERSION_LABELS)
+    for language_group, labels in version_data.items():
+        filtered = [label for label in labels if label not in lds_labels]
+        if filtered:
+            bible_version_data[language_group] = filtered
+    return bible_version_data
+
+
+def _build_all_version_labels(
+    version_data: VersionDataMap, extra_labels: tuple[VersionLabel, ...]
+) -> tuple[VersionLabel, ...]:
+    labels: list[VersionLabel] = []
+    for group_labels in version_data.values():
+        labels.extend(group_labels)
+    labels.extend(extra_labels)
+    return tuple(labels)
+
+
+BIBLE_VERSION_DATA: Final[VersionDataMap] = _build_bible_version_data(VERSION_DATA)
+ALL_VERSION_LABELS: Final[tuple[VersionLabel, ...]] = _build_all_version_labels(
+    BIBLE_VERSION_DATA,
+    LDS_VERSION_LABELS,
+)
 VERSION_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(r"\(([^()]+)\)$")
 
 
@@ -416,19 +449,18 @@ def _canonicalize_version_code(code: VersionCode) -> VersionCode:
 
 
 def _build_version_lookup(
-    version_data: VersionDataMap,
+    version_labels: tuple[VersionLabel, ...],
 ) -> dict[VersionLabel, VersionCode]:
     lookup: dict[VersionLabel, VersionCode] = {}
     seen_codes: set[VersionCode] = set()
-    for labels in version_data.values():
-        for label in labels:
-            code = _canonicalize_version_code(_extract_version_code_label(label))
-            if label in lookup:
-                raise ValueError(f"Duplicate version label: {label!r}")
-            if code in seen_codes:
-                raise ValueError(f"Duplicate version code: {code!r}")
-            lookup[label] = code
-            seen_codes.add(code)
+    for label in version_labels:
+        code = _canonicalize_version_code(_extract_version_code_label(label))
+        if label in lookup:
+            raise ValueError(f"Duplicate version label: {label!r}")
+        if code in seen_codes:
+            raise ValueError(f"Duplicate version code: {code!r}")
+        lookup[label] = code
+        seen_codes.add(code)
     return lookup
 
 
@@ -448,7 +480,7 @@ def _build_version_full_labels(
 
 
 VERSION_LOOKUP: Final[dict[VersionLabel, VersionCode]] = _build_version_lookup(
-    VERSION_DATA
+    ALL_VERSION_LABELS
 )
 VERSIONS: Final[tuple[VersionCode, ...]] = tuple(VERSION_LOOKUP.values())
 VERSIONS_SET: Final[frozenset[VersionCode]] = frozenset(VERSIONS)
@@ -468,6 +500,19 @@ VERSION_CODE_ALIASES: Final[dict[str, VersionCode]] = {
     "TKA": "TKA",
     "TKʿ": "TKA",
     "ت.ك.ع": "TKA",
+}
+BIBLE_VERSIONS: Final[frozenset[VersionCode]] = frozenset(
+    _canonicalize_version_code(_extract_version_code_label(label))
+    for label in ALL_VERSION_LABELS
+    if label not in LDS_VERSION_LABELS
+)
+LDS_VERSIONS: Final[frozenset[VersionCode]] = frozenset(
+    _canonicalize_version_code(_extract_version_code_label(label))
+    for label in LDS_VERSION_LABELS
+)
+SCRIPTURE_COLLECTION_LABELS: Final[dict[ScriptureCorpus, str]] = {
+    "bible": "Bible",
+    "lds": "LDS scriptures",
 }
 
 
@@ -503,6 +548,15 @@ def resolve_version_code(token: str) -> str | None:
     if normalized in VERSIONS_SET:
         return normalized
     return VERSION_CODE_ALIASES.get(normalized)
+
+
+def get_version_corpus(version: str) -> ScriptureCorpus | None:
+    normalized = resolve_version_code(version) or version.upper()
+    if normalized in LDS_VERSIONS:
+        return "lds"
+    if normalized in BIBLE_VERSIONS or normalized == "BENSIRA1899":
+        return "bible"
+    return None
 
 
 PROTESTANT_CANON_BOOK_SLUGS = (

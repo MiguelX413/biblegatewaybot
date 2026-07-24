@@ -27,6 +27,7 @@ from handlers import (
     quick_lookup_handler,
     search_command_entry,
     search_conversation_message,
+    setdefault_collection_message,
     setdefault_entry,
     setdefault_language_message,
     setdefault_version_message,
@@ -43,6 +44,7 @@ from state import (
     GET_PASSAGE_STATE,
     PERSISTENCE_FILE,
     SEARCH_STATE,
+    SETDEFAULT_COLLECTION_STATE,
     SETDEFAULT_LANGUAGE_STATE,
     SETDEFAULT_VERSION_STATE,
 )
@@ -140,6 +142,11 @@ def build_application() -> Application:
             ),
         ],
         states={
+            SETDEFAULT_COLLECTION_STATE: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, setdefault_collection_message
+                )
+            ],
             SETDEFAULT_LANGUAGE_STATE: [
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND, setdefault_language_message
