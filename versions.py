@@ -2,13 +2,6 @@ import re
 from collections import OrderedDict
 from typing import Final, TypedDict
 
-
-class BookData(TypedDict):
-    title: str
-    slug: str
-    aliases: tuple[str, ...]
-
-
 type VersionLabel = str
 type VersionCode = str
 type LanguageGroup = str
@@ -18,7 +11,13 @@ type ProviderName = str
 type VersionDataMap = OrderedDict[LanguageGroup, list[VersionLabel]]
 
 
-VERSION_DATA = OrderedDict(
+class BookData(TypedDict):
+    title: BookTitle
+    slug: BookSlug
+    aliases: tuple[str, ...]
+
+
+VERSION_DATA: Final[VersionDataMap] = OrderedDict(
     [
         (
             "—English (EN)—",
@@ -433,6 +432,10 @@ def format_version_label(version: str) -> str:
     return VERSION_DISPLAY_LABELS.get(version.upper(), version)
 
 
+def _book_slugs(book_data: tuple[BookData, ...]) -> tuple[BookSlug, ...]:
+    return tuple(book["slug"] for book in book_data)
+
+
 PROTESTANT_CANON_BOOK_SLUGS = (
     "genesis",
     "exodus",
@@ -613,9 +616,7 @@ BOOK_OF_MORMON_BOOK_DATA: tuple[BookData, ...] = (
     {"title": "Ether", "slug": "ether", "aliases": ("ether", "eth")},
     {"title": "Moroni", "slug": "moroni", "aliases": ("moroni", "moro", "mor")},
 )
-BOOK_OF_MORMON_BOOK_SLUGS: tuple[str, ...] = tuple(
-    book["slug"] for book in BOOK_OF_MORMON_BOOK_DATA
-)
+BOOK_OF_MORMON_BOOK_SLUGS: tuple[BookSlug, ...] = _book_slugs(BOOK_OF_MORMON_BOOK_DATA)
 SEFARIA_EXTRA_BOOK_DATA: tuple[BookData, ...] = (
     {
         "title": "Jubilees",
@@ -642,9 +643,7 @@ SEFARIA_EXTRA_BOOK_DATA: tuple[BookData, ...] = (
         ),
     },
 )
-SEFARIA_EXTRA_BOOK_SLUGS: tuple[str, ...] = tuple(
-    book["slug"] for book in SEFARIA_EXTRA_BOOK_DATA
-)
+SEFARIA_EXTRA_BOOK_SLUGS: tuple[BookSlug, ...] = _book_slugs(SEFARIA_EXTRA_BOOK_DATA)
 DOCTRINE_AND_COVENANTS_BOOK_DATA: tuple[BookData, ...] = (
     {
         "title": "Doctrine and Covenants",
@@ -658,8 +657,8 @@ DOCTRINE_AND_COVENANTS_BOOK_DATA: tuple[BookData, ...] = (
         ),
     },
 )
-DOCTRINE_AND_COVENANTS_BOOK_SLUGS: tuple[str, ...] = tuple(
-    book["slug"] for book in DOCTRINE_AND_COVENANTS_BOOK_DATA
+DOCTRINE_AND_COVENANTS_BOOK_SLUGS: tuple[BookSlug, ...] = _book_slugs(
+    DOCTRINE_AND_COVENANTS_BOOK_DATA
 )
 PEARL_OF_GREAT_PRICE_BOOK_DATA: tuple[BookData, ...] = (
     {"title": "Moses", "slug": "moses", "aliases": ("moses",)},
@@ -692,21 +691,19 @@ PEARL_OF_GREAT_PRICE_BOOK_DATA: tuple[BookData, ...] = (
         "aliases": ("articles of faith", "a of f", "aof", "a-of-f"),
     },
 )
-PEARL_OF_GREAT_PRICE_BOOK_SLUGS: tuple[str, ...] = tuple(
-    book["slug"] for book in PEARL_OF_GREAT_PRICE_BOOK_DATA
+PEARL_OF_GREAT_PRICE_BOOK_SLUGS: tuple[BookSlug, ...] = _book_slugs(
+    PEARL_OF_GREAT_PRICE_BOOK_DATA
 )
 LDS_STANDARD_WORKS_BOOK_DATA: tuple[BookData, ...] = (
     BOOK_OF_MORMON_BOOK_DATA
     + DOCTRINE_AND_COVENANTS_BOOK_DATA
     + PEARL_OF_GREAT_PRICE_BOOK_DATA
 )
-LDS_STANDARD_WORKS_BOOK_SLUGS: tuple[str, ...] = tuple(
-    book["slug"] for book in LDS_STANDARD_WORKS_BOOK_DATA
+LDS_STANDARD_WORKS_BOOK_SLUGS: tuple[BookSlug, ...] = _book_slugs(
+    LDS_STANDARD_WORKS_BOOK_DATA
 )
 
-APOCRYPHA_BOOK_SLUGS: tuple[str, ...] = tuple(
-    book["slug"] for book in APOCRYPHA_BOOK_DATA
-)
+APOCRYPHA_BOOK_SLUGS: tuple[BookSlug, ...] = _book_slugs(APOCRYPHA_BOOK_DATA)
 NONCANON_BOOK_SLUGS: frozenset[str] = frozenset(
     APOCRYPHA_BOOK_SLUGS + SEFARIA_EXTRA_BOOK_SLUGS
 )
@@ -785,7 +782,9 @@ VERSION_ADDITIONAL_BOOK_SLUGS: dict[str, frozenset[str]] = {
     "TLA": CORE_DEUTEROCANON_BOOK_SLUGS,
     "WYC": CORE_DEUTEROCANON_BOOK_SLUGS,
 }
-VERSION_PROVIDERS: dict[str, str] = {code: "biblegateway" for code in VERSIONS}
+VERSION_PROVIDERS: dict[VersionCode, ProviderName] = {
+    code: "biblegateway" for code in VERSIONS
+}
 SEFARIA_VERSION_TITLES: dict[str, str | dict[str, str]] = {
     "JPS": "The Holy Scriptures: A New Translation (JPS 1917)",
     "NJPS": "Tanakh: The Holy Scriptures, published by JPS",
