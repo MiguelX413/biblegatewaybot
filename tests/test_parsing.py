@@ -85,22 +85,27 @@ class ParsingTests(unittest.TestCase):
             [
                 ("John 3:16 NIV\n\nFor God so loved the world.", "https://niv"),
                 ("John 3:16 NRSVue\n\nFor God so loved the world.", "https://nrsvue"),
+                ("John 3:16 WLC\n\nFor God so loved the world.", "https://wlc"),
             ]
         )
         assert combined is not None
         text, entities = combined
         self.assertEqual(
-            "John 3:16 NIV\nFor God so loved the world.\n\n"
-            "John 3:16 NRSVue\nFor God so loved the world.",
+            "John 3:16 NIV\nFor God so loved the world.\n"
+            "John 3:16 NRSVue\nFor God so loved the world.\n"
+            "John 3:16 WLC\nFor God so loved the world.",
             text,
         )
-        self.assertEqual(6, len(entities))
+        self.assertEqual(9, len(entities))
         self.assertEqual("bold", entities[0].type)
         self.assertEqual("text_link", entities[1].type)
         self.assertEqual("expandable_blockquote", entities[2].type)
         self.assertEqual("bold", entities[3].type)
         self.assertEqual("text_link", entities[4].type)
         self.assertEqual("expandable_blockquote", entities[5].type)
+        self.assertEqual("bold", entities[6].type)
+        self.assertEqual("text_link", entities[7].type)
+        self.assertEqual("expandable_blockquote", entities[8].type)
 
     def test_format_parallel_passage_entities_rejects_oversized_messages(self):
         text = f"John 3 NIV\n\n{'x' * 3000}"

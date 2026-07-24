@@ -205,7 +205,7 @@ def format_parallel_passage_entities(
         header = header.strip()
         body = body.strip()
         if index:
-            separator = "\n\n"
+            separator = "\n"
             message_parts.append(separator)
             offset += len(separator)
 
