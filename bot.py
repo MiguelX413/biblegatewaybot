@@ -47,14 +47,32 @@ from state import (
 from versions import BOOKS, SEFARIA_VERSION_TITLES
 
 
+def configure_runtime_services(application: Application, config) -> None:
+    application.bot_data["config"] = config
+    application.bot_data["bible_client"] = BibleGatewayClient()
+    application.bot_data["sefaria_client"] = SefariaClient(SEFARIA_VERSION_TITLES)
+    application.bot_data["local_bible_client"] = (
+        LocalBibleClient(config.offline_bibles_path)
+        if config.offline_bibles_path
+        else None
+    )
+
+
+async def initialize_runtime_services(application: Application) -> None:
+    config = load_config()
+    configure_runtime_services(application, config)
+
+
 async def close_http_client(application: Application) -> None:
-    bible_client: BibleGatewayClient = application.bot_data["bible_client"]
-    sefaria_client: SefariaClient = application.bot_data["sefaria_client"]
+    bible_client: BibleGatewayClient | None = application.bot_data.get("bible_client")
+    sefaria_client: SefariaClient | None = application.bot_data.get("sefaria_client")
     local_bible_client: LocalBibleClient | None = application.bot_data.get(
         "local_bible_client"
     )
-    await bible_client.close()
-    await sefaria_client.close()
+    if bible_client is not None:
+        await bible_client.close()
+    if sefaria_client is not None:
+        await sefaria_client.close()
     if local_bible_client is not None:
         await local_bible_client.close()
 
@@ -66,17 +84,11 @@ def build_application() -> Application:
         ApplicationBuilder()
         .token(config.token)
         .persistence(persistence)
+        .post_init(initialize_runtime_services)
         .post_shutdown(close_http_client)
         .build()
     )
-    application.bot_data["config"] = config
-    application.bot_data["bible_client"] = BibleGatewayClient()
-    application.bot_data["sefaria_client"] = SefariaClient(SEFARIA_VERSION_TITLES)
-    application.bot_data["local_bible_client"] = (
-        LocalBibleClient(config.offline_bibles_path)
-        if config.offline_bibles_path
-        else None
-    )
+    configure_runtime_services(application, config)
 
     get_conversation = ConversationHandler(
         entry_points=[
