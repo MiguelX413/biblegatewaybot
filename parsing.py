@@ -1,6 +1,28 @@
 import re
-from html import escape
 from typing import Any
+
+try:
+    from telegram import MessageEntity
+    from telegram.constants import MessageEntityType
+except (
+    ImportError
+):  # pragma: no cover - exercised only in dependency-missing environments
+    from dataclasses import dataclass
+
+    class MessageEntityType:
+        BOLD = "bold"
+        EXPANDABLE_BLOCKQUOTE = "expandable_blockquote"
+
+    @dataclass(frozen=True)
+    class MessageEntity:
+        type: str
+        offset: int
+        length: int
+
+        @staticmethod
+        def adjust_message_entities_to_utf_16(text: str, entities):
+            return entities
+
 
 from state import DEFAULT_VERSION
 from versions import (
@@ -24,18 +46,32 @@ def build_bot_handle(application: Any) -> str:
     return f"@{username}"
 
 
-def format_passage_html(text: str) -> str:
+def format_passage_entities(text: str) -> tuple[str, list[MessageEntity]]:
     blocks = text.split("\n\n", 1)
     if len(blocks) == 2:
         header, body = blocks
     else:
         header, body = text, ""
 
-    escaped_header = escape(header.strip())
-    escaped_body = escape(body.strip())
-    if escaped_body:
-        return f"<b>{escaped_header}</b>\n\n<blockquote expandable>{escaped_body}</blockquote>"
-    return f"<b>{escaped_header}</b>"
+    header = header.strip()
+    body = body.strip()
+    message_text = f"{header}\n\n{body}" if body else header
+    entities = [
+        MessageEntity(type=MessageEntityType.BOLD, offset=0, length=len(header))
+    ]
+    if body:
+        body_offset = len(header) + 2
+        entities.append(
+            MessageEntity(
+                type=MessageEntityType.EXPANDABLE_BLOCKQUOTE,
+                offset=body_offset,
+                length=len(body),
+            )
+        )
+    return (
+        message_text,
+        MessageEntity.adjust_message_entities_to_utf_16(message_text, entities),
+    )
 
 
 def command_list(application: Application) -> str:

@@ -6,11 +6,12 @@ from telegram import (
     InlineKeyboardMarkup,
     InlineQueryResultArticle,
     InputTextMessageContent,
+    MessageEntity,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     Update,
 )
-from telegram.constants import ChatAction, ParseMode
+from telegram.constants import ChatAction
 from telegram.ext import CallbackContext, ContextTypes, ConversationHandler
 
 from config import BotConfig
@@ -21,7 +22,7 @@ from parsing import (
     command_list,
     decode_linked_reference,
     ensure_text,
-    format_passage_html,
+    format_passage_entities,
     other_version,
     parse_get_request,
     version_supports_passage,
@@ -42,6 +43,11 @@ from state import (
     SearchState,
 )
 from versions import VERSION_DATA, VERSION_LOOKUP, VERSIONS
+
+
+def build_input_message_content(text: str) -> InputTextMessageContent:
+    message_text, entities = format_passage_entities(text)
+    return InputTextMessageContent(message_text=message_text, entities=entities)
 
 
 def get_try_inline_keyboard() -> InlineKeyboardMarkup:
@@ -185,10 +191,11 @@ async def reply_with_passage_result(
             reply_markup=reply_markup,
         )
         return
+    message_text, entities = format_passage_entities(str(response))
     await update.effective_message.reply_text(
-        format_passage_html(str(response)),
+        message_text,
+        entities=entities,
         reply_markup=reply_markup,
-        parse_mode=ParseMode.HTML,
     )
 
 
@@ -509,10 +516,7 @@ async def handle_inline_query(
             id=inline_result.result_id,
             title=inline_result.title,
             description=inline_result.description,
-            input_message_content=InputTextMessageContent(
-                format_passage_html(inline_result.passage),
-                parse_mode=ParseMode.HTML,
-            ),
+            input_message_content=build_input_message_content(inline_result.passage),
         )
     ]
     await inline_query.answer(
