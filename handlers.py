@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from scriptures import extract as extract_refs
@@ -99,16 +98,14 @@ async def fetch_passage(
     context: ContextTypes.DEFAULT_TYPE, passage: str, version: str, *, inline_details: bool = False
 ):
     client = context.application.bot_data["bible_client"]
-    return await asyncio.to_thread(
-        client.get_passage, passage, version, inline_details
-    )
+    return await client.get_passage(passage, version, inline_details=inline_details)
 
 
 async def fetch_search_results(
     context: ContextTypes.DEFAULT_TYPE, term: str, start: int = 0
 ):
     client = context.application.bot_data["bible_client"]
-    return await asyncio.to_thread(client.get_search_results, term, start)
+    return await client.get_search_results(term, start=start)
 
 
 async def reply_with_passage_result(
