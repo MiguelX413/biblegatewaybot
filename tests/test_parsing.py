@@ -131,6 +131,12 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(("genesis", "Genesis"), find_requested_book("gen 1:1"))
         self.assertEqual(("tobit", "Tobit"), find_requested_book("Tobit 4:7"))
         self.assertEqual(
+            ("3maccabees", "3 Maccabees"), find_requested_book("3 Maccabees 1:1")
+        )
+        self.assertEqual(
+            ("4maccabees", "4 Maccabees"), find_requested_book("4 Maccabees 1:1")
+        )
+        self.assertEqual(
             ("wisdom", "Wisdom"), find_requested_book("Wisdom of Solomon 3:5-7")
         )
         self.assertEqual(
@@ -169,6 +175,10 @@ class ParsingTests(unittest.TestCase):
         self.assertNotIn("matthew", supported_book_slugs("RJPS"))
         self.assertIn("1nephi", supported_book_slugs("BOM"))
         self.assertNotIn("genesis", supported_book_slugs("BOM"))
+        self.assertIn("3maccabees", supported_book_slugs("NRSVUE"))
+        self.assertIn("4maccabees", supported_book_slugs("NRSVUE"))
+        self.assertIn("3maccabees", supported_book_slugs("NRSVA"))
+        self.assertIn("4maccabees", supported_book_slugs("RSV"))
 
     def test_version_supports_book_slug(self):
         self.assertTrue(version_supports_book_slug("NRSVUE", "1esdras"))
@@ -190,6 +200,8 @@ class ParsingTests(unittest.TestCase):
     def test_resolve_auto_version_falls_back_to_nrsvue_for_missing_apocrypha(self):
         self.assertEqual("NRSVUE", resolve_auto_version("NIV", "1 Esdras 1:1"))
         self.assertEqual("NRSVUE", resolve_auto_version("KJV", "Wisdom 3:5"))
+        self.assertEqual("NRSVUE", resolve_auto_version("NIV", "3 Maccabees 1:1"))
+        self.assertEqual("NRSVUE", resolve_auto_version("NIV", "4 Maccabees 1:1"))
         self.assertEqual("NABRE", resolve_auto_version("NABRE", "Tobit 4:7"))
         self.assertEqual(
             "NIV",
