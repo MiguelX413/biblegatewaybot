@@ -333,6 +333,7 @@ def command_list(application: Any) -> str:
         "/get <reference> <fallbacks>&<parallel versions>\n"
         "/search <keyword>\n"
         "/setdefault <version selection>\n\n"
+        "/linkembeds on|off\n\n"
         "Examples:\n"
         "/get John 3:16\n"
         "/get 1 cor 13:4-7 NLT\n"

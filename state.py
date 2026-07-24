@@ -24,6 +24,7 @@ USER_DEFAULT_VERSION_KEY_BY_SYSTEM = {
     "bible": "default_bible_version",
     "lds": "default_lds_version",
 }
+CHAT_LINK_EMBEDS_ENABLED_KEY = "link_embeds_enabled"
 USER_SEARCH_KEY = "last_search"
 USER_STARTED_KEY = "started"
 PENDING_GET_VERSION_KEY = "pending_get_version"

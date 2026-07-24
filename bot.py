@@ -22,6 +22,7 @@ from handlers import (
     handle_inline_query,
     handle_new_members,
     help_command,
+    link_embeds_command,
     linked_passage_handler,
     more_command,
     quick_lookup_handler,
@@ -166,6 +167,7 @@ def build_application() -> Application:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("settings", settings_command))
+    application.add_handler(CommandHandler("linkembeds", link_embeds_command))
     application.add_handler(CommandHandler("more", more_command))
     application.add_handler(
         CommandHandler("botfamily_verification_code", botfamily_verification_command)

@@ -9,6 +9,7 @@ from telegram import (
     InlineQueryResultArticle,
     InlineQueryResultsButton,
     InputTextMessageContent,
+    LinkPreviewOptions,
     Message,
     MessageEntity,
     ReplyKeyboardMarkup,
@@ -50,6 +51,7 @@ from services.sefaria import build_sefaria_passage_url, resolve_sefaria_version_
 from state import (
     BACK_TO_COLLECTIONS,
     BACK_TO_LANGUAGES,
+    CHAT_LINK_EMBEDS_ENABLED_KEY,
     CHOOSE_COLLECTION_PROMPT,
     CHOOSE_LANGUAGE_PROMPT,
     DEFAULT_VERSION_BY_SYSTEM,
@@ -171,6 +173,20 @@ def require_user_data(context: CallbackContext[Any, Any, Any, Any]) -> dict[Any,
     user_data = context.user_data
     assert user_data is not None
     return user_data
+
+
+def require_chat_data(context: CallbackContext[Any, Any, Any, Any]) -> dict[Any, Any]:
+    chat_data = context.chat_data
+    assert chat_data is not None
+    return chat_data
+
+
+def get_link_preview_options(
+    context: CallbackContext[Any, Any, Any, Any],
+) -> LinkPreviewOptions:
+    chat_data = require_chat_data(context)
+    enabled = bool(chat_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, True))
+    return LinkPreviewOptions(is_disabled=not enabled)
 
 
 def build_inline_results_button(
@@ -459,6 +475,7 @@ async def reply_with_passage_result(
                 message_text,
                 entities=entities,
                 reply_markup=reply_markup if not sent_response and index == 0 else None,
+                link_preview_options=get_link_preview_options(context),
             )
         sent_response = True
 
@@ -513,6 +530,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         welcome_text,
         entities=welcome_entities,
         reply_markup=get_try_inline_keyboard(),
+        link_preview_options=get_link_preview_options(context),
     )
 
     if context.args == ["setdefault"]:
@@ -540,12 +558,40 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message = require_message(update)
+    preview_options = get_link_preview_options(context)
+    link_embeds = "enabled" if not preview_options.is_disabled else "disabled"
     await message.reply_text(
         "Current defaults:\n"
         f"Bible: {format_default_selection(get_bible_default_version(context))}\n"
         "LDS scriptures: "
         f"{format_default_selection(get_lds_default_version(context))}\n\n"
-        "Use /setdefault to change them."
+        "Use /setdefault to change them.\n"
+        f"Link embeds: {link_embeds} (/linkembeds on|off)"
+    )
+
+
+async def link_embeds_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    message = require_message(update)
+    chat_data = require_chat_data(context)
+    arguments = context.args or []
+    argument = arguments[0].lower() if len(arguments) == 1 else ""
+
+    if argument in {"on", "enable", "enabled"}:
+        chat_data[CHAT_LINK_EMBEDS_ENABLED_KEY] = True
+        await message.reply_text("Link embeds are now enabled for this chat.")
+        return
+    if argument in {"off", "disable", "disabled"}:
+        chat_data[CHAT_LINK_EMBEDS_ENABLED_KEY] = False
+        await message.reply_text("Link embeds are now disabled for this chat.")
+        return
+
+    enabled = bool(chat_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, True))
+    status = "enabled" if enabled else "disabled"
+    await message.reply_text(
+        f"Link embeds are currently {status} for this chat.\n"
+        "Use /linkembeds on or /linkembeds off."
     )
 
 
