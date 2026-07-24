@@ -4,6 +4,8 @@ Telegram bot built on `python-telegram-bot` that fetches Bible passages from bib
 
 This repository now uses `uv` for dependency management.
 
+The `uv.lock` file should be committed to version control for reproducible installs.
+
 Setup:
 
 - `uv sync`
