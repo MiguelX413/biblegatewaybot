@@ -2,6 +2,7 @@ import unittest
 
 from parsing import (
     build_passage_from_ref,
+    canonicalize_reference,
     decode_linked_reference,
     extract_leading_book_name,
     find_requested_book,
@@ -11,12 +12,8 @@ from parsing import (
     other_version,
     parse_apocrypha_reference,
     parse_get_request,
-    passage_uses_apocrypha,
     supported_book_slugs,
-    supported_apocrypha_books,
     version_supports_book_slug,
-    version_supports_apocrypha_book,
-    version_supports_apocrypha,
     version_supports_passage,
 )
 
@@ -51,6 +48,11 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(
             "1 Maccabees 2:1", parse_apocrypha_reference("1 maccabees 2:1")
         )
+        self.assertIsNone(parse_apocrypha_reference("John 3:16"))
+
+    def test_canonicalize_reference(self):
+        self.assertEqual("Wisdom 3:5-7", canonicalize_reference("wisdom 3 : 5 - 7"))
+        self.assertEqual("1 Corinthians 13:4-7", canonicalize_reference("1co13:4 - 7"))
 
     def test_normalize_book_name_handles_special_cases(self):
         self.assertEqual(
@@ -80,6 +82,9 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(("genesis", "Genesis"), find_requested_book("gen 1:1"))
         self.assertEqual(("tobit", "Tobit"), find_requested_book("Tobit 4:7"))
         self.assertEqual(
+            ("wisdom", "Wisdom"), find_requested_book("Wisdom of Solomon 3:5-7")
+        )
+        self.assertEqual(
             ("songofsolomon", "Song of Solomon"),
             find_requested_book("Song of Songs 1:1"),
         )
@@ -94,23 +99,6 @@ class ParsingTests(unittest.TestCase):
             "song of solomon 1:1",
             normalize_reference_lookup_key("Song of Songs 1 : 1"),
         )
-
-    def test_passage_uses_apocrypha(self):
-        self.assertTrue(passage_uses_apocrypha("Tobit 4:7"))
-        self.assertFalse(passage_uses_apocrypha("John 3:16"))
-
-    def test_version_supports_apocrypha(self):
-        self.assertTrue(version_supports_apocrypha("NRSVUE"))
-        self.assertFalse(version_supports_apocrypha("NIV"))
-
-    def test_version_supports_specific_apocrypha_book(self):
-        self.assertTrue(version_supports_apocrypha_book("NABRE", "Tobit"))
-        self.assertFalse(version_supports_apocrypha_book("NABRE", "1 Esdras"))
-        self.assertTrue(version_supports_apocrypha_book("NRSVUE", "1 Esdras"))
-
-    def test_supported_apocrypha_books_are_conservative(self):
-        self.assertNotIn("1 Esdras", supported_apocrypha_books("NABRE"))
-        self.assertIn("1 Esdras", supported_apocrypha_books("NRSVUE"))
 
     def test_version_provider_defaults_to_biblegateway(self):
         self.assertEqual("biblegateway", get_version_provider("NIV"))
@@ -133,6 +121,7 @@ class ParsingTests(unittest.TestCase):
 
     def test_version_supports_book_slug(self):
         self.assertTrue(version_supports_book_slug("NRSVUE", "1esdras"))
+        self.assertTrue(version_supports_book_slug("NABRE", "tobit"))
         self.assertFalse(version_supports_book_slug("NABRE", "1esdras"))
 
     def test_version_supports_passage(self):

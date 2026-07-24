@@ -17,12 +17,10 @@ from config import BotConfig
 from parsing import (
     build_bot_handle,
     build_passage_from_ref,
+    canonicalize_reference,
     command_list,
     decode_linked_reference,
     ensure_text,
-    parse_apocrypha_reference,
-    find_apocrypha_book,
-    passage_uses_apocrypha,
     other_version,
     parse_get_request,
     version_supports_passage,
@@ -576,12 +574,12 @@ async def quick_lookup_handler(
         )
         return
 
-    apocrypha_passage = parse_apocrypha_reference(to_lookup)
-    if apocrypha_passage:
+    canonical_passage = canonicalize_reference(to_lookup)
+    if canonical_passage and find_requested_book(canonical_passage):
         await reply_with_passage_result(
             update,
             context,
-            apocrypha_passage,
+            canonical_passage,
             get_default_version(context),
             display_name,
             reply_markup=ReplyKeyboardRemove(),

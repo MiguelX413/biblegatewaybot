@@ -663,24 +663,6 @@ APOCRYPHA_BOOK_DATA = (
 
 APOCRYPHA_BOOK_SLUGS = tuple(book["slug"] for book in APOCRYPHA_BOOK_DATA)
 APOCRYPHA_TITLE_TO_SLUG = {book["title"]: book["slug"] for book in APOCRYPHA_BOOK_DATA}
-APOCRYPHA_VERSION_CODES = frozenset(
-    {
-        "CEB",
-        "DHH",
-        "DRA",
-        "GNT",
-        "NABRE",
-        "NCB",
-        "NRSVA",
-        "NRSVACE",
-        "NRSVCE",
-        "NRSVUE",
-        "RSV",
-        "RSVCE",
-        "TLA",
-        "WYC",
-    }
-)
 CORE_DEUTEROCANON_BOOK_TITLES = frozenset(
     {
         "Tobit",
@@ -729,6 +711,23 @@ EXTENDED_APOCRYPHA_BOOK_SLUGS = frozenset(
 CORE_DEUTEROCANON_BOOK_SLUGS = frozenset(
     APOCRYPHA_TITLE_TO_SLUG[title] for title in CORE_DEUTEROCANON_BOOK_TITLES
 )
+VERSION_ADDITIONAL_BOOK_SLUGS = {
+    "CEB": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "DHH": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "DRA": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "GNT": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "NABRE": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "NCB": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "NRSV": EXTENDED_APOCRYPHA_BOOK_SLUGS,
+    "NRSVA": EXTENDED_APOCRYPHA_BOOK_SLUGS,
+    "NRSVACE": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "NRSVCE": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "NRSVUE": EXTENDED_APOCRYPHA_BOOK_SLUGS,
+    "RSV": EXTENDED_APOCRYPHA_BOOK_SLUGS,
+    "RSVCE": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "TLA": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "WYC": CORE_DEUTEROCANON_BOOK_SLUGS,
+}
 VERSION_PROVIDERS = {code: "biblegateway" for code in VERSIONS}
 SEFARIA_VERSION_TITLES = {
     "JPS": "The Holy Scriptures: A New Translation (JPS 1917)",
@@ -739,20 +738,10 @@ VERSION_PROVIDERS.update({code: "sefaria" for code in SEFARIA_VERSION_TITLES})
 VERSION_SUPPORTED_BOOK_SLUGS = {
     code: frozenset(PROTESTANT_CANON_BOOK_SLUGS) for code in VERSIONS
 }
-for code in VERSION_SUPPORTED_APOCRYPHA_BOOKS:
-    if code in {
-        "NRSV",
-        "NRSVA",
-        "NRSVUE",
-        "RSV",
-    }:
-        VERSION_SUPPORTED_BOOK_SLUGS[code] = (
-            frozenset(PROTESTANT_CANON_BOOK_SLUGS) | EXTENDED_APOCRYPHA_BOOK_SLUGS
-        )
-    else:
-        VERSION_SUPPORTED_BOOK_SLUGS[code] = (
-            frozenset(PROTESTANT_CANON_BOOK_SLUGS) | CORE_DEUTEROCANON_BOOK_SLUGS
-        )
+for code, additional_book_slugs in VERSION_ADDITIONAL_BOOK_SLUGS.items():
+    VERSION_SUPPORTED_BOOK_SLUGS[code] = (
+        frozenset(PROTESTANT_CANON_BOOK_SLUGS) | additional_book_slugs
+    )
 
 # Known scope overrides for current BibleGateway versions that are not full Bible editions.
 for code in ("DLNT", "MOUNCE", "PHILLIPS", "WE"):

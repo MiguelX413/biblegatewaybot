@@ -5,9 +5,7 @@ from state import DEFAULT_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
     APOCRYPHA_TITLE_TO_SLUG,
-    APOCRYPHA_VERSION_CODES,
     VERSION_PROVIDERS,
-    VERSION_SUPPORTED_APOCRYPHA_BOOKS,
     VERSION_SUPPORTED_BOOK_SLUGS,
     VERSIONS,
 )
@@ -135,29 +133,12 @@ BOOK_NAME_ALIASES = {
     "rev": ("revelation", "Revelation"),
     "re": ("revelation", "Revelation"),
 }
-
-
-def find_apocrypha_book(text: str) -> str | None:
-    for pattern, title in APOCRYPHA_ALIAS_PATTERNS:
-        if pattern.search(text):
-            return title
-    return None
-
-
-def passage_uses_apocrypha(text: str) -> bool:
-    return find_apocrypha_book(text) is not None
-
-
-def version_supports_apocrypha(version: str) -> bool:
-    return version.upper() in APOCRYPHA_VERSION_CODES
-
-
-def supported_apocrypha_books(version: str) -> frozenset[str]:
-    return VERSION_SUPPORTED_APOCRYPHA_BOOKS.get(version.upper(), frozenset())
-
-
-def version_supports_apocrypha_book(version: str, book_title: str) -> bool:
-    return book_title in supported_apocrypha_books(version)
+for book in APOCRYPHA_BOOK_DATA:
+    for alias in book["aliases"]:
+        BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
+            book["slug"],
+            book["title"],
+        )
 
 
 def get_version_provider(version: str) -> str | None:
@@ -198,10 +179,6 @@ def extract_leading_book_name(text: str) -> str | None:
 
 
 def find_requested_book(text: str) -> tuple[str, str] | None:
-    apocrypha_book = find_apocrypha_book(text)
-    if apocrypha_book:
-        return APOCRYPHA_TITLE_TO_SLUG[apocrypha_book], apocrypha_book
-
     book_name = extract_leading_book_name(
         text.lower().replace("revelations", "revelation")
     )
@@ -223,56 +200,46 @@ def version_supports_passage(version: str, passage: str) -> tuple[bool, str | No
     return version_supports_book_slug(version, book_slug), book_title
 
 
-def normalize_reference_lookup_key(text: str) -> str:
+def canonicalize_reference(text: str) -> str:
     normalized = ensure_text(text).strip()
     if not normalized:
         return ""
 
-    apocrypha_reference = parse_apocrypha_reference(normalized.lower())
-    if apocrypha_reference:
-        normalized = apocrypha_reference
-    else:
-        book_name = extract_leading_book_name(
-            normalized.lower().replace("revelations", "revelation")
+    book_name = extract_leading_book_name(
+        normalized.lower().replace("revelations", "revelation")
+    )
+    if book_name:
+        _, canonical_title = normalize_book_name(book_name.title())
+        normalized = re.sub(
+            rf"(?i)^\s*{re.escape(book_name)}",
+            canonical_title,
+            normalized,
+            count=1,
         )
-        if book_name:
-            _, canonical_title = normalize_book_name(book_name.title())
-            normalized = re.sub(
-                rf"(?i)^\s*{re.escape(book_name)}",
-                canonical_title,
-                normalized,
-                count=1,
-            )
 
     normalized = re.sub(r"^((?:[1-4]\s+)?[A-Za-z ]+?)(\d)", r"\1 \2", normalized)
     normalized = re.sub(r"\s*:\s*", ":", normalized)
     normalized = re.sub(r"\s*-\s*", "-", normalized)
     normalized = " ".join(normalized.split())
+    return normalized
+
+
+def normalize_reference_lookup_key(text: str) -> str:
+    normalized = canonicalize_reference(text)
+    if not normalized:
+        return ""
     return normalized.lower()
 
 
 def parse_apocrypha_reference(text: str) -> str | None:
-    for pattern, title in APOCRYPHA_ALIAS_PATTERNS:
-        match = re.search(
-            rf"(?i)\b{pattern.pattern[4:-2]}\b\s+(\d+)(?::(\d+)(?:-(\d+)(?::(\d+))?)?)?",
-            text,
-        )
-        if not match:
-            continue
-
-        start_chapter = match.group(1)
-        start_verse = match.group(2)
-        end_number = match.group(3)
-        end_verse = match.group(4)
-
-        if start_verse is None:
-            return f"{title} {start_chapter}"
-        if end_number is None:
-            return f"{title} {start_chapter}:{start_verse}"
-        if end_verse is None:
-            return f"{title} {start_chapter}:{start_verse}-{end_number}"
-        return f"{title} {start_chapter}:{start_verse}-{end_number}:{end_verse}"
-    return None
+    requested_book = find_requested_book(text)
+    if requested_book is None:
+        return None
+    book_slug, _ = requested_book
+    if book_slug not in APOCRYPHA_TITLE_TO_SLUG.values():
+        return None
+    canonical = canonicalize_reference(text)
+    return canonical or None
 
 
 def decode_linked_reference(reference: str) -> str:
