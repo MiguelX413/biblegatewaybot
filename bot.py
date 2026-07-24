@@ -35,7 +35,7 @@ from handlers import (
     start_setdefault_entry,
 )
 from services.bible_gateway import BibleGatewayClient
-from services.book_of_mormon import BookOfMormonClient
+from services.lds_scriptures import LdsScripturesClient
 from services.local_bible import LocalBibleClient
 from services.sefaria import SefariaClient
 from state import (
@@ -51,7 +51,7 @@ from versions import BOOKS, SEFARIA_VERSION_TITLES
 def configure_runtime_services(application: Application, config) -> None:
     application.bot_data["config"] = config
     application.bot_data["bible_client"] = BibleGatewayClient()
-    application.bot_data["book_of_mormon_client"] = BookOfMormonClient()
+    application.bot_data["lds_client"] = LdsScripturesClient()
     application.bot_data["sefaria_client"] = SefariaClient(SEFARIA_VERSION_TITLES)
     application.bot_data["local_bible_client"] = (
         LocalBibleClient(config.offline_bibles_path)
@@ -67,17 +67,15 @@ async def initialize_runtime_services(application: Application) -> None:
 
 async def close_http_client(application: Application) -> None:
     bible_client: BibleGatewayClient | None = application.bot_data.get("bible_client")
-    book_of_mormon_client: BookOfMormonClient | None = application.bot_data.get(
-        "book_of_mormon_client"
-    )
+    lds_client: LdsScripturesClient | None = application.bot_data.get("lds_client")
     sefaria_client: SefariaClient | None = application.bot_data.get("sefaria_client")
     local_bible_client: LocalBibleClient | None = application.bot_data.get(
         "local_bible_client"
     )
     if bible_client is not None:
         await bible_client.close()
-    if book_of_mormon_client is not None:
-        await book_of_mormon_client.close()
+    if lds_client is not None:
+        await lds_client.close()
     if sefaria_client is not None:
         await sefaria_client.close()
     if local_bible_client is not None:

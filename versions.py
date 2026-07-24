@@ -29,6 +29,8 @@ VERSION_DATA = OrderedDict(
                 "English Standard Version Anglicised (ESVUK)",
                 "Expanded Bible (EXB)",
                 "Book of Mormon (BOM)",
+                "Doctrine and Covenants (DC)",
+                "Pearl of Great Price (PGP)",
                 "1599 Geneva Bible (GNV)",
                 "GOD’S WORD Translation (GW)",
                 "Good News Translation (GNT)",
@@ -360,6 +362,8 @@ VERSION_LOOKUP = {
     "La Biblia de las Américas (LBLA)": "LBLA",
     "Expanded Bible (EXB)": "EXB",
     "Book of Mormon (BOM)": "BOM",
+    "Doctrine and Covenants (DC)": "DC",
+    "Pearl of Great Price (PGP)": "PGP",
     "Nouvelle Edition de Genève – NEG1979 (NEG1979)": "NEG1979",
     "Chinese Standard Bible (Traditional) (CSBT)": "CSBT",
     "Mounce Reverse-Interlinear New Testament (MOUNCE)": "MOUNCE",
@@ -734,6 +738,64 @@ BOOK_OF_MORMON_BOOK_DATA: tuple[BookData, ...] = (
 BOOK_OF_MORMON_BOOK_SLUGS: tuple[str, ...] = tuple(
     book["slug"] for book in BOOK_OF_MORMON_BOOK_DATA
 )
+DOCTRINE_AND_COVENANTS_BOOK_DATA: tuple[BookData, ...] = (
+    {
+        "title": "Doctrine and Covenants",
+        "slug": "doctrineandcovenants",
+        "aliases": (
+            "doctrine and covenants",
+            "doctrine & covenants",
+            "d and c",
+            "d&c",
+            "dc",
+        ),
+    },
+)
+DOCTRINE_AND_COVENANTS_BOOK_SLUGS: tuple[str, ...] = tuple(
+    book["slug"] for book in DOCTRINE_AND_COVENANTS_BOOK_DATA
+)
+PEARL_OF_GREAT_PRICE_BOOK_DATA: tuple[BookData, ...] = (
+    {"title": "Moses", "slug": "moses", "aliases": ("moses",)},
+    {"title": "Abraham", "slug": "abraham", "aliases": ("abraham", "abr")},
+    {
+        "title": "Joseph Smith—Matthew",
+        "slug": "josephsmithmatthew",
+        "aliases": (
+            "joseph smith matthew",
+            "joseph smith—matthew",
+            "joseph smith-matthew",
+            "jsm",
+            "js-m",
+        ),
+    },
+    {
+        "title": "Joseph Smith—History",
+        "slug": "josephsmithhistory",
+        "aliases": (
+            "joseph smith history",
+            "joseph smith—history",
+            "joseph smith-history",
+            "jsh",
+            "js-h",
+        ),
+    },
+    {
+        "title": "Articles of Faith",
+        "slug": "articlesoffaith",
+        "aliases": ("articles of faith", "a of f", "aof", "a-of-f"),
+    },
+)
+PEARL_OF_GREAT_PRICE_BOOK_SLUGS: tuple[str, ...] = tuple(
+    book["slug"] for book in PEARL_OF_GREAT_PRICE_BOOK_DATA
+)
+LDS_STANDARD_WORKS_BOOK_DATA: tuple[BookData, ...] = (
+    BOOK_OF_MORMON_BOOK_DATA
+    + DOCTRINE_AND_COVENANTS_BOOK_DATA
+    + PEARL_OF_GREAT_PRICE_BOOK_DATA
+)
+LDS_STANDARD_WORKS_BOOK_SLUGS: tuple[str, ...] = tuple(
+    book["slug"] for book in LDS_STANDARD_WORKS_BOOK_DATA
+)
 
 APOCRYPHA_BOOK_SLUGS: tuple[str, ...] = tuple(
     book["slug"] for book in APOCRYPHA_BOOK_DATA
@@ -820,7 +882,8 @@ SEFARIA_VERSION_TITLES: dict[str, str] = {
     "RJPS": "THE JPS TANAKH: Gender-Sensitive Edition",
 }
 VERSION_PROVIDERS.update({code: "sefaria" for code in SEFARIA_VERSION_TITLES})
-VERSION_PROVIDERS["BOM"] = "bookofmormon"
+for code in ("BOM", "DC", "PGP"):
+    VERSION_PROVIDERS[code] = "lds"
 VERSION_SUPPORTED_BOOK_SLUGS: dict[str, frozenset[str]] = {
     code: frozenset(PROTESTANT_CANON_BOOK_SLUGS) for code in VERSIONS
 }
@@ -838,7 +901,9 @@ VERSION_SUPPORTED_BOOK_SLUGS["WLC"] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
 for code in ("JPS", "NJPS", "RJPS"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["BOM"] = frozenset(BOOK_OF_MORMON_BOOK_SLUGS)
+VERSION_SUPPORTED_BOOK_SLUGS["DC"] = frozenset(DOCTRINE_AND_COVENANTS_BOOK_SLUGS)
+VERSION_SUPPORTED_BOOK_SLUGS["PGP"] = frozenset(PEARL_OF_GREAT_PRICE_BOOK_SLUGS)
 
 BOOKS: tuple[str, ...] = (
-    PROTESTANT_CANON_BOOK_SLUGS + APOCRYPHA_BOOK_SLUGS + BOOK_OF_MORMON_BOOK_SLUGS
+    PROTESTANT_CANON_BOOK_SLUGS + APOCRYPHA_BOOK_SLUGS + LDS_STANDARD_WORKS_BOOK_SLUGS
 )

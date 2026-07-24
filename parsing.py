@@ -8,7 +8,7 @@ from state import DEFAULT_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
     APOCRYPHA_BOOK_SLUGS,
-    BOOK_OF_MORMON_BOOK_DATA,
+    LDS_STANDARD_WORKS_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
     VERSIONS,
@@ -341,7 +341,7 @@ for book in APOCRYPHA_BOOK_DATA:
             book["slug"],
             book["title"],
         )
-for book in BOOK_OF_MORMON_BOOK_DATA:
+for book in LDS_STANDARD_WORKS_BOOK_DATA:
     for alias in book["aliases"]:
         BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
             book["slug"],
@@ -383,7 +383,7 @@ def normalize_book_name(book_name: str) -> tuple[str | None, str]:
 
 
 def extract_leading_book_name(text: str) -> str | None:
-    match = re.search(r"(?i)^\s*((?:[1-4]\s+)?[a-z][a-z'\s]+?)\s+\d", text)
+    match = re.search(r"(?i)^\s*((?:[1-4]\s+)?[a-z][a-z'&\-\u2014\s]+?)\s+\d", text)
     if match:
         return " ".join(match.group(1).split()).strip()
 

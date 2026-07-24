@@ -185,8 +185,8 @@ async def fetch_passage(
     provider = get_version_provider(version)
     if provider == "sefaria":
         client = context.application.bot_data["sefaria_client"]
-    elif provider == "bookofmormon":
-        client = context.application.bot_data["book_of_mormon_client"]
+    elif provider == "lds":
+        client = context.application.bot_data["lds_client"]
     else:
         client = context.application.bot_data["bible_client"]
     return await client.get_passage(passage, version, inline_details=inline_details)

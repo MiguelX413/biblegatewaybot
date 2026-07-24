@@ -125,6 +125,15 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual(("1nephi", "1 Nephi"), find_requested_book("1 Nephi 3:7"))
         self.assertEqual(
+            ("doctrineandcovenants", "Doctrine and Covenants"),
+            find_requested_book("D&C 1:1"),
+        )
+        self.assertEqual(("abraham", "Abraham"), find_requested_book("Abraham 3:22"))
+        self.assertEqual(
+            ("josephsmithhistory", "Joseph Smith—History"),
+            find_requested_book("Joseph Smith-History 1:15"),
+        )
+        self.assertEqual(
             ("wordsofmormon", "Words of Mormon"),
             find_requested_book("Words of Mormon 1:1"),
         )
@@ -160,6 +169,9 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("sefaria", get_version_provider("JPS"))
         self.assertEqual("sefaria", get_version_provider("NJPS"))
         self.assertEqual("sefaria", get_version_provider("RJPS"))
+        self.assertEqual("lds", get_version_provider("BOM"))
+        self.assertEqual("lds", get_version_provider("DC"))
+        self.assertEqual("lds", get_version_provider("PGP"))
 
     def test_supported_book_slugs_capture_scope_overrides(self):
         self.assertIn("genesis", supported_book_slugs("NIV"))
@@ -175,6 +187,10 @@ class ParsingTests(unittest.TestCase):
         self.assertNotIn("matthew", supported_book_slugs("RJPS"))
         self.assertIn("1nephi", supported_book_slugs("BOM"))
         self.assertNotIn("genesis", supported_book_slugs("BOM"))
+        self.assertIn("doctrineandcovenants", supported_book_slugs("DC"))
+        self.assertNotIn("1nephi", supported_book_slugs("DC"))
+        self.assertIn("abraham", supported_book_slugs("PGP"))
+        self.assertNotIn("john", supported_book_slugs("PGP"))
         self.assertIn("3maccabees", supported_book_slugs("NRSVUE"))
         self.assertIn("4maccabees", supported_book_slugs("NRSVUE"))
         self.assertIn("3maccabees", supported_book_slugs("NRSVA"))
@@ -187,10 +203,18 @@ class ParsingTests(unittest.TestCase):
 
     def test_supported_versions_for_book_slug(self):
         self.assertEqual(frozenset({"BOM"}), supported_versions_for_book_slug("1nephi"))
+        self.assertEqual(
+            frozenset({"DC"}), supported_versions_for_book_slug("doctrineandcovenants")
+        )
+        self.assertEqual(
+            frozenset({"PGP"}), supported_versions_for_book_slug("abraham")
+        )
         self.assertIn("NIV", supported_versions_for_book_slug("john"))
 
     def test_resolve_auto_version_uses_bom_for_exclusive_books(self):
         self.assertEqual("BOM", resolve_auto_version("NIV", "1 Nephi 3:7"))
+        self.assertEqual("DC", resolve_auto_version("NIV", "D&C 1:1"))
+        self.assertEqual("PGP", resolve_auto_version("NIV", "Abraham 3:22"))
         self.assertEqual(
             "NIV",
             resolve_auto_version("NIV", "1 Nephi 3:7", explicit_version=True),
@@ -221,6 +245,14 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual(
             (True, "1 Nephi"), version_supports_passage("BOM", "1 Nephi 3:7")
+        )
+        self.assertEqual(
+            (True, "Doctrine and Covenants"),
+            version_supports_passage("DC", "Doctrine and Covenants 1:1"),
+        )
+        self.assertEqual((False, "John"), version_supports_passage("DC", "John 3:16"))
+        self.assertEqual(
+            (True, "Abraham"), version_supports_passage("PGP", "Abraham 3:22")
         )
         self.assertEqual((False, "John"), version_supports_passage("BOM", "John 3:16"))
 

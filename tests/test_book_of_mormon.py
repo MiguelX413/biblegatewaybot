@@ -1,10 +1,10 @@
 import unittest
 
-from services.book_of_mormon import (
-    BOOK_OF_MORMON_BOOK_BY_ALIAS,
-    BookOfMormonReference,
+from services.lds_scriptures import (
+    LDS_BOOK_BY_ALIAS,
+    LdsReference,
     format_reference_title,
-    parse_book_of_mormon_reference,
+    parse_lds_reference,
     parse_passage_html,
 )
 from state import EMPTY, InlinePassageResult
@@ -40,9 +40,9 @@ SAMPLE_HTML = """
 """
 
 
-class BookOfMormonParsingTests(unittest.TestCase):
+class LdsScripturesParsingTests(unittest.TestCase):
     def test_parse_reference_single_verse(self):
-        reference = parse_book_of_mormon_reference("1 Nephi 3:7")
+        reference = parse_lds_reference("1 Nephi 3:7")
         self.assertIsNotNone(reference)
         assert reference is not None
         self.assertEqual("1 Nephi", reference.book.title)
@@ -57,7 +57,7 @@ class BookOfMormonParsingTests(unittest.TestCase):
         )
 
     def test_parse_reference_chapter_range(self):
-        reference = parse_book_of_mormon_reference("Alma 5-6")
+        reference = parse_lds_reference("Alma 5-6")
         self.assertIsNotNone(reference)
         assert reference is not None
         self.assertEqual(
@@ -71,7 +71,7 @@ class BookOfMormonParsingTests(unittest.TestCase):
         )
 
     def test_parse_reference_cross_chapter_range(self):
-        reference = parse_book_of_mormon_reference("3 Nephi 11:3-12:2")
+        reference = parse_lds_reference("3 Nephi 11:3-12:2")
         self.assertIsNotNone(reference)
         assert reference is not None
         self.assertEqual(
@@ -84,20 +84,32 @@ class BookOfMormonParsingTests(unittest.TestCase):
             ),
         )
 
+    def test_parse_reference_accepts_doctrine_and_covenants(self):
+        reference = parse_lds_reference("Doctrine and Covenants 1:1-2")
+        self.assertIsNotNone(reference)
+        assert reference is not None
+        self.assertEqual("Doctrine and Covenants", reference.book.title)
+        self.assertEqual("DC", reference.book.version)
+
+    def test_parse_reference_accepts_pearl_of_great_price_books(self):
+        reference = parse_lds_reference("Joseph Smith-History 1:15-17")
+        self.assertIsNotNone(reference)
+        assert reference is not None
+        self.assertEqual("Joseph Smith—History", reference.book.title)
+        self.assertEqual("PGP", reference.book.version)
+
     def test_parse_reference_rejects_unknown_book(self):
-        self.assertIsNone(parse_book_of_mormon_reference("Doctrine and Covenants 1:1"))
+        self.assertIsNone(parse_lds_reference("Heliocentrics 1:1"))
 
     def test_format_reference_title(self):
-        book = BOOK_OF_MORMON_BOOK_BY_ALIAS["1nephi"]
+        book = LDS_BOOK_BY_ALIAS["1nephi"]
         self.assertEqual(
             "1 Nephi 3:7-8",
-            format_reference_title(BookOfMormonReference(book, 3, 7, 3, 8)),
+            format_reference_title(LdsReference(book, 3, 7, 3, 8)),
         )
 
     def test_parse_passage_html_filters_requested_verses(self):
-        reference = BookOfMormonReference(
-            BOOK_OF_MORMON_BOOK_BY_ALIAS["1nephi"], 3, 7, 3, 8
-        )
+        reference = LdsReference(LDS_BOOK_BY_ALIAS["1nephi"], 3, 7, 3, 8)
         result = parse_passage_html(SAMPLE_HTML, reference)
         self.assertIsInstance(result, str)
         self.assertIn("1 Nephi 3:7-8 BOM", result)
@@ -107,18 +119,14 @@ class BookOfMormonParsingTests(unittest.TestCase):
         self.assertNotIn("more", result)
 
     def test_parse_passage_html_inline(self):
-        reference = BookOfMormonReference(
-            BOOK_OF_MORMON_BOOK_BY_ALIAS["1nephi"], 3, 7, 3, 7
-        )
+        reference = LdsReference(LDS_BOOK_BY_ALIAS["1nephi"], 3, 7, 3, 7)
         result = parse_passage_html(SAMPLE_HTML, reference, inline_details=True)
         self.assertIsInstance(result, InlinePassageResult)
         self.assertEqual("1 Nephi 3:7 BOM", result.title)
         self.assertIn("7 For I know", result.passage)
 
     def test_parse_passage_html_returns_empty_when_no_match(self):
-        reference = BookOfMormonReference(
-            BOOK_OF_MORMON_BOOK_BY_ALIAS["1nephi"], 3, 20, 3, 21
-        )
+        reference = LdsReference(LDS_BOOK_BY_ALIAS["1nephi"], 3, 20, 3, 21)
         self.assertEqual(EMPTY, parse_passage_html(SAMPLE_HTML, reference))
 
 

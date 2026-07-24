@@ -12,7 +12,7 @@ Setup:
 
 Basic commands:
 
-- `uv run python -m py_compile scripturebot.py bot.py handlers.py config.py state.py parsing.py services/bible_gateway.py versions.py`
+- `uv run python -m py_compile scripturebot.py bot.py handlers.py config.py state.py parsing.py services/bible_gateway.py services/lds_scriptures.py versions.py`
 - `uv run ruff check .`
 - `uv run ruff format --check .`
 - `uv run python scripturebot.py`
@@ -30,7 +30,7 @@ Runtime model:
 
 - the bot now runs with `python-telegram-bot` long polling
 - bible scraping uses async `httpx`
-- Book of Mormon passages are fetched from the official Church scripture pages under version `BOM`
+- Book of Mormon, Doctrine and Covenants, and Pearl of Great Price passages are fetched from the official Church scripture pages under versions `BOM`, `DC`, and `PGP`
 - optional local/offline passage files are checked before remote providers
 - chat and user state is persisted locally in `scripturebot-state.pkl`
 
@@ -40,6 +40,7 @@ Project layout:
 - `bot.py`: PTB application wiring
 - `handlers.py`: command, conversation, inline, and message handlers
 - `services/bible_gateway.py`: BibleGateway and BibleHub scraping/parsing
+- `services/lds_scriptures.py`: LDS standard works scraping/parsing
 - `services/local_bible.py`: optional local/offline passage loading
 - `parsing.py`: command parsing helpers
 - `state.py`: constants and lightweight state models
@@ -49,7 +50,7 @@ Project layout:
 Notes:
 
 - this codebase uses `python-telegram-bot` instead of the old `webapp2` and Google App Engine services stack.
-- Book of Mormon examples: `/get 1 Nephi 3:7 BOM`, `/get Alma 32:21 BOM`
+- LDS scripture examples: `/get 1 Nephi 3:7 BOM`, `/get D&C 1:1 DC`, `/get Abraham 3:22 PGP`
 - `/get` now uses standard trailing-version syntax: `/get John 3:16 NLT`
 - offline passage files live under `OFFLINE_BIBLES_PATH` as `<VERSION>.json`
 - each offline JSON file should be an object mapping references like `John 3:16` to either a string, a list of paragraph strings, or an object with `title`, `text`, and optional `description`
