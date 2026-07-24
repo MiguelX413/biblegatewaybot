@@ -14,7 +14,12 @@ from parsing import (
     format_numbered_verse_text,
     superscript_leading_verse_numbers,
 )
-from state import DEFAULT_VERSION, EMPTY, REQUEST_TIMEOUT_SECONDS, InlinePassageResult
+from state import (
+    DEFAULT_BIBLE_VERSION,
+    EMPTY,
+    REQUEST_TIMEOUT_SECONDS,
+    InlinePassageResult,
+)
 
 try:
     httpx: Any = import_module("httpx")
@@ -218,7 +223,7 @@ def _build_usfm_reference(reference: BibleComReference) -> str:
 
 
 def build_bible_com_passage_url(
-    passage: str, version: str = DEFAULT_VERSION
+    passage: str, version: str = DEFAULT_BIBLE_VERSION
 ) -> str | None:
     reference = parse_bible_com_reference(passage)
     version_id = BIBLE_COM_VERSION_IDS.get(version.upper())
@@ -368,7 +373,10 @@ class BibleComClient:
             return None
 
     async def get_passage(
-        self, passage: str, version: str = DEFAULT_VERSION, inline_details: bool = False
+        self,
+        passage: str,
+        version: str = DEFAULT_BIBLE_VERSION,
+        inline_details: bool = False,
     ) -> str | InlinePassageResult | None:
         reference = parse_bible_com_reference(passage)
         version_id = BIBLE_COM_VERSION_IDS.get(version.upper())

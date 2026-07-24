@@ -1,6 +1,7 @@
 import re
 from collections import OrderedDict
-from typing import Final, TypedDict
+from dataclasses import dataclass
+from typing import Final, Literal, TypedDict
 
 
 class BookData(TypedDict):
@@ -15,12 +16,12 @@ type LanguageGroup = str
 type BookSlug = str
 type BookTitle = str
 type ProviderName = str
-type ScriptureCorpus = str
+type ScriptureSystemId = Literal["bible", "lds"]
 type VersionDataMap = OrderedDict[LanguageGroup, list[VersionLabel]]
 type SefariaVersionConfig = str | dict[BookSlug, str]
 
 
-VERSION_DATA = OrderedDict(
+BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
     [
         (
             "—English (EN)—",
@@ -40,9 +41,6 @@ VERSION_DATA = OrderedDict(
                 "English Standard Version (ESV)",
                 "English Standard Version Anglicised (ESVUK)",
                 "Expanded Bible (EXB)",
-                "Book of Mormon (BOM)",
-                "Doctrine and Covenants (DC)",
-                "Pearl of Great Price (PGP)",
                 "1599 Geneva Bible (GNV)",
                 "GOD’S WORD Translation (GW)",
                 "Good News Translation (GNT)",
@@ -409,30 +407,46 @@ LDS_VERSION_LABELS: Final[tuple[VersionLabel, ...]] = (
 )
 
 
-def _build_bible_version_data(version_data: VersionDataMap) -> VersionDataMap:
-    bible_version_data: VersionDataMap = OrderedDict()
-    lds_labels = set(LDS_VERSION_LABELS)
-    for language_group, labels in version_data.items():
-        filtered = [label for label in labels if label not in lds_labels]
-        if filtered:
-            bible_version_data[language_group] = filtered
-    return bible_version_data
+@dataclass(frozen=True)
+class ScriptureSystem:
+    """A separately configurable collection of sacred texts."""
+
+    id: ScriptureSystemId
+    display_name: str
+    version_labels: tuple[VersionLabel, ...]
+    version_data: VersionDataMap | None = None
 
 
-def _build_all_version_labels(
-    version_data: VersionDataMap, extra_labels: tuple[VersionLabel, ...]
-) -> tuple[VersionLabel, ...]:
-    labels: list[VersionLabel] = []
-    for group_labels in version_data.values():
-        labels.extend(group_labels)
-    labels.extend(extra_labels)
-    return tuple(labels)
+def _version_labels_from_data(version_data: VersionDataMap) -> tuple[VersionLabel, ...]:
+    return tuple(
+        label for group_labels in version_data.values() for label in group_labels
+    )
 
 
-BIBLE_VERSION_DATA: Final[VersionDataMap] = _build_bible_version_data(VERSION_DATA)
-ALL_VERSION_LABELS: Final[tuple[VersionLabel, ...]] = _build_all_version_labels(
-    BIBLE_VERSION_DATA,
-    LDS_VERSION_LABELS,
+SCRIPTURE_SYSTEMS: Final[dict[ScriptureSystemId, ScriptureSystem]] = {
+    "bible": ScriptureSystem(
+        id="bible",
+        display_name="Bible",
+        version_labels=_version_labels_from_data(BIBLE_VERSION_DATA),
+        version_data=BIBLE_VERSION_DATA,
+    ),
+    "lds": ScriptureSystem(
+        id="lds",
+        display_name="LDS scriptures",
+        version_labels=LDS_VERSION_LABELS,
+    ),
+}
+SCRIPTURE_SYSTEM_ORDER: Final[tuple[ScriptureSystemId, ...]] = ("bible", "lds")
+
+
+def get_scripture_system(system_id: ScriptureSystemId) -> ScriptureSystem:
+    return SCRIPTURE_SYSTEMS[system_id]
+
+
+ALL_VERSION_LABELS: Final[tuple[VersionLabel, ...]] = tuple(
+    label
+    for system_id in SCRIPTURE_SYSTEM_ORDER
+    for label in SCRIPTURE_SYSTEMS[system_id].version_labels
 )
 VERSION_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(r"\(([^()]+)\)$")
 
@@ -501,18 +515,17 @@ VERSION_CODE_ALIASES: Final[dict[str, VersionCode]] = {
     "TKʿ": "TKA",
     "ت.ك.ع": "TKA",
 }
-BIBLE_VERSIONS: Final[frozenset[VersionCode]] = frozenset(
-    _canonicalize_version_code(_extract_version_code_label(label))
-    for label in ALL_VERSION_LABELS
-    if label not in LDS_VERSION_LABELS
-)
-LDS_VERSIONS: Final[frozenset[VersionCode]] = frozenset(
-    _canonicalize_version_code(_extract_version_code_label(label))
-    for label in LDS_VERSION_LABELS
-)
-SCRIPTURE_COLLECTION_LABELS: Final[dict[ScriptureCorpus, str]] = {
-    "bible": "Bible",
-    "lds": "LDS scriptures",
+VERSIONS_BY_SYSTEM: Final[dict[ScriptureSystemId, frozenset[VersionCode]]] = {
+    system_id: frozenset(
+        _canonicalize_version_code(_extract_version_code_label(label))
+        for label in system.version_labels
+    )
+    for system_id, system in SCRIPTURE_SYSTEMS.items()
+}
+VERSION_SYSTEMS: Final[dict[VersionCode, ScriptureSystemId]] = {
+    version: system_id
+    for system_id, versions in VERSIONS_BY_SYSTEM.items()
+    for version in versions
 }
 
 
@@ -550,13 +563,11 @@ def resolve_version_code(token: str) -> str | None:
     return VERSION_CODE_ALIASES.get(normalized)
 
 
-def get_version_corpus(version: str) -> ScriptureCorpus | None:
+def get_version_system(version: str) -> ScriptureSystemId | None:
     normalized = resolve_version_code(version) or version.upper()
-    if normalized in LDS_VERSIONS:
-        return "lds"
-    if normalized in BIBLE_VERSIONS or normalized == "BENSIRA1899":
+    if normalized == "BENSIRA1899":
         return "bible"
-    return None
+    return VERSION_SYSTEMS.get(normalized)
 
 
 PROTESTANT_CANON_BOOK_SLUGS = (
@@ -945,7 +956,7 @@ SEFARIA_VERSION_CONFIGS: dict[str, SefariaVersionConfig] = {
     "OPENSID": "the Open Siddur Project",
     "ESHEL": "Translated by Hanan and Esther Eshel",
     # Hidden for now: exact retrieval is currently broken, so keep the config
-    # around without advertising it in VERSION_DATA.
+    # around without advertising it in BIBLE_VERSION_DATA.
     "BENSIRA1899": "The Wisdom of Ben Sira, Cambridge University Press, 1899",
     "METSUDAH": "Metsudah Chumash, Metsudah Publications, 2009",
     "RJPS": "THE JPS TANAKH: Gender-Sensitive Edition",

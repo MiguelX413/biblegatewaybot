@@ -3,7 +3,10 @@ from pathlib import Path
 
 DEFAULT_BIBLE_VERSION = "NIV"
 DEFAULT_LDS_VERSION = "BOM"
-DEFAULT_VERSION = DEFAULT_BIBLE_VERSION
+DEFAULT_VERSION_BY_SYSTEM = {
+    "bible": DEFAULT_BIBLE_VERSION,
+    "lds": DEFAULT_LDS_VERSION,
+}
 EMPTY = "empty"
 MAX_SEARCH_RESULTS = 5
 REQUEST_TIMEOUT_SECONDS = 10
@@ -17,8 +20,10 @@ PERSISTENCE_FILE = Path(__file__).with_name("scripturebot-state.pkl")
     SETDEFAULT_VERSION_STATE,
 ) = range(5)
 
-USER_BIBLE_VERSION_KEY = "default_bible_version"
-USER_LDS_VERSION_KEY = "default_lds_version"
+USER_DEFAULT_VERSION_KEY_BY_SYSTEM = {
+    "bible": "default_bible_version",
+    "lds": "default_lds_version",
+}
 USER_SEARCH_KEY = "last_search"
 USER_STARTED_KEY = "started"
 PENDING_GET_VERSION_KEY = "pending_get_version"

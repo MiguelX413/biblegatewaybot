@@ -10,6 +10,8 @@ from parsing import (
     format_inline_passage_entities,
     format_passage_chunks,
     format_passage_entities,
+    get_book_scripture_system,
+    get_passage_scripture_system,
     get_version_provider,
     is_book_only_request,
     normalize_book_name,
@@ -23,6 +25,7 @@ from parsing import (
     version_supports_book_slug,
     version_supports_passage,
 )
+from versions import SCRIPTURE_SYSTEMS, get_version_system
 
 
 class ParsingTests(unittest.TestCase):
@@ -199,6 +202,16 @@ class ParsingTests(unittest.TestCase):
             ("songofsolomon", "Song of Solomon"),
             find_requested_book("Song of Songs 1:1"),
         )
+
+    def test_scripture_systems_keep_bible_and_lds_separate(self):
+        self.assertEqual("bible", get_book_scripture_system("genesis"))
+        self.assertEqual("lds", get_book_scripture_system("1nephi"))
+        self.assertEqual("bible", get_passage_scripture_system("Genesis 1:1"))
+        self.assertEqual("lds", get_passage_scripture_system("1 Nephi 1:1"))
+        self.assertEqual("bible", get_version_system("NIV"))
+        self.assertEqual("lds", get_version_system("BOM"))
+        self.assertNotIn("BOM", SCRIPTURE_SYSTEMS["bible"].version_labels)
+        self.assertIn("Book of Mormon (BOM)", SCRIPTURE_SYSTEMS["lds"].version_labels)
 
     def test_is_book_only_request(self):
         self.assertTrue(is_book_only_request("John"))

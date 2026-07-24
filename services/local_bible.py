@@ -7,7 +7,7 @@ from parsing import (
     normalize_reference_lookup_key,
     superscript_leading_verse_numbers,
 )
-from state import DEFAULT_VERSION, EMPTY, InlinePassageResult
+from state import DEFAULT_BIBLE_VERSION, EMPTY, InlinePassageResult
 
 
 def _normalize_local_text(value) -> list[str]:
@@ -26,7 +26,10 @@ def _normalize_local_text(value) -> list[str]:
 
 
 def format_local_passage_entry(
-    reference: str, entry, version: str = DEFAULT_VERSION, inline_details: bool = False
+    reference: str,
+    entry,
+    version: str = DEFAULT_BIBLE_VERSION,
+    inline_details: bool = False,
 ) -> str | InlinePassageResult:
     title = reference.strip()
     description = None
@@ -104,7 +107,10 @@ class LocalBibleClient:
         return normalized_entries
 
     async def get_passage(
-        self, passage: str, version: str = DEFAULT_VERSION, inline_details: bool = False
+        self,
+        passage: str,
+        version: str = DEFAULT_BIBLE_VERSION,
+        inline_details: bool = False,
     ) -> str | InlinePassageResult | None:
         entries = self._load_version_entries(version)
         if entries is None:

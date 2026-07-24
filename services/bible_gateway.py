@@ -14,7 +14,7 @@ except (
 
 from parsing import build_passage_header, ensure_text, to_sup
 from state import (
-    DEFAULT_VERSION,
+    DEFAULT_BIBLE_VERSION,
     EMPTY,
     MAX_SEARCH_RESULTS,
     REQUEST_TIMEOUT_SECONDS,
@@ -36,7 +36,7 @@ def normalize_block_text(text: str) -> str:
 
 
 def parse_passage_html(
-    html: str, version: str = DEFAULT_VERSION, inline_details: bool = False
+    html: str, version: str = DEFAULT_BIBLE_VERSION, inline_details: bool = False
 ) -> str | InlinePassageResult:
     start = html.find('<div class="passage-col')
     if start == -1:
@@ -171,7 +171,10 @@ class BibleGatewayClient:
             return None
 
     async def get_passage(
-        self, passage: str, version: str = DEFAULT_VERSION, inline_details: bool = False
+        self,
+        passage: str,
+        version: str = DEFAULT_BIBLE_VERSION,
+        inline_details: bool = False,
     ) -> str | InlinePassageResult | None:
         search = quote(ensure_text(passage).lower().strip())
         url = f"https://biblegateway.com/passage/?search={search}&version={version}&interface=print"

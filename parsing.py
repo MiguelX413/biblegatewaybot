@@ -14,8 +14,9 @@ from versions import (
     SEFARIA_EXTRA_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
+    ScriptureSystemId,
     format_version_label,
-    get_version_corpus,
+    get_version_system,
     resolve_version_code,
 )
 
@@ -463,16 +464,16 @@ def get_version_provider(version: str) -> str | None:
     return VERSION_PROVIDERS.get(version.upper())
 
 
-def get_book_corpus(book_slug: str) -> str:
+def get_book_scripture_system(book_slug: str) -> ScriptureSystemId:
     return "lds" if book_slug in LDS_STANDARD_WORKS_BOOK_SLUGS else "bible"
 
 
-def get_passage_corpus(passage: str) -> str | None:
+def get_passage_scripture_system(passage: str) -> ScriptureSystemId | None:
     requested_book = find_requested_book(passage)
     if requested_book is None:
         return None
     book_slug, _ = requested_book
-    return get_book_corpus(book_slug)
+    return get_book_scripture_system(book_slug)
 
 
 def supported_book_slugs(version: str) -> frozenset[str]:
@@ -484,13 +485,15 @@ def version_supports_book_slug(version: str, book_slug: str) -> bool:
 
 
 def supported_versions_for_book_slug(
-    book_slug: str, *, corpus: str | None = None
+    book_slug: str, *, scripture_system: ScriptureSystemId | None = None
 ) -> frozenset[str]:
     return frozenset(
         version
         for version, book_slugs in VERSION_SUPPORTED_BOOK_SLUGS.items()
         if book_slug in book_slugs
-        and (corpus is None or get_version_corpus(version) == corpus)
+        and (
+            scripture_system is None or get_version_system(version) == scripture_system
+        )
     )
 
 
@@ -568,7 +571,7 @@ def resolve_auto_version(
 
     book_slug, _ = requested_book
     supported_versions = supported_versions_for_book_slug(
-        book_slug, corpus=get_book_corpus(book_slug)
+        book_slug, scripture_system=get_book_scripture_system(book_slug)
     )
     if len(supported_versions) == 1:
         return next(iter(supported_versions))

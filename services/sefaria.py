@@ -10,7 +10,12 @@ from parsing import (
     find_requested_book,
     format_numbered_verse_text,
 )
-from state import DEFAULT_VERSION, EMPTY, REQUEST_TIMEOUT_SECONDS, InlinePassageResult
+from state import (
+    DEFAULT_BIBLE_VERSION,
+    EMPTY,
+    REQUEST_TIMEOUT_SECONDS,
+    InlinePassageResult,
+)
 from versions import SefariaVersionConfig
 
 try:
@@ -44,7 +49,7 @@ SEFARIA_INDEX_TITLE_BY_BOOK_SLUG = {
 
 def build_sefaria_passage_url(
     passage: str,
-    version: str = DEFAULT_VERSION,
+    version: str = DEFAULT_BIBLE_VERSION,
     version_query: str | None = None,
 ) -> str:
     normalized = normalize_sefaria_passage_reference(passage, version)
@@ -105,7 +110,9 @@ def normalize_sefaria_passage_reference(passage: str, version: str) -> str:
 
 
 def parse_passage_payload(
-    payload: dict, version: str = DEFAULT_VERSION, inline_details: bool = False
+    payload: dict,
+    version: str = DEFAULT_BIBLE_VERSION,
+    inline_details: bool = False,
 ) -> str | InlinePassageResult:
     versions = payload.get("versions") or []
     if not versions:
@@ -133,7 +140,9 @@ def parse_passage_payload(
 
 
 def parse_v1_he_passage_payload(
-    payload: dict, version: str = DEFAULT_VERSION, inline_details: bool = False
+    payload: dict,
+    version: str = DEFAULT_BIBLE_VERSION,
+    inline_details: bool = False,
 ) -> str | InlinePassageResult:
     reference = str(payload.get("ref") or "").strip() or "Requested passage"
     text_parts = _format_text_parts(reference, payload.get("he"))
@@ -157,7 +166,9 @@ def parse_v1_he_passage_payload(
 
 
 def parse_v1_text_passage_payload(
-    payload: dict, version: str = DEFAULT_VERSION, inline_details: bool = False
+    payload: dict,
+    version: str = DEFAULT_BIBLE_VERSION,
+    inline_details: bool = False,
 ) -> str | InlinePassageResult:
     reference = str(payload.get("ref") or "").strip() or "Requested passage"
     text_parts = _format_text_parts(reference, payload.get("text"))
@@ -199,7 +210,10 @@ class SefariaClient:
             await self._client.aclose()
 
     async def get_passage(
-        self, passage: str, version: str = DEFAULT_VERSION, inline_details: bool = False
+        self,
+        passage: str,
+        version: str = DEFAULT_BIBLE_VERSION,
+        inline_details: bool = False,
     ) -> str | InlinePassageResult | None:
         version_query = self._resolve_version_query(passage, version)
         if not version_query:
