@@ -14,8 +14,12 @@ GET_PASSAGE_STATE, SEARCH_STATE, SETDEFAULT_LANGUAGE_STATE, SETDEFAULT_VERSION_S
 USER_VERSION_KEY = "default_version"
 USER_SEARCH_KEY = "last_search"
 USER_STARTED_KEY = "started"
+PENDING_GET_VERSION_KEY = "pending_get_version"
+PENDING_GET_VERSION_EXPLICIT_KEY = "pending_get_version_explicit"
 
 BACK_TO_LANGUAGES = "🔙 to language list"
+CHOOSE_LANGUAGE_PROMPT = "Choose a language:"
+SELECT_VERSION_PROMPT = "Select a version:"
 
 
 @dataclass(frozen=True)

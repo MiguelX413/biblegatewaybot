@@ -44,11 +44,15 @@ from services.lds_scriptures import build_lds_passage_url
 from services.sefaria import build_sefaria_passage_url
 from state import (
     BACK_TO_LANGUAGES,
+    CHOOSE_LANGUAGE_PROMPT,
     DEFAULT_VERSION,
     EMPTY,
     GET_PASSAGE_STATE,
     MAX_SEARCH_RESULTS,
+    PENDING_GET_VERSION_EXPLICIT_KEY,
+    PENDING_GET_VERSION_KEY,
     SEARCH_STATE,
+    SELECT_VERSION_PROMPT,
     SETDEFAULT_LANGUAGE_STATE,
     SETDEFAULT_VERSION_STATE,
     USER_SEARCH_KEY,
@@ -166,6 +170,37 @@ def build_buttons(menu: list[str]) -> ReplyKeyboardMarkup:
         one_time_keyboard=True,
         resize_keyboard=True,
         selective=True,
+    )
+
+
+async def reply_no_results(
+    message: Message,
+    display_name: str,
+    *,
+    reply_markup: ReplyKeyboardRemove | None = None,
+) -> None:
+    await message.reply_text(
+        f"Sorry {display_name}, no results were found. Please try again.",
+        reply_markup=reply_markup,
+    )
+
+
+async def reply_service_unavailable(
+    message: Message,
+    display_name: str,
+    *,
+    reply_markup: ReplyKeyboardRemove | None = None,
+) -> None:
+    await message.reply_text(
+        f"Sorry {display_name}, I'm having some difficulty accessing "
+        "the site. Please try again later.",
+        reply_markup=reply_markup,
+    )
+
+
+async def reply_choose_language(message: Message) -> None:
+    await message.reply_text(
+        CHOOSE_LANGUAGE_PROMPT, reply_markup=build_buttons(list(VERSION_DATA.keys()))
     )
 
 
@@ -292,18 +327,13 @@ async def reply_with_passage_result(
     if response == EMPTY:
         if silent_failures:
             return
-        await message.reply_text(
-            f"Sorry {display_name}, no results were found. Please try again.",
-            reply_markup=reply_markup,
-        )
+        await reply_no_results(message, display_name, reply_markup=reply_markup)
         return
     if response is None:
         if silent_failures:
             return
-        await message.reply_text(
-            f"Sorry {display_name}, I'm having some difficulty accessing "
-            "the site. Please try again later.",
-            reply_markup=reply_markup,
+        await reply_service_unavailable(
+            message, display_name, reply_markup=reply_markup
         )
         return
     chunks = format_passage_chunks(str(response), header_url=header_url)
@@ -330,16 +360,11 @@ async def reply_with_search_results(
     response = await fetch_search_results(context, term, start=start)
     if response == EMPTY:
         user_data.pop(USER_SEARCH_KEY, None)
-        await message.reply_text(
-            f"Sorry {display_name}, no results were found. Please try again.",
-            reply_markup=reply_markup,
-        )
+        await reply_no_results(message, display_name, reply_markup=reply_markup)
         return
     if response is None:
-        await message.reply_text(
-            f"Sorry {display_name}, I'm having some difficulty accessing "
-            "the site. Please try again later.",
-            reply_markup=reply_markup,
+        await reply_service_unavailable(
+            message, display_name, reply_markup=reply_markup
         )
         return
 
@@ -370,7 +395,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     if context.args == ["setdefault"]:
         await message.reply_text(
-            "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
+            CHOOSE_LANGUAGE_PROMPT,
+            reply_markup=build_buttons(list(VERSION_DATA.keys())),
         )
         return SETDEFAULT_LANGUAGE_STATE
 
@@ -446,8 +472,8 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         )
         return ConversationHandler.END
 
-    user_data["pending_get_version"] = version
-    user_data["pending_get_version_explicit"] = explicit_version
+    user_data[PENDING_GET_VERSION_KEY] = version
+    user_data[PENDING_GET_VERSION_EXPLICIT_KEY] = explicit_version
     await message.reply_text(
         f"Which Bible passage do you want to lookup? Version: {version}\n\n"
         "Tip: For faster results, use:\n/get John 3:16\n"
@@ -462,9 +488,9 @@ async def get_conversation_message(
     message = require_message(update)
     user_data = require_user_data(context)
     version = ensure_text(
-        user_data.pop("pending_get_version", get_default_version(context))
+        user_data.pop(PENDING_GET_VERSION_KEY, get_default_version(context))
     )
-    explicit_version = bool(user_data.pop("pending_get_version_explicit", False))
+    explicit_version = bool(user_data.pop(PENDING_GET_VERSION_EXPLICIT_KEY, False))
     display_name, _, _ = get_identity(update)
     passage = ensure_text(message.text).strip()
     if is_book_only_request(passage):
@@ -528,9 +554,7 @@ async def more_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     display_name, _, _ = get_identity(update)
     search_state = user_data.get(USER_SEARCH_KEY)
     if not isinstance(search_state, SearchState):
-        await message.reply_text(
-            f"Sorry {display_name}, no results were found. Please try again."
-        )
+        await reply_no_results(message, display_name)
         return
     await reply_with_search_results(
         update,
@@ -560,9 +584,7 @@ async def setdefault_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await message.reply_text(f"Success! Default version is now {version}.")
         return ConversationHandler.END
 
-    await message.reply_text(
-        "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
-    )
+    await reply_choose_language(message)
     return SETDEFAULT_LANGUAGE_STATE
 
 
@@ -570,9 +592,7 @@ async def start_setdefault_entry(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     message = require_message(update)
-    await message.reply_text(
-        "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
-    )
+    await reply_choose_language(message)
     return SETDEFAULT_LANGUAGE_STATE
 
 
@@ -582,13 +602,11 @@ async def setdefault_language_message(
     message = require_message(update)
     raw_text = ensure_text(message.text).strip()
     if raw_text not in VERSION_DATA:
-        await message.reply_text(
-            "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
-        )
+        await reply_choose_language(message)
         return SETDEFAULT_LANGUAGE_STATE
 
     await message.reply_text(
-        "Select a version:",
+        SELECT_VERSION_PROMPT,
         reply_markup=build_buttons(VERSION_DATA[raw_text] + [BACK_TO_LANGUAGES]),
     )
     return SETDEFAULT_VERSION_STATE
@@ -600,13 +618,11 @@ async def setdefault_version_message(
     message = require_message(update)
     raw_text = ensure_text(message.text).strip()
     if raw_text == BACK_TO_LANGUAGES:
-        await message.reply_text(
-            "Choose a language:", reply_markup=build_buttons(list(VERSION_DATA.keys()))
-        )
+        await reply_choose_language(message)
         return SETDEFAULT_LANGUAGE_STATE
 
     if raw_text not in VERSION_LOOKUP:
-        await message.reply_text("Select a version:")
+        await message.reply_text(SELECT_VERSION_PROMPT)
         return SETDEFAULT_VERSION_STATE
 
     version = VERSION_LOOKUP[raw_text]
@@ -623,7 +639,8 @@ async def cancel_conversation(
 ) -> int:
     message = require_message(update)
     user_data = require_user_data(context)
-    user_data.pop("pending_get_version", None)
+    user_data.pop(PENDING_GET_VERSION_KEY, None)
+    user_data.pop(PENDING_GET_VERSION_EXPLICIT_KEY, None)
     await message.reply_text("Cancelled.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
