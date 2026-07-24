@@ -18,9 +18,15 @@ from parsing import (
     build_bot_handle,
     build_passage_from_ref,
     command_list,
+    decode_linked_reference,
     ensure_text,
+    parse_apocrypha_reference,
+    find_apocrypha_book,
+    passage_uses_apocrypha,
     other_version,
     parse_get_request,
+    version_supports_apocrypha_book,
+    version_supports_apocrypha,
 )
 from state import (
     BACK_TO_LANGUAGES,
@@ -142,6 +148,17 @@ async def reply_with_passage_result(
     *,
     reply_markup: ReplyKeyboardRemove | None = None,
 ) -> None:
+    apocrypha_book = (
+        find_apocrypha_book(passage) if passage_uses_apocrypha(passage) else None
+    )
+    if apocrypha_book and not version_supports_apocrypha_book(version, apocrypha_book):
+        await update.effective_message.reply_text(
+            f"Sorry {display_name}, {version} on BibleGateway does not appear to include {apocrypha_book}. "
+            "Try a translation with that book in its Apocrypha/Deuterocanonical set.",
+            reply_markup=reply_markup,
+        )
+        return
+
     await send_typing(update, context)
     response = await fetch_passage(context, passage, version)
     if response == EMPTY:
@@ -496,10 +513,11 @@ async def linked_passage_handler(
 ) -> None:
     raw_text = ensure_text(update.effective_message.text).strip()
     display_name, _, _ = get_identity(update)
-    passage = raw_text[1:].replace("V", ":")
+    reference = raw_text[1:]
     bot_handle = build_bot_handle(context.application)
-    if passage.endswith(bot_handle):
-        passage = passage[: -len(bot_handle)]
+    if reference.endswith(bot_handle):
+        reference = reference[: -len(bot_handle)]
+    passage = decode_linked_reference(reference)
     await reply_with_passage_result(
         update, context, passage, get_default_version(context), display_name
     )
@@ -529,6 +547,18 @@ async def quick_lookup_handler(
             update,
             context,
             passage,
+            get_default_version(context),
+            display_name,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    apocrypha_passage = parse_apocrypha_reference(to_lookup)
+    if apocrypha_passage:
+        await reply_with_passage_result(
+            update,
+            context,
+            apocrypha_passage,
             get_default_version(context),
             display_name,
             reply_markup=ReplyKeyboardRemove(),
