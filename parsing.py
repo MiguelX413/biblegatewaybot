@@ -99,12 +99,12 @@ def command_list(application: Any) -> str:
     bot_handle = build_bot_handle(application)
     return (
         "/get <reference>\n"
-        "/get<version> <reference>\n"
+        "/get <reference> <version>\n"
         "/search <keyword>\n"
         "/setdefault <version>\n\n"
         "Examples:\n"
         "/get John 3:16\n"
-        "/getNLT 1 cor 13:4-7\n"
+        "/get 1 cor 13:4-7 NLT\n"
         "/search the greatest commandment\n"
         "/setdefault NASB\n\n"
         f"Inline mode:\n{bot_handle} john 3:16\n"
@@ -313,22 +313,24 @@ def parse_get_request(
 
     first_word = words[0]
     normalized = first_word.split("@", 1)[0].lower()
-    version = normalized[4:].upper() if len(normalized) > 4 else default_version
-    if version not in VERSIONS:
+    if normalized != "/get":
         return None, None
 
-    passage = text[len(first_word) :].strip()
+    arguments = words[1:]
+    if not arguments:
+        return default_version, None
+
+    if len(arguments) == 1 and arguments[0].upper() in VERSIONS:
+        return arguments[0].upper(), None
+
+    version = default_version
+    if arguments[-1].upper() in VERSIONS:
+        version = arguments[-1].upper()
+        arguments = arguments[:-1]
+
+    passage = " ".join(arguments).strip()
     if not passage:
         return version, None
-
-    first_passage_word = passage.split()[0].upper()
-    if (
-        len(normalized) == 4
-        and first_passage_word in VERSIONS
-        and passage[len(first_passage_word) :].strip()
-    ):
-        version = first_passage_word
-        passage = passage[len(first_passage_word) :].strip()
 
     return version, passage
 

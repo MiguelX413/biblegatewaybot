@@ -92,9 +92,7 @@ def build_application() -> Application:
 
     get_conversation = ConversationHandler(
         entry_points=[
-            MessageHandler(
-                filters.Regex(r"^/get(\w+)?(@\w+)?(\s|$)"), get_command_entry
-            )
+            MessageHandler(filters.Regex(r"^/get(@\w+)?(\s|$)"), get_command_entry)
         ],
         states={
             GET_PASSAGE_STATE: [

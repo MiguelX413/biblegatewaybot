@@ -48,5 +48,6 @@ Project layout:
 Notes:
 
 - this codebase uses `python-telegram-bot` instead of the old `webapp2` and Google App Engine services stack.
+- `/get` now uses standard trailing-version syntax: `/get John 3:16 NLT`
 - offline passage files live under `OFFLINE_BIBLES_PATH` as `<VERSION>.json`
 - each offline JSON file should be an object mapping references like `John 3:16` to either a string, a list of paragraph strings, or an object with `title`, `text`, and optional `description`

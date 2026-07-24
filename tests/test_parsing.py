@@ -36,16 +36,24 @@ class ParsingTests(unittest.TestCase):
         version, passage = parse_get_request("/get John 3:16", "NIV")
         self.assertEqual(("NIV", "John 3:16"), (version, passage))
 
-    def test_parse_get_uses_command_suffix_version(self):
-        version, passage = parse_get_request("/getnlt 1 cor 13:4-7", "NIV")
+    def test_parse_get_uses_trailing_version(self):
+        version, passage = parse_get_request("/get 1 cor 13:4-7 NLT", "NIV")
         self.assertEqual(("NLT", "1 cor 13:4-7"), (version, passage))
 
-    def test_parse_get_uses_leading_passage_version(self):
-        version, passage = parse_get_request("/get NASB John 3:16", "NIV")
-        self.assertEqual(("NASB", "John 3:16"), (version, passage))
+    def test_parse_get_prompts_for_passage_when_only_version_is_given(self):
+        version, passage = parse_get_request("/get NASB", "NIV")
+        self.assertEqual(("NASB", None), (version, passage))
 
-    def test_parse_get_rejects_invalid_version(self):
+    def test_parse_get_rejects_old_command_suffix_format(self):
         version, passage = parse_get_request("/getabc John 3:16", "NIV")
+        self.assertEqual((None, None), (version, passage))
+
+    def test_parse_get_treats_non_version_tail_as_part_of_reference(self):
+        version, passage = parse_get_request("/get John 3:16 earth", "NIV")
+        self.assertEqual(("NIV", "John 3:16 earth"), (version, passage))
+
+    def test_parse_get_rejects_non_get_commands(self):
+        version, passage = parse_get_request("/search John 3:16", "NIV")
         self.assertEqual((None, None), (version, passage))
 
     def test_build_passage_from_ref_normalizes_revelation_name(self):

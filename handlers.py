@@ -356,7 +356,7 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await message.reply_text(
         f"Which Bible passage do you want to lookup? Version: {version}\n\n"
         "Tip: For faster results, use:\n/get John 3:16\n"
-        f"/get{other_version(version)} John 3:16"
+        f"/get John 3:16 {other_version(version)}"
     )
     return GET_PASSAGE_STATE
 
