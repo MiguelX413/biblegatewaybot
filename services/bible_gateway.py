@@ -37,6 +37,12 @@ def to_sup(text: str) -> str:
     return "".join(sups.get(char, char) for char in text)
 
 
+def normalize_block_text(text: str) -> str:
+    lines = [" ".join(line.split()) for line in text.splitlines()]
+    lines = [line for line in lines if line]
+    return "\n".join(lines).strip()
+
+
 def parse_passage_html(
     html: str, version: str = DEFAULT_VERSION, inline_details: bool = False
 ) -> str | InlinePassageResult:
@@ -45,6 +51,8 @@ def parse_passage_html(
         return EMPTY
 
     end = html.find("<!-- passage-box -->", start)
+    if end == -1:
+        end = len(html)
     passage_html = html[start:end]
     soup = BeautifulSoup(passage_html, "lxml")
 
@@ -65,7 +73,7 @@ def parse_passage_html(
         tag["class"] = "bg-bot-passage-text"
         tag.string = tag.text.strip()
 
-    for tag in passage_soup.select("p"):
+    for tag in passage_soup.select("p, li"):
         tag["class"] = "bg-bot-passage-text"
 
     for tag in passage_soup.select("br"):
@@ -82,7 +90,7 @@ def parse_passage_html(
 
     blocks = [header]
     for tag in passage_soup(class_="bg-bot-passage-text"):
-        text = " ".join(tag.text.split())
+        text = normalize_block_text(tag.text)
         if text:
             blocks.append(text)
 

@@ -1,6 +1,10 @@
 import unittest
 
-from services.bible_gateway import parse_passage_html, parse_search_results_html
+from services.bible_gateway import (
+    normalize_block_text,
+    parse_passage_html,
+    parse_search_results_html,
+)
 from state import EMPTY, InlinePassageResult
 
 PASSAGE_HTML = """
@@ -20,6 +24,20 @@ PASSAGE_HTML = """
 </html>
 """
 
+POETRY_HTML = """
+<html>
+  <body>
+    <div class="passage-col">
+      <span class="bcv">Psalm 23:1-2</span>
+      <div class="passage-text">
+        <p><span class="chapternum">23</span><span class="versenum">1</span><span class="text">The Lord is my shepherd;</span><br/><span class="text">I shall not want.</span></p>
+        <p><span class="versenum">2</span><span class="text">He maketh me to lie down in green pastures:</span><br/><span class="text">he leadeth me beside the still waters.</span></p>
+      </div>
+    </div>
+  </body>
+</html>
+"""
+
 SEARCH_HTML = """
 <html>
   <body>
@@ -33,12 +51,28 @@ SEARCH_HTML = """
 
 
 class BibleGatewayParsingTests(unittest.TestCase):
+    def test_normalize_block_text_preserves_intentional_line_breaks(self):
+        self.assertEqual(
+            "Line one\nLine two",
+            normalize_block_text(" Line   one \n\n  Line   two "),
+        )
+
     def test_parse_passage_html(self):
         result = parse_passage_html(PASSAGE_HTML, version="NIV")
         self.assertIsInstance(result, str)
         self.assertIn("John 3:16 (NIV)", result)
         self.assertIn("For God so loved the world", result)
         self.assertNotIn("remove me", result)
+
+    def test_parse_passage_html_preserves_poetry_line_breaks(self):
+        result = parse_passage_html(POETRY_HTML, version="KJV")
+        self.assertIsInstance(result, str)
+        self.assertIn("Psalm 23:1-2 (KJV)", result)
+        self.assertIn("The Lord is my shepherd;\nI shall not want.", result)
+        self.assertIn(
+            "He maketh me to lie down in green pastures:\nhe leadeth me beside the still waters.",
+            result,
+        )
 
     def test_parse_passage_html_inline(self):
         result = parse_passage_html(PASSAGE_HTML, version="NIV", inline_details=True)
@@ -48,6 +82,10 @@ class BibleGatewayParsingTests(unittest.TestCase):
 
     def test_parse_passage_html_missing_passage(self):
         self.assertEqual(EMPTY, parse_passage_html("<html></html>", version="NIV"))
+
+    def test_parse_passage_html_without_passage_box_marker(self):
+        result = parse_passage_html(POETRY_HTML, version="KJV")
+        self.assertIn("Psalm 23:1-2 (KJV)", result)
 
     def test_parse_search_results_html(self):
         result = parse_search_results_html(SEARCH_HTML)
