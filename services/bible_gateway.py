@@ -23,8 +23,10 @@ from state import (
 
 
 def build_bible_gateway_passage_url(passage: str, version: str) -> str:
-    search = quote(ensure_text(passage).strip())
-    return f"https://www.biblegateway.com/passage/?search={search}&version={version.upper()}"
+    search = quote(ensure_text(passage).strip(), safe=":")
+    return (
+        f"https://biblegateway.com/passage/?search={search}&version={version.upper()}"
+    )
 
 
 def normalize_block_text(text: str) -> str:
@@ -172,7 +174,7 @@ class BibleGatewayClient:
         self, passage: str, version: str = DEFAULT_VERSION, inline_details: bool = False
     ) -> str | InlinePassageResult | None:
         search = quote(ensure_text(passage).lower().strip())
-        url = f"https://www.biblegateway.com/passage/?search={search}&version={version}&interface=print"
+        url = f"https://biblegateway.com/passage/?search={search}&version={version}&interface=print"
         html = await self.fetch_text(url)
         if html is None:
             return None

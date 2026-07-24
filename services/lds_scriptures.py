@@ -15,7 +15,7 @@ except ImportError:  # pragma: no cover - exercised only in dependency-missing e
     httpx = None
 
 
-LDS_SCRIPTURES_BASE_URL = "https://www.churchofjesuschrist.org/study/scriptures"
+LDS_SCRIPTURES_BASE_URL = "https://churchofjesuschrist.org/study/scriptures"
 
 
 @dataclass(frozen=True)

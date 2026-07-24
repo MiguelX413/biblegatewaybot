@@ -41,14 +41,14 @@ class ParsingTests(unittest.TestCase):
     def test_format_passage_entities_can_link_header(self):
         text, entities = format_passage_entities(
             "John 3:16 NIV\n\nFor God so loved the world.",
-            header_url="https://www.biblegateway.com/passage/?search=John%203%3A16&version=NIV",
+            header_url="https://biblegateway.com/passage/?search=John%203:16&version=NIV",
         )
         self.assertEqual("John 3:16 NIV\nFor God so loved the world.", text)
         self.assertEqual(3, len(entities))
         self.assertEqual("bold", entities[0].type)
         self.assertEqual("text_link", entities[1].type)
         self.assertEqual(
-            "https://www.biblegateway.com/passage/?search=John%203%3A16&version=NIV",
+            "https://biblegateway.com/passage/?search=John%203:16&version=NIV",
             entities[1].url,
         )
         self.assertEqual("expandable_blockquote", entities[2].type)

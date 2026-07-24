@@ -15,15 +15,15 @@ except (
 ):  # pragma: no cover - exercised only in dependency-missing environments
     httpx = None
 
-SEFARIA_API_BASE_URL = "https://www.sefaria.org/api/v3/texts"
+SEFARIA_API_BASE_URL = "https://sefaria.org/api/v3/texts"
 
 
 def build_sefaria_passage_url(passage: str) -> str:
     normalized = " ".join(str(passage).split()).strip()
     if not normalized:
-        return "https://www.sefaria.org/"
+        return "https://sefaria.org"
     path = re.sub(r"\s+(\d)", r".\1", normalized, count=1).replace(" ", "_")
-    return f"https://www.sefaria.org/{quote(path, safe='._:-')}"
+    return f"https://sefaria.org/{quote(path, safe='._:-')}"
 
 
 def _flatten_text(value) -> Iterable[str]:
