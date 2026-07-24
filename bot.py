@@ -165,7 +165,7 @@ def main() -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s - %(message)s",
     )
-    logging.info("Starting biblegatewaybot via python-telegram-bot polling")
+    logging.info("Starting scripturebot via python-telegram-bot polling")
     application = build_application()
     application.run_polling(allowed_updates=Update.ALL_TYPES)
     return 0

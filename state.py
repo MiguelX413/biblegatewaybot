@@ -5,7 +5,7 @@ DEFAULT_VERSION = "NIV"
 EMPTY = "empty"
 MAX_SEARCH_RESULTS = 5
 REQUEST_TIMEOUT_SECONDS = 10
-PERSISTENCE_FILE = Path(__file__).with_name("bot-state.pkl")
+PERSISTENCE_FILE = Path(__file__).with_name("scripturebot-state.pkl")
 
 GET_PASSAGE_STATE, SEARCH_STATE, SETDEFAULT_LANGUAGE_STATE, SETDEFAULT_VERSION_STATE = (
     range(4)

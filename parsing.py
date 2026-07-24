@@ -19,7 +19,7 @@ def ensure_text(value) -> str:
 
 
 def build_bot_handle(application: Any) -> str:
-    username = application.bot.username or "biblegatewaybot"
+    username = application.bot.username or "scripturebot"
     return f"@{username}"
 
 

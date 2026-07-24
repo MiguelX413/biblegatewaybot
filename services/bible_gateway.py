@@ -162,7 +162,7 @@ class BibleGatewayClient:
         self._client = client or httpx.AsyncClient(
             timeout=REQUEST_TIMEOUT_SECONDS,
             follow_redirects=True,
-            headers={"User-Agent": "biblegatewaybot/1.0"},
+            headers={"User-Agent": "scripturebot/1.0"},
         )
 
     async def close(self) -> None:

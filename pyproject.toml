@@ -1,5 +1,5 @@
 [project]
-name = "biblegatewaybot"
+name = "scripturebot"
 version = "0.1.0"
 description = "Telegram bot that fetches Bible passages from BibleGateway"
 readme = "README.md"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-biblegatewaybot = "biblegatewaybot:main"
+scripturebot = "scripturebot:main"
 
 [tool.uv]
 package = false
