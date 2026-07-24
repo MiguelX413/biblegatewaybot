@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 from state import DEFAULT_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
+    BOOK_OF_MORMON_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
     VERSIONS,
@@ -200,6 +201,12 @@ for book in APOCRYPHA_BOOK_DATA:
             book["slug"],
             book["title"],
         )
+for book in BOOK_OF_MORMON_BOOK_DATA:
+    for alias in book["aliases"]:
+        BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
+            book["slug"],
+            book["title"],
+        )
 
 
 def get_version_provider(version: str) -> str | None:
@@ -212,6 +219,14 @@ def supported_book_slugs(version: str) -> frozenset[str]:
 
 def version_supports_book_slug(version: str, book_slug: str) -> bool:
     return book_slug in supported_book_slugs(version)
+
+
+def supported_versions_for_book_slug(book_slug: str) -> frozenset[str]:
+    return frozenset(
+        version
+        for version, book_slugs in VERSION_SUPPORTED_BOOK_SLUGS.items()
+        if book_slug in book_slugs
+    )
 
 
 def normalize_book_name(book_name: str) -> tuple[str | None, str]:
@@ -261,6 +276,23 @@ def version_supports_passage(version: str, passage: str) -> tuple[bool, str | No
     return version_supports_book_slug(version, book_slug), book_title
 
 
+def resolve_auto_version(
+    version: str, passage: str, *, explicit_version: bool = False
+) -> str:
+    if explicit_version:
+        return version
+
+    requested_book = find_requested_book(passage)
+    if requested_book is None:
+        return version
+
+    book_slug, _ = requested_book
+    supported_versions = supported_versions_for_book_slug(book_slug)
+    if len(supported_versions) == 1:
+        return next(iter(supported_versions))
+    return version
+
+
 def canonicalize_reference(text: str) -> str:
     normalized = ensure_text(text).strip()
     if not normalized:
@@ -306,33 +338,35 @@ def decode_linked_reference(reference: str) -> str:
 
 def parse_get_request(
     text: str, default_version: str = DEFAULT_VERSION
-) -> tuple[str | None, str | None]:
+) -> tuple[str | None, str | None, bool]:
     words = text.split()
     if not words:
-        return None, None
+        return None, None, False
 
     first_word = words[0]
     normalized = first_word.split("@", 1)[0].lower()
     if normalized != "/get":
-        return None, None
+        return None, None, False
 
     arguments = words[1:]
     if not arguments:
-        return default_version, None
+        return default_version, None, False
 
     if len(arguments) == 1 and arguments[0].upper() in VERSIONS:
-        return arguments[0].upper(), None
+        return arguments[0].upper(), None, True
 
     version = default_version
+    explicit_version = False
     if arguments[-1].upper() in VERSIONS:
         version = arguments[-1].upper()
         arguments = arguments[:-1]
+        explicit_version = True
 
     passage = " ".join(arguments).strip()
     if not passage:
-        return version, None
+        return version, None, explicit_version
 
-    return version, passage
+    return version, passage, explicit_version
 
 
 def other_version(current_version: str) -> str:

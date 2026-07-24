@@ -12,7 +12,9 @@ from parsing import (
     normalize_reference_lookup_key,
     other_version,
     parse_get_request,
+    resolve_auto_version,
     supported_book_slugs,
+    supported_versions_for_book_slug,
     version_supports_book_slug,
     version_supports_passage,
 )
@@ -33,28 +35,30 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(len("For God so loved the world."), entities[1].length)
 
     def test_parse_get_uses_default_version(self):
-        version, passage = parse_get_request("/get John 3:16", "NIV")
-        self.assertEqual(("NIV", "John 3:16"), (version, passage))
+        version, passage, explicit = parse_get_request("/get John 3:16", "NIV")
+        self.assertEqual(("NIV", "John 3:16", False), (version, passage, explicit))
 
     def test_parse_get_uses_trailing_version(self):
-        version, passage = parse_get_request("/get 1 cor 13:4-7 NLT", "NIV")
-        self.assertEqual(("NLT", "1 cor 13:4-7"), (version, passage))
+        version, passage, explicit = parse_get_request("/get 1 cor 13:4-7 NLT", "NIV")
+        self.assertEqual(("NLT", "1 cor 13:4-7", True), (version, passage, explicit))
 
     def test_parse_get_prompts_for_passage_when_only_version_is_given(self):
-        version, passage = parse_get_request("/get NASB", "NIV")
-        self.assertEqual(("NASB", None), (version, passage))
+        version, passage, explicit = parse_get_request("/get NASB", "NIV")
+        self.assertEqual(("NASB", None, True), (version, passage, explicit))
 
     def test_parse_get_rejects_old_command_suffix_format(self):
-        version, passage = parse_get_request("/getabc John 3:16", "NIV")
-        self.assertEqual((None, None), (version, passage))
+        version, passage, explicit = parse_get_request("/getabc John 3:16", "NIV")
+        self.assertEqual((None, None, False), (version, passage, explicit))
 
     def test_parse_get_treats_non_version_tail_as_part_of_reference(self):
-        version, passage = parse_get_request("/get John 3:16 earth", "NIV")
-        self.assertEqual(("NIV", "John 3:16 earth"), (version, passage))
+        version, passage, explicit = parse_get_request("/get John 3:16 earth", "NIV")
+        self.assertEqual(
+            ("NIV", "John 3:16 earth", False), (version, passage, explicit)
+        )
 
     def test_parse_get_rejects_non_get_commands(self):
-        version, passage = parse_get_request("/search John 3:16", "NIV")
-        self.assertEqual((None, None), (version, passage))
+        version, passage, explicit = parse_get_request("/search John 3:16", "NIV")
+        self.assertEqual((None, None, False), (version, passage, explicit))
 
     def test_build_passage_from_ref_normalizes_revelation_name(self):
         passage = build_passage_from_ref(("Revelation of Jesus Christ", 1, 1, 1, 3))
@@ -93,6 +97,11 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(("john", "John"), find_requested_book("jn 3:16"))
         self.assertEqual(
             ("1corinthians", "1 Corinthians"), find_requested_book("1co13:4-7")
+        )
+        self.assertEqual(("1nephi", "1 Nephi"), find_requested_book("1 Nephi 3:7"))
+        self.assertEqual(
+            ("wordsofmormon", "Words of Mormon"),
+            find_requested_book("Words of Mormon 1:1"),
         )
         self.assertEqual(("genesis", "Genesis"), find_requested_book("gen 1:1"))
         self.assertEqual(("tobit", "Tobit"), find_requested_book("Tobit 4:7"))
@@ -133,11 +142,25 @@ class ParsingTests(unittest.TestCase):
         self.assertNotIn("matthew", supported_book_slugs("NJPS"))
         self.assertIn("genesis", supported_book_slugs("RJPS"))
         self.assertNotIn("matthew", supported_book_slugs("RJPS"))
+        self.assertIn("1nephi", supported_book_slugs("BOM"))
+        self.assertNotIn("genesis", supported_book_slugs("BOM"))
 
     def test_version_supports_book_slug(self):
         self.assertTrue(version_supports_book_slug("NRSVUE", "1esdras"))
         self.assertTrue(version_supports_book_slug("NABRE", "tobit"))
         self.assertFalse(version_supports_book_slug("NABRE", "1esdras"))
+
+    def test_supported_versions_for_book_slug(self):
+        self.assertEqual(frozenset({"BOM"}), supported_versions_for_book_slug("1nephi"))
+        self.assertIn("NIV", supported_versions_for_book_slug("john"))
+
+    def test_resolve_auto_version_uses_bom_for_exclusive_books(self):
+        self.assertEqual("BOM", resolve_auto_version("NIV", "1 Nephi 3:7"))
+        self.assertEqual(
+            "NIV",
+            resolve_auto_version("NIV", "1 Nephi 3:7", explicit_version=True),
+        )
+        self.assertEqual("NIV", resolve_auto_version("NIV", "John 3:16"))
 
     def test_version_supports_passage(self):
         self.assertEqual((False, "John"), version_supports_passage("JPS", "John 3:16"))
@@ -150,6 +173,10 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(
             (True, "Tobit"), version_supports_passage("NABRE", "Tobit 4:7")
         )
+        self.assertEqual(
+            (True, "1 Nephi"), version_supports_passage("BOM", "1 Nephi 3:7")
+        )
+        self.assertEqual((False, "John"), version_supports_passage("BOM", "John 3:16"))
 
     def test_decode_linked_reference_for_apocrypha(self):
         self.assertEqual(

@@ -28,6 +28,7 @@ VERSION_DATA = OrderedDict(
                 "English Standard Version (ESV)",
                 "English Standard Version Anglicised (ESVUK)",
                 "Expanded Bible (EXB)",
+                "Book of Mormon (BOM)",
                 "1599 Geneva Bible (GNV)",
                 "GOD’S WORD Translation (GW)",
                 "Good News Translation (GNT)",
@@ -358,6 +359,7 @@ VERSION_LOOKUP = {
     "Russian Synodal Version (RUSV)": "RUSV",
     "La Biblia de las Américas (LBLA)": "LBLA",
     "Expanded Bible (EXB)": "EXB",
+    "Book of Mormon (BOM)": "BOM",
     "Nouvelle Edition de Genève – NEG1979 (NEG1979)": "NEG1979",
     "Chinese Standard Bible (Traditional) (CSBT)": "CSBT",
     "Mounce Reverse-Interlinear New Testament (MOUNCE)": "MOUNCE",
@@ -670,6 +672,47 @@ APOCRYPHA_BOOK_DATA: tuple[BookData, ...] = (
     {"title": "Psalm 151", "slug": "psalm151", "aliases": ("psalm 151", "ps151")},
 )
 
+BOOK_OF_MORMON_BOOK_DATA: tuple[BookData, ...] = (
+    {
+        "title": "1 Nephi",
+        "slug": "1nephi",
+        "aliases": ("1 nephi", "1 ne", "1nephi", "1ne"),
+    },
+    {
+        "title": "2 Nephi",
+        "slug": "2nephi",
+        "aliases": ("2 nephi", "2 ne", "2nephi", "2ne"),
+    },
+    {"title": "Jacob", "slug": "jacob", "aliases": ("jacob", "jac")},
+    {"title": "Enos", "slug": "enos", "aliases": ("enos",)},
+    {"title": "Jarom", "slug": "jarom", "aliases": ("jarom",)},
+    {"title": "Omni", "slug": "omni", "aliases": ("omni",)},
+    {
+        "title": "Words of Mormon",
+        "slug": "wordsofmormon",
+        "aliases": ("words of mormon", "wordsofmormon", "w of m", "wom"),
+    },
+    {"title": "Mosiah", "slug": "mosiah", "aliases": ("mosiah", "mos")},
+    {"title": "Alma", "slug": "alma", "aliases": ("alma",)},
+    {"title": "Helaman", "slug": "helaman", "aliases": ("helaman", "hel")},
+    {
+        "title": "3 Nephi",
+        "slug": "3nephi",
+        "aliases": ("3 nephi", "3 ne", "3nephi", "3ne"),
+    },
+    {
+        "title": "4 Nephi",
+        "slug": "4nephi",
+        "aliases": ("4 nephi", "4 ne", "4nephi", "4ne"),
+    },
+    {"title": "Mormon", "slug": "mormon", "aliases": ("mormon", "morm")},
+    {"title": "Ether", "slug": "ether", "aliases": ("ether", "eth")},
+    {"title": "Moroni", "slug": "moroni", "aliases": ("moroni", "moro", "mor")},
+)
+BOOK_OF_MORMON_BOOK_SLUGS: tuple[str, ...] = tuple(
+    book["slug"] for book in BOOK_OF_MORMON_BOOK_DATA
+)
+
 APOCRYPHA_BOOK_SLUGS: tuple[str, ...] = tuple(
     book["slug"] for book in APOCRYPHA_BOOK_DATA
 )
@@ -748,6 +791,7 @@ SEFARIA_VERSION_TITLES: dict[str, str] = {
     "RJPS": "THE JPS TANAKH: Gender-Sensitive Edition",
 }
 VERSION_PROVIDERS.update({code: "sefaria" for code in SEFARIA_VERSION_TITLES})
+VERSION_PROVIDERS["BOM"] = "bookofmormon"
 VERSION_SUPPORTED_BOOK_SLUGS: dict[str, frozenset[str]] = {
     code: frozenset(PROTESTANT_CANON_BOOK_SLUGS) for code in VERSIONS
 }
@@ -764,5 +808,8 @@ VERSION_SUPPORTED_BOOK_SLUGS["HHH"] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["WLC"] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
 for code in ("JPS", "NJPS", "RJPS"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
+VERSION_SUPPORTED_BOOK_SLUGS["BOM"] = frozenset(BOOK_OF_MORMON_BOOK_SLUGS)
 
-BOOKS: tuple[str, ...] = PROTESTANT_CANON_BOOK_SLUGS + APOCRYPHA_BOOK_SLUGS
+BOOKS: tuple[str, ...] = (
+    PROTESTANT_CANON_BOOK_SLUGS + APOCRYPHA_BOOK_SLUGS + BOOK_OF_MORMON_BOOK_SLUGS
+)

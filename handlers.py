@@ -31,6 +31,7 @@ from parsing import (
     get_version_provider,
     other_version,
     parse_get_request,
+    resolve_auto_version,
     version_supports_passage,
 )
 from state import (
@@ -183,6 +184,8 @@ async def fetch_passage(
     provider = get_version_provider(version)
     if provider == "sefaria":
         client = context.application.bot_data["sefaria_client"]
+    elif provider == "bookofmormon":
+        client = context.application.bot_data["book_of_mormon_client"]
     else:
         client = context.application.bot_data["bible_client"]
     return await client.get_passage(passage, version, inline_details=inline_details)
@@ -202,9 +205,11 @@ async def reply_with_passage_result(
     version: str,
     display_name: str,
     *,
+    explicit_version: bool = False,
     reply_markup: ReplyKeyboardRemove | None = None,
 ) -> None:
     message = require_message(update)
+    version = resolve_auto_version(version, passage, explicit_version=explicit_version)
     supports_passage, requested_book = version_supports_passage(version, passage)
     if not supports_passage and requested_book:
         await message.reply_text(
@@ -338,7 +343,9 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     message = require_message(update)
     user_data = require_user_data(context)
     raw_text = ensure_text(message.text).strip()
-    version, passage = parse_get_request(raw_text, get_default_version(context))
+    version, passage, explicit_version = parse_get_request(
+        raw_text, get_default_version(context)
+    )
     display_name, _, _ = get_identity(update)
 
     if version is None:
@@ -349,10 +356,18 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
 
     if passage:
-        await reply_with_passage_result(update, context, passage, version, display_name)
+        await reply_with_passage_result(
+            update,
+            context,
+            passage,
+            version,
+            display_name,
+            explicit_version=explicit_version,
+        )
         return ConversationHandler.END
 
     user_data["pending_get_version"] = version
+    user_data["pending_get_version_explicit"] = explicit_version
     await message.reply_text(
         f"Which Bible passage do you want to lookup? Version: {version}\n\n"
         "Tip: For faster results, use:\n/get John 3:16\n"
@@ -369,6 +384,7 @@ async def get_conversation_message(
     version = ensure_text(
         user_data.pop("pending_get_version", get_default_version(context))
     )
+    explicit_version = bool(user_data.pop("pending_get_version_explicit", False))
     display_name, _, _ = get_identity(update)
     await reply_with_passage_result(
         update,
@@ -376,6 +392,7 @@ async def get_conversation_message(
         ensure_text(message.text).strip(),
         version,
         display_name,
+        explicit_version=explicit_version,
         reply_markup=ReplyKeyboardRemove(),
     )
     return ConversationHandler.END
@@ -544,9 +561,13 @@ async def handle_inline_query(
     if len(words) > 1 and words[-1].upper() in VERSIONS:
         passage = " ".join(words[:-1])
         version = words[-1].upper()
+        explicit_version = True
     else:
         passage = query
         version = default_version
+        explicit_version = False
+
+    version = resolve_auto_version(version, passage, explicit_version=explicit_version)
 
     supports_passage, _ = version_supports_passage(version, passage)
     if not supports_passage:
@@ -609,7 +630,12 @@ async def linked_passage_handler(
         reference = reference[: -len(bot_handle)]
     passage = decode_linked_reference(reference)
     await reply_with_passage_result(
-        update, context, passage, get_default_version(context), display_name
+        update,
+        context,
+        passage,
+        get_default_version(context),
+        display_name,
+        explicit_version=False,
     )
 
 
@@ -640,6 +666,7 @@ async def quick_lookup_handler(
             passage,
             get_default_version(context),
             display_name,
+            explicit_version=False,
             reply_markup=ReplyKeyboardRemove(),
         )
         return
@@ -652,6 +679,7 @@ async def quick_lookup_handler(
             canonical_passage,
             get_default_version(context),
             display_name,
+            explicit_version=False,
             reply_markup=ReplyKeyboardRemove(),
         )
         return
