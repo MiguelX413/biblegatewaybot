@@ -41,6 +41,10 @@ VERSION_DATA = OrderedDict(
                 "Jubilee Bible 2000 (JUB)",
                 "JPS 1917 (JPS)",
                 "JPS, 1985 (NJPS)",
+                "The Koren Jerusalem Bible (KOREN)",
+                "The Contemporary Torah, JPS, 2006 (CTJPS)",
+                "The Five Books of Moses, by Everett Fox (FOX)",
+                "Metsudah Chumash, Metsudah Publications, 2009 (METSUDAH)",
                 "Revised JPS, 2023 (RJPS)",
                 "King James Version (KJV)",
                 "Authorized (King James) Version (AKJV)",
@@ -459,6 +463,10 @@ VERSION_LOOKUP = {
     "King James Version (KJV)": "KJV",
     "JPS 1917 (JPS)": "JPS",
     "JPS, 1985 (NJPS)": "NJPS",
+    "The Koren Jerusalem Bible (KOREN)": "KOREN",
+    "The Contemporary Torah, JPS, 2006 (CTJPS)": "CTJPS",
+    "The Five Books of Moses, by Everett Fox (FOX)": "FOX",
+    "Metsudah Chumash, Metsudah Publications, 2009 (METSUDAH)": "METSUDAH",
     "Revised JPS, 2023 (RJPS)": "RJPS",
     "International Standard Version (ISV)": "ISV",
     "Bible 21 (B21)": "B21",
@@ -631,6 +639,7 @@ PROTESTANT_CANON_BOOK_SLUGS = (
     "revelation",
 )
 OLD_TESTAMENT_BOOK_SLUGS = PROTESTANT_CANON_BOOK_SLUGS[:39]
+TORAH_BOOK_SLUGS = PROTESTANT_CANON_BOOK_SLUGS[:5]
 NEW_TESTAMENT_BOOK_SLUGS = PROTESTANT_CANON_BOOK_SLUGS[39:]
 
 APOCRYPHA_BOOK_DATA: tuple[BookData, ...] = (
@@ -879,6 +888,10 @@ VERSION_PROVIDERS: dict[str, str] = {code: "biblegateway" for code in VERSIONS}
 SEFARIA_VERSION_TITLES: dict[str, str] = {
     "JPS": "The Holy Scriptures: A New Translation (JPS 1917)",
     "NJPS": "Tanakh: The Holy Scriptures, published by JPS",
+    "KOREN": "The Koren Jerusalem Bible",
+    "CTJPS": "The Contemporary Torah, Jewish Publication Society, 2006",
+    "FOX": "The Five Books of Moses, by Everett Fox. New York, Schocken Books, 1995",
+    "METSUDAH": "Metsudah Chumash, Metsudah Publications, 2009",
     "RJPS": "THE JPS TANAKH: Gender-Sensitive Edition",
 }
 VERSION_PROVIDERS.update({code: "sefaria" for code in SEFARIA_VERSION_TITLES})
@@ -898,8 +911,10 @@ for code in ("DLNT", "MOUNCE", "PHILLIPS", "WE"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["HHH"] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["WLC"] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
-for code in ("JPS", "NJPS", "RJPS"):
+for code in ("JPS", "NJPS", "KOREN", "RJPS"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
+for code in ("CTJPS", "FOX", "METSUDAH"):
+    VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(TORAH_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["BOM"] = frozenset(BOOK_OF_MORMON_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["DC"] = frozenset(DOCTRINE_AND_COVENANTS_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["PGP"] = frozenset(PEARL_OF_GREAT_PRICE_BOOK_SLUGS)
