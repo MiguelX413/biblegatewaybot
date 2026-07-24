@@ -1,4 +1,5 @@
 import re
+from html import escape
 from typing import Any
 
 from state import DEFAULT_VERSION
@@ -21,6 +22,20 @@ def ensure_text(value) -> str:
 def build_bot_handle(application: Any) -> str:
     username = application.bot.username or "scripturebot"
     return f"@{username}"
+
+
+def format_passage_html(text: str) -> str:
+    blocks = text.split("\n\n", 1)
+    if len(blocks) == 2:
+        header, body = blocks
+    else:
+        header, body = text, ""
+
+    escaped_header = escape(header.strip())
+    escaped_body = escape(body.strip())
+    if escaped_body:
+        return f"<b>{escaped_header}</b>\n\n<blockquote expandable>{escaped_body}</blockquote>"
+    return f"<b>{escaped_header}</b>"
 
 
 def command_list(application: Application) -> str:

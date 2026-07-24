@@ -6,6 +6,7 @@ from parsing import (
     decode_linked_reference,
     extract_leading_book_name,
     find_requested_book,
+    format_passage_html,
     get_version_provider,
     normalize_book_name,
     normalize_reference_lookup_key,
@@ -18,6 +19,12 @@ from parsing import (
 
 
 class ParsingTests(unittest.TestCase):
+    def test_format_passage_html_uses_expandable_blockquote(self):
+        self.assertEqual(
+            "<b>John 3:16 (NIV)</b>\n\n<blockquote expandable>For God so loved the world.</blockquote>",
+            format_passage_html("John 3:16 (NIV)\n\nFor God so loved the world."),
+        )
+
     def test_parse_get_uses_default_version(self):
         version, passage = parse_get_request("/get John 3:16", "NIV")
         self.assertEqual(("NIV", "John 3:16"), (version, passage))

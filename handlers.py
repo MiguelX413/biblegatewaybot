@@ -10,7 +10,7 @@ from telegram import (
     ReplyKeyboardRemove,
     Update,
 )
-from telegram.constants import ChatAction
+from telegram.constants import ChatAction, ParseMode
 from telegram.ext import CallbackContext, ContextTypes, ConversationHandler
 
 from config import BotConfig
@@ -21,6 +21,7 @@ from parsing import (
     command_list,
     decode_linked_reference,
     ensure_text,
+    format_passage_html,
     other_version,
     parse_get_request,
     version_supports_passage,
@@ -184,7 +185,11 @@ async def reply_with_passage_result(
             reply_markup=reply_markup,
         )
         return
-    await update.effective_message.reply_text(str(response), reply_markup=reply_markup)
+    await update.effective_message.reply_text(
+        format_passage_html(str(response)),
+        reply_markup=reply_markup,
+        parse_mode=ParseMode.HTML,
+    )
 
 
 async def reply_with_search_results(
@@ -504,7 +509,10 @@ async def handle_inline_query(
             id=inline_result.result_id,
             title=inline_result.title,
             description=inline_result.description,
-            input_message_content=InputTextMessageContent(inline_result.passage),
+            input_message_content=InputTextMessageContent(
+                format_passage_html(inline_result.passage),
+                parse_mode=ParseMode.HTML,
+            ),
         )
     ]
     await inline_query.answer(
