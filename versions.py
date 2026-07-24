@@ -54,6 +54,17 @@ VERSION_DATA = OrderedDict(
                 "The Koren Jerusalem Bible (KOREN)",
                 "The Contemporary Torah, JPS, 2006 (CTJPS)",
                 "The Five Books of Moses, by Everett Fox (FOX)",
+                "Sefaria Community Translation (SCOMM)",
+                "Brenton's Septuagint (BRENTON)",
+                "R. H. Charles Translation (CHARLES)",
+                "Rabbi Mike Feuer, Jerusalem Anthology (FEUER)",
+                "The Book of Tobit, English translation by A. Neubauer, 1878 "
+                "(NEUBAUER)",
+                "The Letter of Aristeas, The Clarendon Press, 1913 (ARISTEAS)",
+                "the Open Siddur Project (OPENSID)",
+                "Translated by Hanan and Esther Eshel (ESHEL)",
+                "The Wisdom of Ben Sira, Cambridge University Press, 1899 "
+                "(BENSIRA1899)",
                 "Metsudah Chumash, Metsudah Publications, 2009 (METSUDAH)",
                 "Revised JPS, 2023 (RJPS)",
                 "King James Version (KJV)",
@@ -505,7 +516,13 @@ APOCRYPHA_BOOK_DATA: tuple[BookData, ...] = (
     {
         "title": "Sirach",
         "slug": "sirach",
-        "aliases": ("sirach", "ecclesiasticus", "sir"),
+        "aliases": (
+            "sirach",
+            "ecclesiasticus",
+            "sir",
+            "ben sira",
+            "wisdom of ben sira",
+        ),
     },
     {"title": "Baruch", "slug": "baruch", "aliases": ("baruch", "bar")},
     {
@@ -594,6 +611,35 @@ BOOK_OF_MORMON_BOOK_DATA: tuple[BookData, ...] = (
 BOOK_OF_MORMON_BOOK_SLUGS: tuple[str, ...] = tuple(
     book["slug"] for book in BOOK_OF_MORMON_BOOK_DATA
 )
+SEFARIA_EXTRA_BOOK_DATA: tuple[BookData, ...] = (
+    {
+        "title": "Jubilees",
+        "slug": "jubilees",
+        "aliases": ("book of jubilees", "jubilees"),
+    },
+    {
+        "title": "Letter of Aristeas",
+        "slug": "letterofaristeas",
+        "aliases": ("letter of aristeas", "aristeas"),
+    },
+    {
+        "title": "Megillat Antiochus",
+        "slug": "megillatantiochus",
+        "aliases": ("megillat antiochus", "megillatantiochus"),
+    },
+    {"title": "Psalm 154", "slug": "psalm154", "aliases": ("psalm 154", "ps154")},
+    {
+        "title": "Testaments of the Twelve Patriarchs",
+        "slug": "testamentsofthetwelvepatriarchs",
+        "aliases": (
+            "testaments of the twelve patriarchs",
+            "testament of the twelve patriarchs",
+        ),
+    },
+)
+SEFARIA_EXTRA_BOOK_SLUGS: tuple[str, ...] = tuple(
+    book["slug"] for book in SEFARIA_EXTRA_BOOK_DATA
+)
 DOCTRINE_AND_COVENANTS_BOOK_DATA: tuple[BookData, ...] = (
     {
         "title": "Doctrine and Covenants",
@@ -655,6 +701,9 @@ LDS_STANDARD_WORKS_BOOK_SLUGS: tuple[str, ...] = tuple(
 
 APOCRYPHA_BOOK_SLUGS: tuple[str, ...] = tuple(
     book["slug"] for book in APOCRYPHA_BOOK_DATA
+)
+NONCANON_BOOK_SLUGS: frozenset[str] = frozenset(
+    APOCRYPHA_BOOK_SLUGS + SEFARIA_EXTRA_BOOK_SLUGS
 )
 APOCRYPHA_TITLE_TO_SLUG: dict[str, str] = {
     book["title"]: book["slug"] for book in APOCRYPHA_BOOK_DATA
@@ -732,12 +781,26 @@ VERSION_ADDITIONAL_BOOK_SLUGS: dict[str, frozenset[str]] = {
     "WYC": CORE_DEUTEROCANON_BOOK_SLUGS,
 }
 VERSION_PROVIDERS: dict[str, str] = {code: "biblegateway" for code in VERSIONS}
-SEFARIA_VERSION_TITLES: dict[str, str] = {
+SEFARIA_VERSION_TITLES: dict[str, str | dict[str, str]] = {
     "JPS": "The Holy Scriptures: A New Translation (JPS 1917)",
     "NJPS": "Tanakh: The Holy Scriptures, published by JPS",
     "KOREN": "The Koren Jerusalem Bible",
     "CTJPS": "The Contemporary Torah, Jewish Publication Society, 2006",
     "FOX": "The Five Books of Moses, by Everett Fox. New York, Schocken Books, 1995",
+    "SCOMM": "Sefaria Community Translation",
+    "BRENTON": "Brenton's Septuagint",
+    "CHARLES": {
+        "jubilees": "The Book of Jubilees, trans. R. H. Charles. London [1917]",
+        "testamentsofthetwelvepatriarchs": (
+            "Testaments of the Twelve Patriarchs, R. H. Charles,1908"
+        ),
+    },
+    "FEUER": "Rabbi Mike Feuer, Jerusalem Anthology",
+    "NEUBAUER": "The Book of Tobit, English translation by A. Neubauer, 1878",
+    "ARISTEAS": "The Letter of Aristeas, The Clarendon Press, 1913",
+    "OPENSID": "the Open Siddur Project",
+    "ESHEL": "Translated by Hanan and Esther Eshel",
+    "BENSIRA1899": "The Wisdom of Ben Sira, Cambridge University Press, 1899",
     "METSUDAH": "Metsudah Chumash, Metsudah Publications, 2009",
     "RJPS": "THE JPS TANAKH: Gender-Sensitive Edition",
 }
@@ -762,10 +825,36 @@ for code in ("JPS", "NJPS", "KOREN", "RJPS"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
 for code in ("CTJPS", "FOX", "METSUDAH"):
     VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(TORAH_BOOK_SLUGS)
+VERSION_SUPPORTED_BOOK_SLUGS["SCOMM"] = frozenset(
+    {
+        "sirach",
+        "wisdom",
+        "judith",
+        "susanna",
+        "prayerofmanasseh",
+        "psalm151",
+        "1maccabees",
+        "2maccabees",
+        "jubilees",
+    }
+)
+VERSION_SUPPORTED_BOOK_SLUGS["BRENTON"] = frozenset({"1maccabees"})
+VERSION_SUPPORTED_BOOK_SLUGS["CHARLES"] = frozenset(
+    {"jubilees", "testamentsofthetwelvepatriarchs"}
+)
+VERSION_SUPPORTED_BOOK_SLUGS["FEUER"] = frozenset({"1maccabees", "megillatantiochus"})
+VERSION_SUPPORTED_BOOK_SLUGS["NEUBAUER"] = frozenset({"tobit"})
+VERSION_SUPPORTED_BOOK_SLUGS["ARISTEAS"] = frozenset({"letterofaristeas"})
+VERSION_SUPPORTED_BOOK_SLUGS["OPENSID"] = frozenset({"megillatantiochus"})
+VERSION_SUPPORTED_BOOK_SLUGS["ESHEL"] = frozenset({"psalm154"})
+VERSION_SUPPORTED_BOOK_SLUGS["BENSIRA1899"] = frozenset({"sirach"})
 VERSION_SUPPORTED_BOOK_SLUGS["BOM"] = frozenset(BOOK_OF_MORMON_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["DC"] = frozenset(DOCTRINE_AND_COVENANTS_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["PGP"] = frozenset(PEARL_OF_GREAT_PRICE_BOOK_SLUGS)
 
 BOOKS: tuple[str, ...] = (
-    PROTESTANT_CANON_BOOK_SLUGS + APOCRYPHA_BOOK_SLUGS + LDS_STANDARD_WORKS_BOOK_SLUGS
+    PROTESTANT_CANON_BOOK_SLUGS
+    + APOCRYPHA_BOOK_SLUGS
+    + SEFARIA_EXTRA_BOOK_SLUGS
+    + LDS_STANDARD_WORKS_BOOK_SLUGS
 )

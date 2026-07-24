@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Any, cast
 from state import DEFAULT_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
-    APOCRYPHA_BOOK_SLUGS,
     LDS_STANDARD_WORKS_BOOK_DATA,
+    NONCANON_BOOK_SLUGS,
+    SEFARIA_EXTRA_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
     VERSIONS,
@@ -79,6 +80,13 @@ TELEGRAM_MESSAGE_LIMIT = (
     else 4096
 )
 INLINE_CONTINUATION_NOTICE = "…continued; use /get for the full passage."
+PREFERRED_NONCANON_VERSION_BY_BOOK_SLUG = {
+    "jubilees": "CHARLES",
+    "letterofaristeas": "ARISTEAS",
+    "megillatantiochus": "OPENSID",
+    "psalm154": "ESHEL",
+    "testamentsofthetwelvepatriarchs": "CHARLES",
+}
 
 SUPERSCRIPT_TRANSLATION = str.maketrans(
     {
@@ -433,6 +441,12 @@ for book in APOCRYPHA_BOOK_DATA:
             book["slug"],
             book["title"],
         )
+for book in SEFARIA_EXTRA_BOOK_DATA:
+    for alias in book["aliases"]:
+        BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
+            book["slug"],
+            book["title"],
+        )
 for book in LDS_STANDARD_WORKS_BOOK_DATA:
     for alias in book["aliases"]:
         BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
@@ -475,6 +489,10 @@ def normalize_book_name(book_name: str) -> tuple[str | None, str]:
 
 
 def extract_leading_book_name(text: str) -> str | None:
+    for special_case in ("psalm 151", "psalm 154"):
+        if re.search(rf"(?i)^\s*{re.escape(special_case)}(?=\s+\d)", text):
+            return special_case.title()
+
     match = re.search(r"(?i)^\s*((?:[1-4]\s+)?[a-z][a-z'&\-\u2014\s]+?)\s+\d", text)
     if match:
         return " ".join(match.group(1).split()).strip()
@@ -523,12 +541,14 @@ def resolve_auto_version(
     if len(supported_versions) == 1:
         return next(iter(supported_versions))
 
-    if (
-        book_slug in APOCRYPHA_BOOK_SLUGS
-        and not version_supports_book_slug(version, book_slug)
-        and not version_supports_book_slug("NIV", book_slug)
+    if book_slug in NONCANON_BOOK_SLUGS and not version_supports_book_slug(
+        version, book_slug
     ):
-        return "NRSVUE"
+        if version_supports_book_slug("NRSVUE", book_slug):
+            return "NRSVUE"
+        preferred_version = PREFERRED_NONCANON_VERSION_BY_BOOK_SLUG.get(book_slug)
+        if preferred_version and preferred_version in supported_versions:
+            return preferred_version
     return version
 
 

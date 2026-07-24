@@ -17,6 +17,7 @@ from telegram import (
     User,
 )
 from telegram.constants import ChatAction, MessageEntityType
+from telegram.error import TelegramError
 from telegram.ext import CallbackContext, ContextTypes, ConversationHandler
 
 from config import BotConfig
@@ -70,7 +71,7 @@ def build_passage_header_url(passage: str, version: str) -> str | None:
     if provider == "biblegateway":
         return build_bible_gateway_passage_url(passage, version)
     if provider == "sefaria":
-        return build_sefaria_passage_url(passage)
+        return build_sefaria_passage_url(passage, version)
     if provider == "lds":
         return build_lds_passage_url(passage)
     return None
@@ -208,7 +209,10 @@ def replied_to_bot(update: Update) -> bool:
 
 async def send_typing(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat = require_chat(update)
-    await context.bot.send_chat_action(chat_id=chat.id, action=ChatAction.TYPING)
+    try:
+        await context.bot.send_chat_action(chat_id=chat.id, action=ChatAction.TYPING)
+    except TelegramError as exc:
+        logging.warning("Failed to send typing action for chat %s: %s", chat.id, exc)
 
 
 async def notify_admin(context: ContextTypes.DEFAULT_TYPE, text: str) -> None:

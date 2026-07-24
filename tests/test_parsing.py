@@ -160,6 +160,10 @@ class ParsingTests(unittest.TestCase):
             find_requested_book("Joseph Smith-History 1:15"),
         )
         self.assertEqual(
+            ("jubilees", "Jubilees"),
+            find_requested_book("Jubilees 1:1"),
+        )
+        self.assertEqual(
             ("wordsofmormon", "Words of Mormon"),
             find_requested_book("Words of Mormon 1:1"),
         )
@@ -197,6 +201,15 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("sefaria", get_version_provider("KOREN"))
         self.assertEqual("sefaria", get_version_provider("CTJPS"))
         self.assertEqual("sefaria", get_version_provider("FOX"))
+        self.assertEqual("sefaria", get_version_provider("SCOMM"))
+        self.assertEqual("sefaria", get_version_provider("BRENTON"))
+        self.assertEqual("sefaria", get_version_provider("CHARLES"))
+        self.assertEqual("sefaria", get_version_provider("FEUER"))
+        self.assertEqual("sefaria", get_version_provider("NEUBAUER"))
+        self.assertEqual("sefaria", get_version_provider("ARISTEAS"))
+        self.assertEqual("sefaria", get_version_provider("OPENSID"))
+        self.assertEqual("sefaria", get_version_provider("ESHEL"))
+        self.assertEqual("sefaria", get_version_provider("BENSIRA1899"))
         self.assertEqual("sefaria", get_version_provider("METSUDAH"))
         self.assertEqual("sefaria", get_version_provider("RJPS"))
         self.assertEqual("lds", get_version_provider("BOM"))
@@ -219,6 +232,22 @@ class ParsingTests(unittest.TestCase):
         self.assertNotIn("joshua", supported_book_slugs("CTJPS"))
         self.assertIn("genesis", supported_book_slugs("FOX"))
         self.assertNotIn("psalm", supported_book_slugs("FOX"))
+        self.assertIn("1maccabees", supported_book_slugs("SCOMM"))
+        self.assertIn("2maccabees", supported_book_slugs("SCOMM"))
+        self.assertIn("jubilees", supported_book_slugs("SCOMM"))
+        self.assertIn("sirach", supported_book_slugs("SCOMM"))
+        self.assertIn("1maccabees", supported_book_slugs("BRENTON"))
+        self.assertNotIn("2maccabees", supported_book_slugs("BRENTON"))
+        self.assertIn("jubilees", supported_book_slugs("CHARLES"))
+        self.assertIn(
+            "testamentsofthetwelvepatriarchs", supported_book_slugs("CHARLES")
+        )
+        self.assertIn("megillatantiochus", supported_book_slugs("FEUER"))
+        self.assertIn("tobit", supported_book_slugs("NEUBAUER"))
+        self.assertIn("letterofaristeas", supported_book_slugs("ARISTEAS"))
+        self.assertIn("megillatantiochus", supported_book_slugs("OPENSID"))
+        self.assertIn("psalm154", supported_book_slugs("ESHEL"))
+        self.assertIn("sirach", supported_book_slugs("BENSIRA1899"))
         self.assertIn("genesis", supported_book_slugs("METSUDAH"))
         self.assertNotIn("isaiah", supported_book_slugs("METSUDAH"))
         self.assertIn("genesis", supported_book_slugs("RJPS"))
@@ -247,17 +276,63 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(
             frozenset({"PGP"}), supported_versions_for_book_slug("abraham")
         )
+        self.assertEqual(
+            frozenset({"SCOMM", "CHARLES"}),
+            supported_versions_for_book_slug("jubilees"),
+        )
+        self.assertEqual(
+            True,
+            {"BRENTON", "SCOMM", "FEUER"}.issubset(
+                supported_versions_for_book_slug("1maccabees")
+            ),
+        )
+        self.assertEqual(
+            True, {"SCOMM"}.issubset(supported_versions_for_book_slug("2maccabees"))
+        )
+        self.assertEqual(
+            frozenset({"ARISTEAS"}),
+            supported_versions_for_book_slug("letterofaristeas"),
+        )
+        self.assertEqual(
+            True,
+            {"OPENSID", "FEUER"}.issubset(
+                supported_versions_for_book_slug("megillatantiochus")
+            ),
+        )
+        self.assertEqual(
+            frozenset({"ESHEL"}), supported_versions_for_book_slug("psalm154")
+        )
+        self.assertEqual(
+            frozenset({"CHARLES"}),
+            supported_versions_for_book_slug("testamentsofthetwelvepatriarchs"),
+        )
         self.assertIn("NIV", supported_versions_for_book_slug("john"))
 
     def test_resolve_auto_version_uses_bom_for_exclusive_books(self):
         self.assertEqual("BOM", resolve_auto_version("NIV", "1 Nephi 3:7"))
         self.assertEqual("DC", resolve_auto_version("NIV", "D&C 1:1"))
         self.assertEqual("PGP", resolve_auto_version("NIV", "Abraham 3:22"))
+        self.assertEqual("CHARLES", resolve_auto_version("NIV", "Jubilees 1:1"))
+        self.assertEqual(
+            "ARISTEAS", resolve_auto_version("NIV", "Letter of Aristeas 1:1")
+        )
+        self.assertEqual(
+            "OPENSID", resolve_auto_version("NIV", "Megillat Antiochus 1:1")
+        )
+        self.assertEqual(
+            "CHARLES",
+            resolve_auto_version("NIV", "Testaments of the Twelve Patriarchs 1:1"),
+        )
         self.assertEqual(
             "NIV",
             resolve_auto_version("NIV", "1 Nephi 3:7", explicit_version=True),
         )
         self.assertEqual("NIV", resolve_auto_version("NIV", "John 3:16"))
+
+    def test_resolve_auto_version_prefers_nrsvue_before_sefaria_for_apocrypha(self):
+        self.assertEqual("NRSVUE", resolve_auto_version("NIV", "1 Maccabees 1:1"))
+        self.assertEqual("NRSVUE", resolve_auto_version("NIV", "2 Maccabees 1:1"))
+        self.assertEqual("NRSVUE", resolve_auto_version("NIV", "Wisdom 3:5"))
 
     def test_resolve_auto_version_falls_back_to_nrsvue_for_missing_apocrypha(self):
         self.assertEqual("NRSVUE", resolve_auto_version("NIV", "1 Esdras 1:1"))
@@ -291,6 +366,44 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual((False, "John"), version_supports_passage("DC", "John 3:16"))
         self.assertEqual(
             (True, "Abraham"), version_supports_passage("PGP", "Abraham 3:22")
+        )
+        self.assertEqual(
+            (True, "Jubilees"),
+            version_supports_passage("SCOMM", "Jubilees 1:1"),
+        )
+        self.assertEqual(
+            (True, "Jubilees"),
+            version_supports_passage("CHARLES", "Jubilees 1:1"),
+        )
+        self.assertEqual(
+            (False, "Genesis"), version_supports_passage("SCOMM", "Genesis 1:1")
+        )
+        self.assertEqual(
+            (False, "Genesis"),
+            version_supports_passage("CHARLES", "Genesis 1:1"),
+        )
+        self.assertEqual(
+            (True, "1 Maccabees"),
+            version_supports_passage("BRENTON", "1 Maccabees 1:1"),
+        )
+        self.assertEqual(
+            (False, "2 Maccabees"),
+            version_supports_passage("BRENTON", "2 Maccabees 1:1"),
+        )
+        self.assertEqual(
+            (True, "2 Maccabees"),
+            version_supports_passage("SCOMM", "2 Maccabees 1:1"),
+        )
+        self.assertEqual(
+            (True, "Letter of Aristeas"),
+            version_supports_passage("ARISTEAS", "Letter of Aristeas 1:1"),
+        )
+        self.assertEqual(
+            (True, "Megillat Antiochus"),
+            version_supports_passage("OPENSID", "Megillat Antiochus 1:1"),
+        )
+        self.assertEqual(
+            (True, "Psalm 154"), version_supports_passage("ESHEL", "Psalm 154 1:1")
         )
         self.assertEqual((False, "John"), version_supports_passage("BOM", "John 3:16"))
 

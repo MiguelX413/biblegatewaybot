@@ -1,6 +1,6 @@
 import unittest
 
-from services.sefaria import parse_passage_payload
+from services.sefaria import normalize_sefaria_passage_reference, parse_passage_payload
 from state import EMPTY, InlinePassageResult
 
 PASSAGE_PAYLOAD = {
@@ -36,6 +36,24 @@ class SefariaParsingTests(unittest.TestCase):
 
     def test_parse_passage_payload_empty(self):
         self.assertEqual(EMPTY, parse_passage_payload({"versions": []}, version="JPS"))
+
+    def test_normalize_sefaria_passage_reference_for_apocrypha(self):
+        self.assertEqual(
+            "The Book of Maccabees I 1:1",
+            normalize_sefaria_passage_reference("1 Maccabees 1:1", "BRENTON"),
+        )
+        self.assertEqual(
+            "The Book of Maccabees II 1:1",
+            normalize_sefaria_passage_reference("2 Maccabees 1:1", "SCOMM"),
+        )
+        self.assertEqual(
+            "Ben Sira 1:1",
+            normalize_sefaria_passage_reference("Sirach 1:1", "SCOMM"),
+        )
+        self.assertEqual(
+            "Letter of Aristeas 1:1",
+            normalize_sefaria_passage_reference("Letter of Aristeas 1:1", "ARISTEAS"),
+        )
 
 
 if __name__ == "__main__":
