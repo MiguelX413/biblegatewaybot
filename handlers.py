@@ -39,6 +39,7 @@ from parsing import (
     resolve_auto_version,
     version_supports_passage,
 )
+from services.bible_com import build_bible_com_passage_url
 from services.bible_gateway import build_bible_gateway_passage_url
 from services.lds_scriptures import build_lds_passage_url
 from services.sefaria import build_sefaria_passage_url
@@ -61,7 +62,7 @@ from state import (
     InlinePassageResult,
     SearchState,
 )
-from versions import VERSION_DATA, VERSION_LOOKUP, VERSIONS
+from versions import VERSION_DATA, VERSION_LOOKUP, resolve_version_code
 
 
 def build_input_message_content(
@@ -75,6 +76,8 @@ def build_passage_header_url(passage: str, version: str) -> str | None:
     provider = get_version_provider(version)
     if provider == "biblegateway":
         return build_bible_gateway_passage_url(passage, version)
+    if provider == "biblecom":
+        return build_bible_com_passage_url(passage, version)
     if provider == "sefaria":
         return build_sefaria_passage_url(passage, version)
     if provider == "lds":
@@ -87,6 +90,7 @@ def build_welcome_message(
 ) -> tuple[str, list[MessageEntity]]:
     source_links = [
         ("BibleGateway", "https://biblegateway.com"),
+        ("Bible.com", "https://bible.com"),
         ("Sefaria", "https://sefaria.org"),
         ("LDS scriptures", "https://churchofjesuschrist.org/study/scriptures"),
     ]
@@ -286,6 +290,8 @@ async def fetch_passage(
     provider = get_version_provider(version)
     if provider == "sefaria":
         client = context.application.bot_data["sefaria_client"]
+    elif provider == "biblecom":
+        client = context.application.bot_data["bible_com_client"]
     elif provider == "lds":
         client = context.application.bot_data["lds_client"]
     else:
@@ -576,8 +582,8 @@ async def setdefault_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     display_name, _, _ = get_identity(update)
 
     if len(parts) > 1:
-        version = parts[1].strip().upper()
-        if version not in VERSIONS:
+        version = resolve_version_code(parts[1].strip())
+        if version is None:
             await message.reply_text(
                 f"Sorry {display_name}, I couldn't find that version. "
                 "Use /setdefault to view all available versions.\n\n"
@@ -667,9 +673,10 @@ async def handle_inline_query(
         return
 
     words = query.split()
-    if len(words) > 1 and words[-1].upper() in VERSIONS:
+    resolved_version = resolve_version_code(words[-1]) if len(words) > 1 else None
+    if resolved_version is not None:
         passage = " ".join(words[:-1])
-        version = words[-1].upper()
+        version = resolved_version
         explicit_version = True
     else:
         passage = query

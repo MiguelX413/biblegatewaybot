@@ -34,6 +34,7 @@ from handlers import (
     start,
     start_setdefault_entry,
 )
+from services.bible_com import BibleComClient
 from services.bible_gateway import BibleGatewayClient
 from services.lds_scriptures import LdsScripturesClient
 from services.local_bible import LocalBibleClient
@@ -51,6 +52,7 @@ from versions import BOOKS, SEFARIA_VERSION_TITLES
 def configure_runtime_services(application: Application, config) -> None:
     application.bot_data["config"] = config
     application.bot_data["bible_client"] = BibleGatewayClient()
+    application.bot_data["bible_com_client"] = BibleComClient()
     application.bot_data["lds_client"] = LdsScripturesClient()
     application.bot_data["sefaria_client"] = SefariaClient(SEFARIA_VERSION_TITLES)
     application.bot_data["local_bible_client"] = (
@@ -67,6 +69,9 @@ async def initialize_runtime_services(application: Application) -> None:
 
 async def close_http_client(application: Application) -> None:
     bible_client: BibleGatewayClient | None = application.bot_data.get("bible_client")
+    bible_com_client: BibleComClient | None = application.bot_data.get(
+        "bible_com_client"
+    )
     lds_client: LdsScripturesClient | None = application.bot_data.get("lds_client")
     sefaria_client: SefariaClient | None = application.bot_data.get("sefaria_client")
     local_bible_client: LocalBibleClient | None = application.bot_data.get(
@@ -74,6 +79,8 @@ async def close_http_client(application: Application) -> None:
     )
     if bible_client is not None:
         await bible_client.close()
+    if bible_com_client is not None:
+        await bible_com_client.close()
     if lds_client is not None:
         await lds_client.close()
     if sefaria_client is not None:

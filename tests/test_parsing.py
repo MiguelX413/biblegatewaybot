@@ -88,6 +88,12 @@ class ParsingTests(unittest.TestCase):
         version, passage, explicit = parse_get_request("/get Genesis 1 NRSVue", "NIV")
         self.assertEqual(("NRSVUE", "Genesis 1", True), (version, passage, explicit))
 
+    def test_parse_get_accepts_bible_com_version_aliases(self):
+        version, passage, explicit = parse_get_request("/get Tobit 4:7 GNADC", "NIV")
+        self.assertEqual(("GNADC25", "Tobit 4:7", True), (version, passage, explicit))
+        version, passage, explicit = parse_get_request("/get Matthew 3 TMA-C", "NIV")
+        self.assertEqual(("TMA-C", "Matthew 3", True), (version, passage, explicit))
+
     def test_parse_get_prompts_for_passage_when_only_version_is_given(self):
         version, passage, explicit = parse_get_request("/get NASB", "NIV")
         self.assertEqual(("NASB", None, True), (version, passage, explicit))
@@ -115,6 +121,12 @@ class ParsingTests(unittest.TestCase):
             "Genesis 1:1 NJPS", "NIV"
         )
         self.assertEqual(("NJPS", "Genesis 1:1", True), (version, passage, explicit))
+
+    def test_parse_reference_version_query_accepts_bible_com_aliases(self):
+        version, passage, explicit = parse_reference_version_query(
+            "Matthew 3 TKʿ", "NIV"
+        )
+        self.assertEqual(("TKA", "Matthew 3", True), (version, passage, explicit))
 
     def test_build_passage_from_ref_normalizes_revelation_name(self):
         passage = build_passage_from_ref(("Revelation of Jesus Christ", 1, 1, 1, 3))
@@ -225,6 +237,11 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("sefaria", get_version_provider("BENSIRA1899"))
         self.assertEqual("sefaria", get_version_provider("METSUDAH"))
         self.assertEqual("sefaria", get_version_provider("RJPS"))
+        self.assertEqual("biblecom", get_version_provider("GNA2025"))
+        self.assertEqual("biblecom", get_version_provider("GNADC25"))
+        self.assertEqual("biblecom", get_version_provider("TMA"))
+        self.assertEqual("biblecom", get_version_provider("TMA-C"))
+        self.assertEqual("biblecom", get_version_provider("TKA"))
         self.assertEqual("lds", get_version_provider("BOM"))
         self.assertEqual("lds", get_version_provider("DC"))
         self.assertEqual("lds", get_version_provider("PGP"))
@@ -238,6 +255,11 @@ class ParsingTests(unittest.TestCase):
         self.assertIn("genesis", supported_book_slugs("JPS"))
         self.assertNotIn("matthew", supported_book_slugs("JPS"))
         self.assertIn("genesis", supported_book_slugs("NJPS"))
+        self.assertIn("john", supported_book_slugs("TMA"))
+        self.assertNotIn("tobit", supported_book_slugs("TMA"))
+        self.assertIn("tobit", supported_book_slugs("GNA2025"))
+        self.assertIn("tobit", supported_book_slugs("GNADC25"))
+        self.assertIn("tobit", supported_book_slugs("TKA"))
         self.assertNotIn("matthew", supported_book_slugs("NJPS"))
         self.assertIn("genesis", supported_book_slugs("KOREN"))
         self.assertNotIn("matthew", supported_book_slugs("KOREN"))

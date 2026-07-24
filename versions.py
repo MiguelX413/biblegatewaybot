@@ -118,7 +118,15 @@ VERSION_DATA = OrderedDict(
         ("—Amuzgo de Guerrero (AMU)—", ["Amuzgo de Guerrero (AMU)"]),
         (
             "—العربية (AR)—",
-            ["Arabic Bible: Easy-to-Read Version (ERV-AR)", "Ketab El Hayat (NAV)"],
+            [
+                "Arabic Bible: Easy-to-Read Version (ERV-AR)",
+                "Ketab El Hayat (NAV)",
+                "الترجمة العربية المشتركة (GNA2025)",
+                "2025 الترجمة العربية المشتركة (GNADC25)",
+                "المعنى الصحيح لإنجيل المسيح (TMA)",
+                "المعنى الصحيح لإنجيل المسيح - ترتيل (TMA-C)",
+                "الترجمة الكاثوليكيّة (اليسوعيّة) (TKA)",
+            ],
         ),
         (
             "—अवधी (AWA)—",
@@ -424,13 +432,42 @@ VERSION_LOOKUP: Final[dict[VersionLabel, VersionCode]] = _build_version_lookup(
     VERSION_DATA
 )
 VERSIONS: Final[tuple[VersionCode, ...]] = tuple(VERSION_LOOKUP.values())
+VERSIONS_SET: Final[frozenset[VersionCode]] = frozenset(VERSIONS)
 VERSION_DISPLAY_LABELS: Final[dict[VersionCode, VersionCode]] = (
     _build_version_display_labels(VERSION_LOOKUP)
 )
+VERSION_CODE_ALIASES: Final[dict[str, VersionCode]] = {
+    "GNADC": "GNADC25",
+    "GNADC25": "GNADC25",
+    "GNADC 25": "GNADC25",
+    "GNADC-25": "GNADC25",
+    "TMA-C": "TMA-C",
+    "TMAC": "TMA-C",
+    "TKA": "TKA",
+    "TKʿ": "TKA",
+    "ت.ك.ع": "TKA",
+}
 
 
 def format_version_label(version: str) -> str:
     return VERSION_DISPLAY_LABELS.get(version.upper(), version)
+
+
+def resolve_version_code(token: str) -> str | None:
+    raw = token.strip()
+    if not raw:
+        return None
+
+    uppercase = raw.upper()
+    if uppercase in VERSIONS_SET:
+        return uppercase
+    if uppercase in VERSION_CODE_ALIASES:
+        return VERSION_CODE_ALIASES[uppercase]
+
+    normalized = re.sub(r"[^0-9A-Z]+", "", uppercase)
+    if normalized in VERSIONS_SET:
+        return normalized
+    return VERSION_CODE_ALIASES.get(normalized)
 
 
 PROTESTANT_CANON_BOOK_SLUGS = (
@@ -772,6 +809,8 @@ VERSION_ADDITIONAL_BOOK_SLUGS: dict[str, frozenset[str]] = {
     "CEB": CORE_DEUTEROCANON_BOOK_SLUGS,
     "DHH": CORE_DEUTEROCANON_BOOK_SLUGS,
     "DRA": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "GNA2025": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "GNADC25": CORE_DEUTEROCANON_BOOK_SLUGS,
     "GNT": CORE_DEUTEROCANON_BOOK_SLUGS,
     "NABRE": CORE_DEUTEROCANON_BOOK_SLUGS,
     "NCB": CORE_DEUTEROCANON_BOOK_SLUGS,
@@ -782,6 +821,7 @@ VERSION_ADDITIONAL_BOOK_SLUGS: dict[str, frozenset[str]] = {
     "NRSVUE": ORTHODOX_SUPPLEMENT_APOCRYPHA_BOOK_SLUGS,
     "RSV": ORTHODOX_SUPPLEMENT_APOCRYPHA_BOOK_SLUGS,
     "RSVCE": CORE_DEUTEROCANON_BOOK_SLUGS,
+    "TKA": CORE_DEUTEROCANON_BOOK_SLUGS,
     "TLA": CORE_DEUTEROCANON_BOOK_SLUGS,
     "WYC": CORE_DEUTEROCANON_BOOK_SLUGS,
 }
@@ -812,6 +852,8 @@ SEFARIA_VERSION_TITLES: dict[str, str | dict[str, str]] = {
 VERSION_PROVIDERS.update({code: "sefaria" for code in SEFARIA_VERSION_TITLES})
 for code in ("BOM", "DC", "PGP"):
     VERSION_PROVIDERS[code] = "lds"
+for code in ("GNA2025", "GNADC25", "TMA", "TMA-C", "TKA"):
+    VERSION_PROVIDERS[code] = "biblecom"
 VERSION_SUPPORTED_BOOK_SLUGS: dict[str, frozenset[str]] = {
     code: frozenset(PROTESTANT_CANON_BOOK_SLUGS) for code in VERSIONS
 }

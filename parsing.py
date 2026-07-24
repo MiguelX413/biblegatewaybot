@@ -13,8 +13,8 @@ from versions import (
     SEFARIA_EXTRA_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
-    VERSIONS,
     format_version_label,
+    resolve_version_code,
 )
 
 _RuntimeMessageEntity: type[Any]
@@ -355,8 +355,9 @@ def parse_reference_version_query(
         return default_version, "", False
 
     words = normalized.split()
-    if len(words) > 1 and words[-1].upper() in VERSIONS:
-        return words[-1].upper(), " ".join(words[:-1]).strip(), True
+    resolved_version = resolve_version_code(words[-1]) if len(words) > 1 else None
+    if resolved_version is not None:
+        return resolved_version, " ".join(words[:-1]).strip(), True
 
     return default_version, normalized, False
 
@@ -623,13 +624,17 @@ def parse_get_request(
     if not arguments:
         return default_version, None, False
 
-    if len(arguments) == 1 and arguments[0].upper() in VERSIONS:
-        return arguments[0].upper(), None, True
+    resolved_version = (
+        resolve_version_code(arguments[0]) if len(arguments) == 1 else None
+    )
+    if resolved_version is not None:
+        return resolved_version, None, True
 
     version = default_version
     explicit_version = False
-    if arguments[-1].upper() in VERSIONS:
-        version = arguments[-1].upper()
+    resolved_version = resolve_version_code(arguments[-1])
+    if resolved_version is not None:
+        version = resolved_version
         arguments = arguments[:-1]
         explicit_version = True
 
