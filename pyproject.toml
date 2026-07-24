@@ -5,11 +5,11 @@ description = "Telegram bot that fetches Bible passages from BibleGateway"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
-    "beautifulsoup4>=4.14.3",
-    "httpx>=0.28.1,<0.29",
-    "lxml>=6.0.2",
-    "python-scriptures>=3.0.0",
-    "python-telegram-bot>=22.8,<23",
+    "beautifulsoup4~=4.14.3",
+    "httpx~=0.28.1",
+    "lxml~=6.0.2",
+    "python-scriptures~=3.0.0",
+    "python-telegram-bot~=22.8",
 ]
 
 [project.scripts]
