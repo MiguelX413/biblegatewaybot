@@ -19,6 +19,7 @@ from parsing import (
     other_version,
     parse_get_request,
     parse_reference_version_query,
+    parse_version_selection,
     resolve_auto_version,
     supported_book_slugs,
     supported_versions_for_book_slug,
@@ -81,25 +82,35 @@ class ParsingTests(unittest.TestCase):
 
     def test_parse_get_uses_default_version(self):
         version, passage, explicit = parse_get_request("/get John 3:16", "NIV")
-        self.assertEqual(("NIV", "John 3:16", False), (version, passage, explicit))
+        self.assertEqual(
+            ((("NIV",),), "John 3:16", False), (version, passage, explicit)
+        )
 
     def test_parse_get_uses_trailing_version(self):
         version, passage, explicit = parse_get_request("/get 1 cor 13:4-7 NLT", "NIV")
-        self.assertEqual(("NLT", "1 cor 13:4-7", True), (version, passage, explicit))
+        self.assertEqual(
+            ((("NLT",),), "1 cor 13:4-7", True), (version, passage, explicit)
+        )
 
     def test_parse_get_accepts_mixed_case_display_version_code(self):
         version, passage, explicit = parse_get_request("/get Genesis 1 NRSVue", "NIV")
-        self.assertEqual(("NRSVUE", "Genesis 1", True), (version, passage, explicit))
+        self.assertEqual(
+            ((("NRSVUE",),), "Genesis 1", True), (version, passage, explicit)
+        )
 
     def test_parse_get_accepts_bible_com_version_aliases(self):
         version, passage, explicit = parse_get_request("/get Tobit 4:7 GNADC", "NIV")
-        self.assertEqual(("GNADC25", "Tobit 4:7", True), (version, passage, explicit))
+        self.assertEqual(
+            ((("GNADC25",),), "Tobit 4:7", True), (version, passage, explicit)
+        )
         version, passage, explicit = parse_get_request("/get Matthew 3 TMA-C", "NIV")
-        self.assertEqual(("TMA-C", "Matthew 3", True), (version, passage, explicit))
+        self.assertEqual(
+            ((("TMA-C",),), "Matthew 3", True), (version, passage, explicit)
+        )
 
     def test_parse_get_prompts_for_passage_when_only_version_is_given(self):
         version, passage, explicit = parse_get_request("/get NASB", "NIV")
-        self.assertEqual(("NASB", None, True), (version, passage, explicit))
+        self.assertEqual(((("NASB",),), None, True), (version, passage, explicit))
 
     def test_parse_get_rejects_old_command_suffix_format(self):
         version, passage, explicit = parse_get_request("/getabc John 3:16", "NIV")
@@ -108,7 +119,7 @@ class ParsingTests(unittest.TestCase):
     def test_parse_get_treats_non_version_tail_as_part_of_reference(self):
         version, passage, explicit = parse_get_request("/get John 3:16 earth", "NIV")
         self.assertEqual(
-            ("NIV", "John 3:16 earth", False), (version, passage, explicit)
+            ((("NIV",),), "John 3:16 earth", False), (version, passage, explicit)
         )
 
     def test_parse_get_rejects_non_get_commands(self):
@@ -117,19 +128,42 @@ class ParsingTests(unittest.TestCase):
 
     def test_parse_reference_version_query_uses_default_version(self):
         version, passage, explicit = parse_reference_version_query("John 3:16", "NIV")
-        self.assertEqual(("NIV", "John 3:16", False), (version, passage, explicit))
+        self.assertEqual(
+            ((("NIV",),), "John 3:16", False), (version, passage, explicit)
+        )
 
     def test_parse_reference_version_query_uses_trailing_version(self):
         version, passage, explicit = parse_reference_version_query(
             "Genesis 1:1 NJPS", "NIV"
         )
-        self.assertEqual(("NJPS", "Genesis 1:1", True), (version, passage, explicit))
+        self.assertEqual(
+            ((("NJPS",),), "Genesis 1:1", True), (version, passage, explicit)
+        )
 
     def test_parse_reference_version_query_accepts_bible_com_aliases(self):
         version, passage, explicit = parse_reference_version_query(
             "Matthew 3 TKʿ", "NIV"
         )
-        self.assertEqual(("TKA", "Matthew 3", True), (version, passage, explicit))
+        self.assertEqual(((("TKA",),), "Matthew 3", True), (version, passage, explicit))
+
+    def test_parse_version_selection_supports_fallbacks_and_parallels(self):
+        self.assertEqual(
+            (("NIV", "NRSVUE"), ("GNADC25",)),
+            parse_version_selection("NIV,NRSVue&GNADC"),
+        )
+        self.assertEqual(
+            (("NIV", "NRSVUE"), ("TMA", "GNADC25")),
+            parse_version_selection("NIV,NRSVue&TMA,GNADC"),
+        )
+        self.assertIsNone(parse_version_selection("NIV,&NRSVUE"))
+
+    def test_parse_get_accepts_version_selection(self):
+        selection, passage, explicit = parse_get_request(
+            "/get 1 Maccabees 1 NIV,NRSVue&GNADC", "NIV"
+        )
+        self.assertEqual((("NIV", "NRSVUE"), ("GNADC25",)), selection)
+        self.assertEqual("1 Maccabees 1", passage)
+        self.assertTrue(explicit)
 
     def test_build_passage_from_ref_normalizes_revelation_name(self):
         passage = build_passage_from_ref(("Revelation of Jesus Christ", 1, 1, 1, 3))

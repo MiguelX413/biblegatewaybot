@@ -22,6 +22,7 @@ from telegram.ext import CallbackContext, ContextTypes, ConversationHandler
 
 from config import BotConfig
 from parsing import (
+    VersionSelection,
     build_bot_handle,
     build_passage_from_ref,
     canonicalize_reference,
@@ -31,12 +32,14 @@ from parsing import (
     find_requested_book,
     format_passage_chunks,
     format_passage_entities,
+    format_version_selection,
     get_passage_scripture_system,
     get_version_provider,
     is_book_only_request,
     other_version,
     parse_get_request,
     parse_reference_version_query,
+    parse_version_selection,
     resolve_auto_version,
     version_supports_passage,
 )
@@ -372,11 +375,38 @@ async def fetch_search_results(
     return await client.get_search_results(term, start=start)
 
 
+def resolve_version_selection(
+    selection: VersionSelection, passage: str, *, explicit_version: bool
+) -> VersionSelection:
+    if explicit_version:
+        return selection
+    return tuple((resolve_auto_version(version, passage),) for (version,) in selection)
+
+
+async def fetch_version_group(
+    context: ContextTypes.DEFAULT_TYPE,
+    passage: str,
+    candidates: tuple[str, ...],
+    *,
+    inline_details: bool = False,
+) -> tuple[str, str | InlinePassageResult] | None:
+    for version in candidates:
+        supports_passage, _ = version_supports_passage(version, passage)
+        if not supports_passage:
+            continue
+        response = await fetch_passage(
+            context, passage, version, inline_details=inline_details
+        )
+        if response not in (None, EMPTY):
+            return version, response
+    return None
+
+
 async def reply_with_passage_result(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     passage: str,
-    version: str,
+    selection: VersionSelection,
     display_name: str,
     *,
     explicit_version: bool = False,
@@ -384,41 +414,29 @@ async def reply_with_passage_result(
     silent_failures: bool = False,
 ) -> None:
     message = require_message(update)
-    version = resolve_auto_version(version, passage, explicit_version=explicit_version)
-    header_url = build_passage_header_url(passage, version)
-    supports_passage, requested_book = version_supports_passage(version, passage)
-    if not supports_passage and requested_book:
-        if silent_failures:
-            return
-        await message.reply_text(
-            f"Sorry {display_name}, {version} does not appear to include "
-            f"{requested_book}. "
-            "Try a translation that includes that book.",
-            reply_markup=reply_markup,
-        )
-        return
-
+    selection = resolve_version_selection(
+        selection, passage, explicit_version=explicit_version
+    )
     await send_typing(update, context)
-    response = await fetch_passage(context, passage, version)
-    if response == EMPTY:
-        if silent_failures:
-            return
-        await reply_no_results(message, display_name, reply_markup=reply_markup)
+    sent_response = False
+    for candidates in selection:
+        result = await fetch_version_group(context, passage, candidates)
+        if result is None:
+            continue
+        version, response = result
+        header_url = build_passage_header_url(passage, version)
+        chunks = format_passage_chunks(str(response), header_url=header_url)
+        for index, (message_text, entities) in enumerate(chunks):
+            await message.reply_text(
+                message_text,
+                entities=entities,
+                reply_markup=reply_markup if not sent_response and index == 0 else None,
+            )
+        sent_response = True
+
+    if sent_response or silent_failures:
         return
-    if response is None:
-        if silent_failures:
-            return
-        await reply_service_unavailable(
-            message, display_name, reply_markup=reply_markup
-        )
-        return
-    chunks = format_passage_chunks(str(response), header_url=header_url)
-    for index, (message_text, entities) in enumerate(chunks):
-        await message.reply_text(
-            message_text,
-            entities=entities,
-            reply_markup=reply_markup if index == 0 else None,
-        )
+    await reply_no_results(message, display_name, reply_markup=reply_markup)
 
 
 async def reply_with_search_results(
@@ -519,12 +537,12 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     message = require_message(update)
     user_data = require_user_data(context)
     raw_text = ensure_text(message.text).strip()
-    version, passage, explicit_version = parse_get_request(
+    selection, passage, explicit_version = parse_get_request(
         raw_text, get_bible_default_version(context)
     )
     display_name, _, _ = get_identity(update)
 
-    if version is None:
+    if selection is None:
         await message.reply_text(
             f"Sorry {display_name}, I couldn't find that version. "
             "Use /setdefault to view all available versions."
@@ -533,7 +551,7 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     if passage:
         if not explicit_version:
-            version = get_passage_default_version(context, passage)
+            selection = ((get_passage_default_version(context, passage),),)
         if is_book_only_request(passage):
             await message.reply_text(
                 f"Sorry {display_name}, please specify at least a chapter. "
@@ -544,18 +562,19 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             update,
             context,
             passage,
-            version,
+            selection,
             display_name,
             explicit_version=explicit_version,
         )
         return ConversationHandler.END
 
-    user_data[PENDING_GET_VERSION_KEY] = version
+    user_data[PENDING_GET_VERSION_KEY] = selection
     user_data[PENDING_GET_VERSION_EXPLICIT_KEY] = explicit_version
     await message.reply_text(
-        f"Which Bible passage do you want to lookup? Version: {version}\n\n"
+        "Which Bible passage do you want to lookup? Version: "
+        f"{format_version_selection(selection)}\n\n"
         "Tip: For faster results, use:\n/get John 3:16\n"
-        f"/get John 3:16 {other_version(version)}"
+        f"/get John 3:16 {other_version(selection[0][0])}"
     )
     return GET_PASSAGE_STATE
 
@@ -565,12 +584,14 @@ async def get_conversation_message(
 ) -> int:
     message = require_message(update)
     user_data = require_user_data(context)
-    version = ensure_text(user_data.pop(PENDING_GET_VERSION_KEY, ""))
+    selection = user_data.pop(PENDING_GET_VERSION_KEY, ())
     explicit_version = bool(user_data.pop(PENDING_GET_VERSION_EXPLICIT_KEY, False))
     display_name, _, _ = get_identity(update)
     passage = ensure_text(message.text).strip()
+    if not isinstance(selection, tuple) or not selection:
+        selection = ((get_bible_default_version(context),),)
     if not explicit_version:
-        version = get_passage_default_version(context, passage)
+        selection = ((get_passage_default_version(context, passage),),)
     if is_book_only_request(passage):
         await message.reply_text(
             f"Sorry {display_name}, please specify at least a chapter. "
@@ -582,7 +603,7 @@ async def get_conversation_message(
         update,
         context,
         passage,
-        version,
+        selection,
         display_name,
         explicit_version=explicit_version,
         reply_markup=ReplyKeyboardRemove(),
@@ -773,20 +794,30 @@ async def handle_inline_query(
         return
 
     words = query.split()
-    resolved_version = resolve_version_code(words[-1]) if len(words) > 1 else None
-    if resolved_version is not None:
+    selection = parse_version_selection(words[-1]) if len(words) > 1 else None
+    if selection is not None:
         passage = " ".join(words[:-1])
-        version = resolved_version
         explicit_version = True
     else:
         passage = query
-        version = get_passage_default_version(context, passage)
+        selection = ((get_passage_default_version(context, passage),),)
         explicit_version = False
 
-    version = resolve_auto_version(version, passage, explicit_version=explicit_version)
+    selection = resolve_version_selection(
+        selection, passage, explicit_version=explicit_version
+    )
+    inline_results: list[tuple[str, InlinePassageResult]] = []
+    for candidates in selection:
+        result = await fetch_version_group(
+            context, passage, candidates, inline_details=True
+        )
+        if result is None:
+            continue
+        version, response = result
+        assert isinstance(response, InlinePassageResult)
+        inline_results.append((version, response))
 
-    supports_passage, _ = version_supports_passage(version, passage)
-    if not supports_passage:
+    if not inline_results:
         await inline_query.answer(
             [],
             cache_time=0,
@@ -794,25 +825,21 @@ async def handle_inline_query(
         )
         return
 
-    response = await fetch_passage(context, passage, version, inline_details=True)
-    if response in (None, EMPTY):
-        await inline_query.answer(
-            [],
-            cache_time=0,
-            button=build_inline_results_button(default_version),
-        )
-        return
-
-    inline_result = response
-    assert isinstance(inline_result, InlinePassageResult)
-    header_url = inline_result.header_url or build_passage_header_url(passage, version)
+    passage_text = "\n\n".join(result.passage for _, result in inline_results)
+    titles = " & ".join(result.title for _, result in inline_results)
+    description = " ".join(passage_text.split())
+    header_url = inline_results[0][1].header_url or build_passage_header_url(
+        passage, inline_results[0][0]
+    )
     results = [
         InlineQueryResultArticle(
-            id=inline_result.result_id,
-            title=inline_result.title,
-            description=inline_result.description,
+            id="&".join(result.result_id for _, result in inline_results),
+            title=titles,
+            description=(
+                description[:150] + "..." if len(description) > 153 else description
+            ),
             input_message_content=build_input_message_content(
-                inline_result.passage, header_url=header_url
+                passage_text, header_url=header_url
             ),
         )
     ]
@@ -852,7 +879,7 @@ async def linked_passage_handler(
         update,
         context,
         passage,
-        get_passage_default_version(context, passage),
+        ((get_passage_default_version(context, passage),),),
         display_name,
         explicit_version=False,
     )
@@ -876,19 +903,19 @@ async def quick_lookup_handler(
 
     display_name, _, _ = get_identity(update)
     to_lookup = lowered.replace(bot_handle, "").replace("revelations", "revelation")
-    version, to_lookup, explicit_version = parse_reference_version_query(
+    selection, to_lookup, explicit_version = parse_reference_version_query(
         to_lookup, get_bible_default_version(context)
     )
     refs = extract_refs(to_lookup)
     if refs:
         passage = build_passage_from_ref(refs[0])
         if not explicit_version:
-            version = get_passage_default_version(context, passage)
+            selection = ((get_passage_default_version(context, passage),),)
         await reply_with_passage_result(
             update,
             context,
             passage,
-            version,
+            selection,
             display_name,
             explicit_version=explicit_version,
             reply_markup=ReplyKeyboardRemove(),
@@ -899,12 +926,12 @@ async def quick_lookup_handler(
     canonical_passage = canonicalize_reference(to_lookup)
     if canonical_passage and find_requested_book(canonical_passage):
         if not explicit_version:
-            version = get_passage_default_version(context, canonical_passage)
+            selection = ((get_passage_default_version(context, canonical_passage),),)
         await reply_with_passage_result(
             update,
             context,
             canonical_passage,
-            version,
+            selection,
             display_name,
             explicit_version=explicit_version,
             reply_markup=ReplyKeyboardRemove(),

@@ -20,6 +20,9 @@ from versions import (
     resolve_version_code,
 )
 
+type VersionFallback = tuple[str, ...]
+type VersionSelection = tuple[VersionFallback, ...]
+
 _RuntimeMessageEntity: type[Any]
 _RuntimeMessageEntityType: type[Any]
 _RuntimeMessageLimit: Any
@@ -331,11 +334,13 @@ def command_list(application: Any) -> str:
     return (
         "/get <reference>\n"
         "/get <reference> <version>\n"
+        "/get <reference> <fallbacks>&<parallel versions>\n"
         "/search <keyword>\n"
         "/setdefault <version>\n\n"
         "Examples:\n"
         "/get John 3:16\n"
         "/get 1 cor 13:4-7 NLT\n"
+        "/get 1 Maccabees 1 NIV,NRSVue&GNADC\n"
         "/search the greatest commandment\n"
         "/setdefault NASB\n\n"
         f"Inline mode:\n{bot_handle} john 3:16\n"
@@ -350,19 +355,50 @@ def build_passage_from_ref(ref) -> str:
     return f"{book} {ref[1]}:{ref[2]}-{ref[3]}:{ref[4]}"
 
 
+def single_version_selection(version: str) -> VersionSelection:
+    return ((version,),)
+
+
+def parse_version_selection(token: str) -> VersionSelection | None:
+    """Parse ordered fallback groups joined by ``&``.
+
+    Within a group, comma-separated versions are tried left-to-right. Groups are
+    fetched in parallel-display order.
+    """
+
+    groups = token.split("&")
+    if not groups or any(not group for group in groups):
+        return None
+
+    selection: list[VersionFallback] = []
+    for group in groups:
+        candidates = group.split(",")
+        if not candidates or any(not candidate for candidate in candidates):
+            return None
+        resolved = tuple(resolve_version_code(candidate) for candidate in candidates)
+        if any(version is None for version in resolved):
+            return None
+        selection.append(tuple(version for version in resolved if version is not None))
+    return tuple(selection)
+
+
+def format_version_selection(selection: VersionSelection) -> str:
+    return " & ".join(" → ".join(group) for group in selection)
+
+
 def parse_reference_version_query(
     text: str, default_version: str = DEFAULT_BIBLE_VERSION
-) -> tuple[str, str, bool]:
+) -> tuple[VersionSelection, str, bool]:
     normalized = ensure_text(text).strip()
     if not normalized:
-        return default_version, "", False
+        return single_version_selection(default_version), "", False
 
     words = normalized.split()
-    resolved_version = resolve_version_code(words[-1]) if len(words) > 1 else None
-    if resolved_version is not None:
-        return resolved_version, " ".join(words[:-1]).strip(), True
+    selection = parse_version_selection(words[-1]) if len(words) > 1 else None
+    if selection is not None:
+        return selection, " ".join(words[:-1]).strip(), True
 
-    return default_version, normalized, False
+    return single_version_selection(default_version), normalized, False
 
 
 APOCRYPHA_SLUG_TO_TITLE: dict[str, str] = {
@@ -632,7 +668,7 @@ def decode_linked_reference(reference: str) -> str:
 
 def parse_get_request(
     text: str, default_version: str = DEFAULT_BIBLE_VERSION
-) -> tuple[str | None, str | None, bool]:
+) -> tuple[VersionSelection | None, str | None, bool]:
     words = text.split()
     if not words:
         return None, None, False
@@ -644,27 +680,25 @@ def parse_get_request(
 
     arguments = words[1:]
     if not arguments:
-        return default_version, None, False
+        return single_version_selection(default_version), None, False
 
-    resolved_version = (
-        resolve_version_code(arguments[0]) if len(arguments) == 1 else None
-    )
-    if resolved_version is not None:
-        return resolved_version, None, True
+    selection = parse_version_selection(arguments[0]) if len(arguments) == 1 else None
+    if selection is not None:
+        return selection, None, True
 
-    version = default_version
+    selection = single_version_selection(default_version)
     explicit_version = False
-    resolved_version = resolve_version_code(arguments[-1])
-    if resolved_version is not None:
-        version = resolved_version
+    parsed_selection = parse_version_selection(arguments[-1])
+    if parsed_selection is not None:
+        selection = parsed_selection
         arguments = arguments[:-1]
         explicit_version = True
 
     passage = " ".join(arguments).strip()
     if not passage:
-        return version, None, explicit_version
+        return selection, None, explicit_version
 
-    return version, passage, explicit_version
+    return selection, passage, explicit_version
 
 
 def other_version(current_version: str) -> str:
