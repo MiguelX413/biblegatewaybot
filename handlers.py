@@ -208,11 +208,14 @@ async def reply_with_passage_result(
     *,
     explicit_version: bool = False,
     reply_markup: ReplyKeyboardRemove | None = None,
+    silent_failures: bool = False,
 ) -> None:
     message = require_message(update)
     version = resolve_auto_version(version, passage, explicit_version=explicit_version)
     supports_passage, requested_book = version_supports_passage(version, passage)
     if not supports_passage and requested_book:
+        if silent_failures:
+            return
         await message.reply_text(
             f"Sorry {display_name}, {version} does not appear to include "
             f"{requested_book}. "
@@ -224,12 +227,16 @@ async def reply_with_passage_result(
     await send_typing(update, context)
     response = await fetch_passage(context, passage, version)
     if response == EMPTY:
+        if silent_failures:
+            return
         await message.reply_text(
             f"Sorry {display_name}, no results were found. Please try again.",
             reply_markup=reply_markup,
         )
         return
     if response is None:
+        if silent_failures:
+            return
         await message.reply_text(
             f"Sorry {display_name}, I'm having some difficulty accessing "
             "the site. Please try again later.",
@@ -670,6 +677,7 @@ async def quick_lookup_handler(
             display_name,
             explicit_version=False,
             reply_markup=ReplyKeyboardRemove(),
+            silent_failures=True,
         )
         return
 
@@ -683,15 +691,9 @@ async def quick_lookup_handler(
             display_name,
             explicit_version=False,
             reply_markup=ReplyKeyboardRemove(),
+            silent_failures=True,
         )
         return
-
-    await message.reply_text(
-        f"Sorry {display_name}, I couldn't understand that. "
-        "Please enter one of the following commands:\n"
-        f"{command_list(context.application)}",
-        reply_markup=get_try_inline_keyboard(),
-    )
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
