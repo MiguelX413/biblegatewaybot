@@ -84,6 +84,10 @@ class ParsingTests(unittest.TestCase):
         version, passage, explicit = parse_get_request("/get 1 cor 13:4-7 NLT", "NIV")
         self.assertEqual(("NLT", "1 cor 13:4-7", True), (version, passage, explicit))
 
+    def test_parse_get_accepts_mixed_case_display_version_code(self):
+        version, passage, explicit = parse_get_request("/get Genesis 1 NRSVue", "NIV")
+        self.assertEqual(("NRSVUE", "Genesis 1", True), (version, passage, explicit))
+
     def test_parse_get_prompts_for_passage_when_only_version_is_given(self):
         version, passage, explicit = parse_get_request("/get NASB", "NIV")
         self.assertEqual(("NASB", None, True), (version, passage, explicit))

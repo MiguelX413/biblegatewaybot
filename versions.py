@@ -383,11 +383,15 @@ VERSION_DATA = OrderedDict(
 VERSION_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(r"\(([^()]+)\)$")
 
 
-def _extract_version_code(label: VersionLabel) -> VersionCode:
+def _extract_version_code_label(label: VersionLabel) -> VersionCode:
     match = VERSION_CODE_PATTERN.search(label)
     if match is None:
         raise ValueError(f"Version label is missing a trailing code: {label!r}")
     return match.group(1)
+
+
+def _canonicalize_version_code(code: VersionCode) -> VersionCode:
+    return code.upper()
 
 
 def _build_version_lookup(
@@ -397,7 +401,7 @@ def _build_version_lookup(
     seen_codes: set[VersionCode] = set()
     for labels in version_data.values():
         for label in labels:
-            code = _extract_version_code(label)
+            code = _canonicalize_version_code(_extract_version_code_label(label))
             if label in lookup:
                 raise ValueError(f"Duplicate version label: {label!r}")
             if code in seen_codes:
@@ -411,7 +415,8 @@ def _build_version_display_labels(
     version_lookup: dict[VersionLabel, VersionCode],
 ) -> dict[VersionCode, VersionCode]:
     return {
-        code: _extract_version_code(label) for label, code in version_lookup.items()
+        code: _extract_version_code_label(label)
+        for label, code in version_lookup.items()
     }
 
 
