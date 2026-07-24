@@ -23,15 +23,15 @@ from parsing import (
 class ParsingTests(unittest.TestCase):
     def test_format_passage_entities_uses_expandable_blockquote(self):
         text, entities = format_passage_entities(
-            "John 3:16 (NIV)\n\nFor God so loved the world."
+            "John 3:16 NIV\n\nFor God so loved the world."
         )
-        self.assertEqual("John 3:16 (NIV)\n\nFor God so loved the world.", text)
+        self.assertEqual("John 3:16 NIV\nFor God so loved the world.", text)
         self.assertEqual(2, len(entities))
         self.assertEqual("bold", entities[0].type)
         self.assertEqual(0, entities[0].offset)
-        self.assertEqual(len("John 3:16 (NIV)"), entities[0].length)
+        self.assertEqual(len("John 3:16 NIV"), entities[0].length)
         self.assertEqual("expandable_blockquote", entities[1].type)
-        self.assertEqual(len("John 3:16 (NIV)\n\n"), entities[1].offset)
+        self.assertEqual(len("John 3:16 NIV\n"), entities[1].offset)
         self.assertEqual(len("For God so loved the world."), entities[1].length)
 
     def test_parse_get_uses_default_version(self):

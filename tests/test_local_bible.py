@@ -19,7 +19,7 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
 
             result = await client.get_passage("john 3:16", "NIV")
 
-            self.assertEqual("John 3:16 (NIV)\n\nFor God so loved the world.", result)
+            self.assertEqual("John 3:16 NIV\n\nFor God so loved the world.", result)
 
     async def test_local_client_normalizes_abbreviated_lookup_keys(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -32,9 +32,7 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
 
             result = await client.get_passage("1co13:4-7", "KJV")
 
-            self.assertEqual(
-                "1 Corinthians 13:4-7 (KJV)\n\nLove suffereth long.", result
-            )
+            self.assertEqual("1 Corinthians 13:4-7 KJV\n\nLove suffereth long.", result)
 
     async def test_local_client_supports_inline_details(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

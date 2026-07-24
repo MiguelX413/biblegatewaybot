@@ -12,7 +12,7 @@ except (
 ):  # pragma: no cover - exercised only in dependency-missing environments
     httpx = None
 
-from parsing import ensure_text
+from parsing import build_passage_header, ensure_text
 from state import (
     DEFAULT_VERSION,
     EMPTY,
@@ -64,7 +64,7 @@ def parse_passage_html(
         return EMPTY
 
     title = title_node.text.strip()
-    header = f"{title} ({version})"
+    header = build_passage_header(title, version)
 
     for tag in passage_soup.select(
         ".passage-other-trans, .footnote, .footnotes, .crossreference, .crossrefs"

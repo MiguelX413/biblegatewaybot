@@ -4,6 +4,7 @@ from importlib import import_module
 from typing import Any
 from urllib.parse import quote
 
+from parsing import build_passage_header
 from state import DEFAULT_VERSION, EMPTY, REQUEST_TIMEOUT_SECONDS, InlinePassageResult
 
 try:
@@ -39,7 +40,7 @@ def parse_passage_payload(
         return EMPTY
 
     reference = str(payload.get("ref") or "").strip() or "Requested passage"
-    header = f"{reference} ({version})"
+    header = build_passage_header(reference, version)
     final_text = "\n\n".join([header, *text_parts]).strip()
 
     if not inline_details:

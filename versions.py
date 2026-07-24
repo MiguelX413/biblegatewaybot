@@ -546,6 +546,18 @@ VERSION_LOOKUP = {
     "Nueva Versión Internacional (Castilian) (CST)": "CST",
 }
 VERSIONS = tuple(VERSION_LOOKUP.values())
+VERSION_DISPLAY_LABELS = {
+    code: (
+        label.rsplit("(", 1)[1][:-1] if label.endswith(")") and "(" in label else code
+    )
+    for label, code in VERSION_LOOKUP.items()
+}
+
+
+def format_version_label(version: str) -> str:
+    return VERSION_DISPLAY_LABELS.get(version.upper(), version)
+
+
 PROTESTANT_CANON_BOOK_SLUGS = (
     "genesis",
     "exodus",

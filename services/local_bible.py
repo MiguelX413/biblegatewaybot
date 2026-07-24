@@ -2,7 +2,7 @@ import json
 import logging
 from pathlib import Path
 
-from parsing import normalize_reference_lookup_key
+from parsing import build_passage_header, normalize_reference_lookup_key
 from state import DEFAULT_VERSION, EMPTY, InlinePassageResult
 
 
@@ -38,7 +38,8 @@ def format_local_passage_entry(
     if not text_parts:
         return EMPTY
 
-    final_text = "\n\n".join([f"{title} ({version})", *text_parts]).strip()
+    header = build_passage_header(title, version)
+    final_text = "\n\n".join([header, *text_parts]).strip()
     if not inline_details:
         return final_text
 
@@ -52,7 +53,7 @@ def format_local_passage_entry(
     return InlinePassageResult(
         passage=final_text,
         result_id=f"{title}/{version}",
-        title=f"{title} ({version})",
+        title=header,
         description=inline_description,
     )
 

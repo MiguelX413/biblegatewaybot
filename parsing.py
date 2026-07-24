@@ -11,6 +11,7 @@ from versions import (
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
     VERSIONS,
+    format_version_label,
 )
 
 _RuntimeMessageEntity: type[Any]
@@ -75,14 +76,14 @@ def format_passage_entities(text: str) -> tuple[str, Sequence[MessageEntity]]:
 
     header = header.strip()
     body = body.strip()
-    message_text = f"{header}\n\n{body}" if body else header
+    message_text = f"{header}\n{body}" if body else header
     entities = [
         _RuntimeMessageEntity(
             type=_RuntimeMessageEntityType.BOLD, offset=0, length=len(header)
         )
     ]
     if body:
-        body_offset = len(header) + 2
+        body_offset = len(header) + 1
         entities.append(
             _RuntimeMessageEntity(
                 type=_RuntimeMessageEntityType.EXPANDABLE_BLOCKQUOTE,
@@ -94,6 +95,10 @@ def format_passage_entities(text: str) -> tuple[str, Sequence[MessageEntity]]:
         message_text, entities
     )
     return message_text, cast(Sequence[MessageEntity], utf16_entities)
+
+
+def build_passage_header(reference: str, version: str) -> str:
+    return f"{reference} {format_version_label(version)}".strip()
 
 
 def command_list(application: Any) -> str:

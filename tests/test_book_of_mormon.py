@@ -1,0 +1,126 @@
+import unittest
+
+from services.book_of_mormon import (
+    BOOK_OF_MORMON_BOOK_BY_ALIAS,
+    BookOfMormonReference,
+    format_reference_title,
+    parse_book_of_mormon_reference,
+    parse_passage_html,
+)
+from state import EMPTY, InlinePassageResult
+
+SAMPLE_HTML = """
+<html>
+  <body>
+    <header>
+      <p class="chapter">Chapter 3</p>
+      <p class="study-summary" id="study_summary1">
+        Nephi retrieves the plates.
+      </p>
+    </header>
+    <div class="body-block">
+      <p class="verse" id="p6">
+        <span class="verse-number">6 </span>
+        Therefore I will go and do the things which the Lord hath commanded.
+      </p>
+      <p class="verse" id="p7">
+        <span class="verse-number">7 </span>
+        For I know that the Lord giveth no commandments unto the children of men,
+        save he shall prepare a way for them.
+      </p>
+      <p class="verse" id="p8">
+        <span class="iconPointer-OKie_" data-pointer-type="media"></span>
+        <span class="verse-number">8 </span>
+        And it came to pass that I said unto my father:
+        <a class="study-note-ref" href="#note8_a"><sup class="marker">a</sup>more</a>
+      </p>
+    </div>
+  </body>
+</html>
+"""
+
+
+class BookOfMormonParsingTests(unittest.TestCase):
+    def test_parse_reference_single_verse(self):
+        reference = parse_book_of_mormon_reference("1 Nephi 3:7")
+        self.assertIsNotNone(reference)
+        assert reference is not None
+        self.assertEqual("1 Nephi", reference.book.title)
+        self.assertEqual(
+            (3, 7, 3, 7),
+            (
+                reference.start_chapter,
+                reference.start_verse,
+                reference.end_chapter,
+                reference.end_verse,
+            ),
+        )
+
+    def test_parse_reference_chapter_range(self):
+        reference = parse_book_of_mormon_reference("Alma 5-6")
+        self.assertIsNotNone(reference)
+        assert reference is not None
+        self.assertEqual(
+            (5, None, 6, None),
+            (
+                reference.start_chapter,
+                reference.start_verse,
+                reference.end_chapter,
+                reference.end_verse,
+            ),
+        )
+
+    def test_parse_reference_cross_chapter_range(self):
+        reference = parse_book_of_mormon_reference("3 Nephi 11:3-12:2")
+        self.assertIsNotNone(reference)
+        assert reference is not None
+        self.assertEqual(
+            (11, 3, 12, 2),
+            (
+                reference.start_chapter,
+                reference.start_verse,
+                reference.end_chapter,
+                reference.end_verse,
+            ),
+        )
+
+    def test_parse_reference_rejects_unknown_book(self):
+        self.assertIsNone(parse_book_of_mormon_reference("Doctrine and Covenants 1:1"))
+
+    def test_format_reference_title(self):
+        book = BOOK_OF_MORMON_BOOK_BY_ALIAS["1nephi"]
+        self.assertEqual(
+            "1 Nephi 3:7-8",
+            format_reference_title(BookOfMormonReference(book, 3, 7, 3, 8)),
+        )
+
+    def test_parse_passage_html_filters_requested_verses(self):
+        reference = BookOfMormonReference(
+            BOOK_OF_MORMON_BOOK_BY_ALIAS["1nephi"], 3, 7, 3, 8
+        )
+        result = parse_passage_html(SAMPLE_HTML, reference)
+        self.assertIsInstance(result, str)
+        self.assertIn("1 Nephi 3:7-8 BOM", result)
+        self.assertNotIn("6 Therefore", result)
+        self.assertIn("7 For I know", result)
+        self.assertIn("8 And it came to pass", result)
+        self.assertNotIn("more", result)
+
+    def test_parse_passage_html_inline(self):
+        reference = BookOfMormonReference(
+            BOOK_OF_MORMON_BOOK_BY_ALIAS["1nephi"], 3, 7, 3, 7
+        )
+        result = parse_passage_html(SAMPLE_HTML, reference, inline_details=True)
+        self.assertIsInstance(result, InlinePassageResult)
+        self.assertEqual("1 Nephi 3:7 BOM", result.title)
+        self.assertIn("7 For I know", result.passage)
+
+    def test_parse_passage_html_returns_empty_when_no_match(self):
+        reference = BookOfMormonReference(
+            BOOK_OF_MORMON_BOOK_BY_ALIAS["1nephi"], 3, 20, 3, 21
+        )
+        self.assertEqual(EMPTY, parse_passage_html(SAMPLE_HTML, reference))
+
+
+if __name__ == "__main__":
+    unittest.main()
