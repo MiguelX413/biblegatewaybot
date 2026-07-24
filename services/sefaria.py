@@ -38,12 +38,20 @@ SEFARIA_INDEX_TITLE_BY_BOOK_SLUG = {
 }
 
 
-def build_sefaria_passage_url(passage: str, version: str = DEFAULT_VERSION) -> str:
+def build_sefaria_passage_url(
+    passage: str,
+    version: str = DEFAULT_VERSION,
+    version_title: str | None = None,
+) -> str:
     normalized = normalize_sefaria_passage_reference(passage, version)
     if not normalized:
         return "https://sefaria.org"
     path = re.sub(r"\s+(\d)", r".\1", normalized, count=1).replace(" ", "_")
-    return f"https://sefaria.org/{quote(path, safe='._:-')}"
+    url = f"https://sefaria.org/{quote(path, safe='._:-')}"
+    if version_title:
+        encoded_version = quote(f"english|{version_title}", safe="")
+        return f"{url}?lang=bi&ven={encoded_version}"
+    return url
 
 
 def _flatten_text(value) -> Iterable[str]:
@@ -186,3 +194,21 @@ class SefariaClient:
             return None
         book_slug, _ = requested_book
         return configured.get(book_slug)
+
+
+def resolve_sefaria_version_title(
+    passage: str,
+    version: str,
+    version_titles: dict[str, str | dict[str, str]],
+) -> str | None:
+    configured = version_titles.get(version.upper())
+    if configured is None:
+        return None
+    if isinstance(configured, str):
+        return configured
+
+    requested_book = find_requested_book(passage)
+    if requested_book is None:
+        return None
+    book_slug, _ = requested_book
+    return configured.get(book_slug)

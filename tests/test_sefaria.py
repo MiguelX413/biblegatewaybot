@@ -1,7 +1,13 @@
 import unittest
 
-from services.sefaria import normalize_sefaria_passage_reference, parse_passage_payload
+from services.sefaria import (
+    build_sefaria_passage_url,
+    normalize_sefaria_passage_reference,
+    parse_passage_payload,
+    resolve_sefaria_version_title,
+)
 from state import EMPTY, InlinePassageResult
+from versions import SEFARIA_VERSION_TITLES
 
 PASSAGE_PAYLOAD = {
     "ref": "Genesis 1:1-2",
@@ -55,6 +61,18 @@ class SefariaParsingTests(unittest.TestCase):
         self.assertEqual(
             "Letter of Aristeas 1:1",
             normalize_sefaria_passage_reference("Letter of Aristeas 1:1", "ARISTEAS"),
+        )
+
+    def test_build_sefaria_passage_url_includes_specific_version(self):
+        version_title = resolve_sefaria_version_title(
+            "Genesis 1:1",
+            "JPS",
+            SEFARIA_VERSION_TITLES,
+        )
+        self.assertEqual(
+            "https://sefaria.org/Genesis.1:1"
+            "?lang=bi&ven=english%7CThe%20Holy%20Scriptures%3A%20A%20New%20Translation%20%28JPS%201917%29",
+            build_sefaria_passage_url("Genesis 1:1", "JPS", version_title),
         )
 
 
