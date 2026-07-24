@@ -101,7 +101,7 @@ VERSION_DATA = OrderedDict(
             ],
         ),
         (
-            "—汉语 (ZH)—",
+            "—中文 (ZH)—",
             [
                 "Chinese Contemporary Bible (CCB)",
                 "Chinese New Testament: Easy-to-Read Version (ERV-ZH)",
@@ -117,7 +117,7 @@ VERSION_DATA = OrderedDict(
         ),
         ("—Amuzgo de Guerrero (AMU)—", ["Amuzgo de Guerrero (AMU)"]),
         (
-            "—العربية (AR)—",
+            "—الْعَرَبِيَّة (AR)—",
             [
                 "Arabic Bible: Easy-to-Read Version (ERV-AR)",
                 "Ketab El Hayat (NAV)",
@@ -133,7 +133,7 @@ VERSION_DATA = OrderedDict(
             ["Awadhi Bible: Easy-to-Read Version (ERV-AWA)"],
         ),
         (
-            "—Български (BG)—",
+            "—Бъ́лгарски (BG)—",
             [
                 "1940 Bulgarian Bible (BG1940)",
                 "Bulgarian Bible (BULG)",
@@ -206,7 +206,7 @@ VERSION_DATA = OrderedDict(
             ],
         ),
         (
-            "—Κοινη (GRC)—",
+            "—Ἀρχαίᾱ Ἑλληνική (GRC)—",
             [
                 "1550 Stephanus New Testament (TR1550)",
                 "1881 Westcott-Hort New Testament (WHNU)",
@@ -215,7 +215,7 @@ VERSION_DATA = OrderedDict(
             ],
         ),
         (
-            "—עברית (HE)—",
+            "—עִבְרִית (HE)—",
             [
                 "Habrit Hakhadasha/Haderekh (HHH)",
                 "The Westminster Leningrad Codex (WLC)",
@@ -256,7 +256,7 @@ VERSION_DATA = OrderedDict(
         ),
         ("—Jacalteco, Oriental (JAC)—", ["Jacalteco, Oriental (JAC)"]),
         ("—Kekchi (KEK)—", ["Kekchi (KEK)"]),
-        ("—Latina (LA)—", ["Biblia Sacra Vulgata (VULGATE)"]),
+        ("—Latīna (LA)—", ["Biblia Sacra Vulgata (VULGATE)"]),
         ("—Māori (MI)—", ["Maori Bible (MAORI)"]),
         (
             "—Македонски (MK)—",
@@ -298,7 +298,7 @@ VERSION_DATA = OrderedDict(
                 "Updated Gdańsk Bible (UBG)",
             ],
         ),
-        ("—Nawat (PPL)—", ["Ne Bibliaj Tik Nawat (NBTN)"]),
+        ("—Nāwat (PPL)—", ["Ne Bibliaj Tik Nawat (NBTN)"]),
         (
             "—Português (PT)—",
             [
@@ -322,7 +322,7 @@ VERSION_DATA = OrderedDict(
             ],
         ),
         (
-            "—Русский (RU)—",
+            "—Ру́сский (RU)—",
             [
                 "New Russian Translation (NRT)",
                 "Священное Писание (Восточный Перевод) (CARS)",
@@ -367,19 +367,19 @@ VERSION_DATA = OrderedDict(
         ),
         ("—Twi (TWI)—", ["Nkwa Asem (NA-TWI)"]),
         (
-            "—Українська (UK)—",
+            "—Украї́нська (UK)—",
             [
                 "Ukrainian Bible (UKR)",
                 "Ukrainian New Testament: Easy-to-Read Version (ERV-UK)",
             ],
         ),
         (
-            "—اردو (UR)—",
+            "—اُرْدُو (UR)—",
             ["Urdu Bible: Easy-to-Read Version (ERV-UR)"],
         ),
         ("—Uspanteco (USP)—", ["Uspanteco (USP)"]),
         (
-            "—Tiêng Viêt (VI)—",
+            "—Tiếng Việt (VI)—",
             [
                 "1934 Vietnamese Bible (VIET)",
                 "Bản Dịch 2011 (BD2011)",
