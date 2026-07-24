@@ -338,6 +338,20 @@ def build_passage_from_ref(ref) -> str:
     return f"{book} {ref[1]}:{ref[2]}-{ref[3]}:{ref[4]}"
 
 
+def parse_reference_version_query(
+    text: str, default_version: str = DEFAULT_VERSION
+) -> tuple[str, str, bool]:
+    normalized = ensure_text(text).strip()
+    if not normalized:
+        return default_version, "", False
+
+    words = normalized.split()
+    if len(words) > 1 and words[-1].upper() in VERSIONS:
+        return words[-1].upper(), " ".join(words[:-1]).strip(), True
+
+    return default_version, normalized, False
+
+
 APOCRYPHA_SLUG_TO_TITLE: dict[str, str] = {
     book["slug"]: book["title"] for book in APOCRYPHA_BOOK_DATA
 }

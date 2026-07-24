@@ -15,6 +15,7 @@ from parsing import (
     normalize_reference_lookup_key,
     other_version,
     parse_get_request,
+    parse_reference_version_query,
     resolve_auto_version,
     supported_book_slugs,
     supported_versions_for_book_slug,
@@ -99,6 +100,16 @@ class ParsingTests(unittest.TestCase):
     def test_parse_get_rejects_non_get_commands(self):
         version, passage, explicit = parse_get_request("/search John 3:16", "NIV")
         self.assertEqual((None, None, False), (version, passage, explicit))
+
+    def test_parse_reference_version_query_uses_default_version(self):
+        version, passage, explicit = parse_reference_version_query("John 3:16", "NIV")
+        self.assertEqual(("NIV", "John 3:16", False), (version, passage, explicit))
+
+    def test_parse_reference_version_query_uses_trailing_version(self):
+        version, passage, explicit = parse_reference_version_query(
+            "Genesis 1:1 NJPS", "NIV"
+        )
+        self.assertEqual(("NJPS", "Genesis 1:1", True), (version, passage, explicit))
 
     def test_build_passage_from_ref_normalizes_revelation_name(self):
         passage = build_passage_from_ref(("Revelation of Jesus Christ", 1, 1, 1, 3))

@@ -76,8 +76,13 @@ class LocalBibleFormattingTests(unittest.TestCase):
             ["16 For God so loved the world.", "17 For God sent not his Son."],
             version="NIV",
         )
+        expected = (
+            "John 3:16-17 NIV\n\n"
+            "¹⁶ For God so loved the world.\n\n"
+            "¹⁷ For God sent not his Son."
+        )
         self.assertEqual(
-            "John 3:16-17 NIV\n\n¹⁶ For God so loved the world.\n\n¹⁷ For God sent not his Son.",
+            expected,
             result,
         )
 

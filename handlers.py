@@ -33,6 +33,7 @@ from parsing import (
     get_version_provider,
     other_version,
     parse_get_request,
+    parse_reference_version_query,
     resolve_auto_version,
     version_supports_passage,
 )
@@ -728,6 +729,9 @@ async def quick_lookup_handler(
 
     display_name, _, _ = get_identity(update)
     to_lookup = lowered.replace(bot_handle, "").replace("revelations", "revelation")
+    version, to_lookup, explicit_version = parse_reference_version_query(
+        to_lookup, get_default_version(context)
+    )
     refs = extract_refs(to_lookup)
     if refs:
         passage = build_passage_from_ref(refs[0])
@@ -735,9 +739,9 @@ async def quick_lookup_handler(
             update,
             context,
             passage,
-            get_default_version(context),
+            version,
             display_name,
-            explicit_version=False,
+            explicit_version=explicit_version,
             reply_markup=ReplyKeyboardRemove(),
             silent_failures=True,
         )
@@ -749,9 +753,9 @@ async def quick_lookup_handler(
             update,
             context,
             canonical_passage,
-            get_default_version(context),
+            version,
             display_name,
-            explicit_version=False,
+            explicit_version=explicit_version,
             reply_markup=ReplyKeyboardRemove(),
             silent_failures=True,
         )
