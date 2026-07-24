@@ -8,6 +8,7 @@ from parsing import (
     extract_leading_book_name,
     find_requested_book,
     format_inline_passage_entities,
+    format_parallel_passage_entities,
     format_passage_chunks,
     format_passage_entities,
     get_book_scripture_system,
@@ -78,6 +79,34 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(2, len(chunks))
         self.assertTrue(chunks[0][0].startswith("John 3:1 NIV\n"))
         self.assertTrue(chunks[1][0].startswith("John 3:2 NIV\n"))
+
+    def test_format_parallel_passage_entities_combines_small_responses(self):
+        combined = format_parallel_passage_entities(
+            [
+                ("John 3:16 NIV\n\nFor God so loved the world.", "https://niv"),
+                ("John 3:16 NRSVue\n\nFor God so loved the world.", "https://nrsvue"),
+            ]
+        )
+        assert combined is not None
+        text, entities = combined
+        self.assertEqual(
+            "John 3:16 NIV\nFor God so loved the world.\n\n"
+            "John 3:16 NRSVue\nFor God so loved the world.",
+            text,
+        )
+        self.assertEqual(6, len(entities))
+        self.assertEqual("bold", entities[0].type)
+        self.assertEqual("text_link", entities[1].type)
+        self.assertEqual("expandable_blockquote", entities[2].type)
+        self.assertEqual("bold", entities[3].type)
+        self.assertEqual("text_link", entities[4].type)
+        self.assertEqual("expandable_blockquote", entities[5].type)
+
+    def test_format_parallel_passage_entities_rejects_oversized_messages(self):
+        text = f"John 3 NIV\n\n{'x' * 3000}"
+        self.assertIsNone(
+            format_parallel_passage_entities([(text, None), (text, None)])
+        )
 
     def test_format_inline_passage_entities_truncates_long_messages(self):
         paragraph = "x" * 3000

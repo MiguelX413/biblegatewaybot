@@ -191,6 +191,63 @@ def format_passage_entities(
     return _build_passage_message(header, body, header_url=header_url)
 
 
+def format_parallel_passage_entities(
+    passages: Sequence[tuple[str, str | None]],
+) -> tuple[str, Sequence[MessageEntity]] | None:
+    """Format several passages into one message, if Telegram can accept it."""
+
+    message_parts: list[str] = []
+    entities: list[Any] = []
+    offset = 0
+    for index, (text, header_url) in enumerate(passages):
+        blocks = text.split("\n\n", 1)
+        header, body = (blocks[0], blocks[1]) if len(blocks) == 2 else (text, "")
+        header = header.strip()
+        body = body.strip()
+        if index:
+            separator = "\n\n"
+            message_parts.append(separator)
+            offset += len(separator)
+
+        message_parts.append(header)
+        entities.append(
+            _RuntimeMessageEntity(
+                type=_RuntimeMessageEntityType.BOLD, offset=offset, length=len(header)
+            )
+        )
+        if header_url:
+            entities.append(
+                _RuntimeMessageEntity(
+                    type=_RuntimeMessageEntityType.TEXT_LINK,
+                    offset=offset,
+                    length=len(header),
+                    url=header_url,
+                )
+            )
+        offset += len(header)
+
+        if body:
+            message_parts.append("\n")
+            offset += 1
+            message_parts.append(body)
+            entities.append(
+                _RuntimeMessageEntity(
+                    type=_RuntimeMessageEntityType.EXPANDABLE_BLOCKQUOTE,
+                    offset=offset,
+                    length=len(body),
+                )
+            )
+            offset += len(body)
+
+    message_text = "".join(message_parts)
+    if len(message_text) > TELEGRAM_MESSAGE_LIMIT:
+        return None
+    utf16_entities = _RuntimeMessageEntity.adjust_message_entities_to_utf_16(
+        message_text, entities
+    )
+    return message_text, cast(Sequence[MessageEntity], utf16_entities)
+
+
 def _chunk_header(header: str, body: str) -> str:
     """Build a reference header for the verses that occur in one message chunk."""
 

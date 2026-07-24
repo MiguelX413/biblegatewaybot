@@ -31,6 +31,7 @@ from parsing import (
     decode_linked_reference,
     ensure_text,
     find_requested_book,
+    format_parallel_passage_entities,
     format_passage_chunks,
     format_passage_entities,
     format_version_selection,
@@ -488,14 +489,33 @@ async def reply_with_passage_result(
         selection, passage, explicit_version=explicit_version
     )
     await send_typing(update, context)
-    sent_response = False
+    passage_results: list[tuple[str, str | None]] = []
     for candidates in selection:
         result = await fetch_version_group(context, passage, candidates)
         if result is None:
             continue
         version, response = result
         header_url = build_passage_header_url(passage, version)
-        chunks = format_passage_chunks(str(response), header_url=header_url)
+        passage_results.append((str(response), header_url))
+
+    combined_message = (
+        format_parallel_passage_entities(passage_results)
+        if len(passage_results) > 1
+        else None
+    )
+    if combined_message is not None:
+        message_text, entities = combined_message
+        await message.reply_text(
+            message_text,
+            entities=entities,
+            reply_markup=reply_markup,
+            link_preview_options=get_link_preview_options(context),
+        )
+        return
+
+    sent_response = False
+    for response, header_url in passage_results:
+        chunks = format_passage_chunks(response, header_url=header_url)
         for index, (message_text, entities) in enumerate(chunks):
             await message.reply_text(
                 message_text,
