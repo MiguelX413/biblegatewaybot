@@ -23,9 +23,7 @@ Runtime model:
 
 - the bot now runs with `python-telegram-bot` long polling
 - chat and user state is persisted locally in `bot-state.pkl`
-- legacy App Engine files in this repo are no longer the active runtime path
 
 Notes:
 
 - `biblegatewaybot.py` now uses `python-telegram-bot` instead of `webapp2` and Google App Engine services.
-- `app.yaml`, `appengine_config.py`, `cron.yaml`, `queue.yaml`, and `index.yaml` are legacy files from the old deployment model.
