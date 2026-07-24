@@ -10,7 +10,6 @@ from parsing import (
     normalize_book_name,
     normalize_reference_lookup_key,
     other_version,
-    parse_apocrypha_reference,
     parse_get_request,
     supported_book_slugs,
     version_supports_book_slug,
@@ -43,16 +42,10 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("NIV", other_version("NASB"))
         self.assertEqual("NASB", other_version("NIV"))
 
-    def test_parse_apocrypha_reference(self):
-        self.assertEqual("Wisdom 3:5-7", parse_apocrypha_reference("wisdom 3:5-7"))
-        self.assertEqual(
-            "1 Maccabees 2:1", parse_apocrypha_reference("1 maccabees 2:1")
-        )
-        self.assertIsNone(parse_apocrypha_reference("John 3:16"))
-
     def test_canonicalize_reference(self):
         self.assertEqual("Wisdom 3:5-7", canonicalize_reference("wisdom 3 : 5 - 7"))
         self.assertEqual("1 Corinthians 13:4-7", canonicalize_reference("1co13:4 - 7"))
+        self.assertEqual("1 Maccabees 2:1", canonicalize_reference("1 maccabees 2:1"))
 
     def test_normalize_book_name_handles_special_cases(self):
         self.assertEqual(

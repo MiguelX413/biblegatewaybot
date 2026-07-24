@@ -4,7 +4,6 @@ from typing import Any
 from state import DEFAULT_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
-    APOCRYPHA_TITLE_TO_SLUG,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
     VERSIONS,
@@ -48,18 +47,6 @@ def build_passage_from_ref(ref) -> str:
     return f"{book} {ref[1]}:{ref[2]}-{ref[3]}:{ref[4]}"
 
 
-def _compile_alias_pattern(alias: str) -> re.Pattern[str]:
-    escaped = re.escape(alias)
-    escaped = escaped.replace(r"\ ", r"\s+")
-    return re.compile(rf"(?i)\b{escaped}\b")
-
-
-APOCRYPHA_ALIAS_PATTERNS = [
-    (_compile_alias_pattern(alias), book["title"])
-    for book in APOCRYPHA_BOOK_DATA
-    for alias in book["aliases"]
-]
-APOCRYPHA_ALIAS_PATTERNS.sort(key=lambda item: len(item[0].pattern), reverse=True)
 APOCRYPHA_SLUG_TO_TITLE = {book["slug"]: book["title"] for book in APOCRYPHA_BOOK_DATA}
 BOOK_SLUG_SPECIAL_CASES = {
     "revelationofjesuschrist": ("revelation", "Revelation"),
@@ -229,17 +216,6 @@ def normalize_reference_lookup_key(text: str) -> str:
     if not normalized:
         return ""
     return normalized.lower()
-
-
-def parse_apocrypha_reference(text: str) -> str | None:
-    requested_book = find_requested_book(text)
-    if requested_book is None:
-        return None
-    book_slug, _ = requested_book
-    if book_slug not in APOCRYPHA_TITLE_TO_SLUG.values():
-        return None
-    canonical = canonicalize_reference(text)
-    return canonical or None
 
 
 def decode_linked_reference(reference: str) -> str:
