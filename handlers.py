@@ -128,6 +128,17 @@ async def fetch_passage(
     *,
     inline_details: bool = False,
 ):
+    local_client = context.application.bot_data.get("local_bible_client")
+    config: BotConfig = context.application.bot_data["config"]
+    if local_client is not None:
+        local_response = await local_client.get_passage(
+            passage, version, inline_details=inline_details
+        )
+        if local_response != EMPTY:
+            return local_response
+        if config.offline_only or local_response is None:
+            return local_response
+
     provider = get_version_provider(version)
     if provider == "sefaria":
         client = context.application.bot_data["sefaria_client"]

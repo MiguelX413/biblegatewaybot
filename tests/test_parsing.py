@@ -7,6 +7,7 @@ from parsing import (
     find_requested_book,
     get_version_provider,
     normalize_book_name,
+    normalize_reference_lookup_key,
     other_version,
     parse_apocrypha_reference,
     parse_get_request,
@@ -81,6 +82,17 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(
             ("songofsolomon", "Song of Solomon"),
             find_requested_book("Song of Songs 1:1"),
+        )
+
+    def test_normalize_reference_lookup_key(self):
+        self.assertEqual("john 3:16", normalize_reference_lookup_key(" jn 3 : 16 "))
+        self.assertEqual(
+            "1 corinthians 13:4-7",
+            normalize_reference_lookup_key("1co13:4 - 7"),
+        )
+        self.assertEqual(
+            "song of solomon 1:1",
+            normalize_reference_lookup_key("Song of Songs 1 : 1"),
         )
 
     def test_passage_uses_apocrypha(self):

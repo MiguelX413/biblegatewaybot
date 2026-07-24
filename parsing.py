@@ -223,6 +223,34 @@ def version_supports_passage(version: str, passage: str) -> tuple[bool, str | No
     return version_supports_book_slug(version, book_slug), book_title
 
 
+def normalize_reference_lookup_key(text: str) -> str:
+    normalized = ensure_text(text).strip()
+    if not normalized:
+        return ""
+
+    apocrypha_reference = parse_apocrypha_reference(normalized.lower())
+    if apocrypha_reference:
+        normalized = apocrypha_reference
+    else:
+        book_name = extract_leading_book_name(
+            normalized.lower().replace("revelations", "revelation")
+        )
+        if book_name:
+            _, canonical_title = normalize_book_name(book_name.title())
+            normalized = re.sub(
+                rf"(?i)^\s*{re.escape(book_name)}",
+                canonical_title,
+                normalized,
+                count=1,
+            )
+
+    normalized = re.sub(r"^((?:[1-4]\s+)?[A-Za-z ]+?)(\d)", r"\1 \2", normalized)
+    normalized = re.sub(r"\s*:\s*", ":", normalized)
+    normalized = re.sub(r"\s*-\s*", "-", normalized)
+    normalized = " ".join(normalized.split())
+    return normalized.lower()
+
+
 def parse_apocrypha_reference(text: str) -> str | None:
     for pattern, title in APOCRYPHA_ALIAS_PATTERNS:
         match = re.search(
