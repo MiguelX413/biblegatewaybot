@@ -3,11 +3,14 @@ import unittest
 from parsing import (
     build_passage_from_ref,
     decode_linked_reference,
+    get_version_provider,
     other_version,
     parse_apocrypha_reference,
     parse_get_request,
     passage_uses_apocrypha,
+    supported_book_slugs,
     supported_apocrypha_books,
+    version_supports_book_slug,
     version_supports_apocrypha_book,
     version_supports_apocrypha,
 )
@@ -60,6 +63,20 @@ class ParsingTests(unittest.TestCase):
     def test_supported_apocrypha_books_are_conservative(self):
         self.assertNotIn("1 Esdras", supported_apocrypha_books("NABRE"))
         self.assertIn("1 Esdras", supported_apocrypha_books("NRSVUE"))
+
+    def test_version_provider_defaults_to_biblegateway(self):
+        self.assertEqual("biblegateway", get_version_provider("NIV"))
+
+    def test_supported_book_slugs_capture_scope_overrides(self):
+        self.assertIn("genesis", supported_book_slugs("NIV"))
+        self.assertNotIn("genesis", supported_book_slugs("DLNT"))
+        self.assertIn("john", supported_book_slugs("DLNT"))
+        self.assertIn("genesis", supported_book_slugs("WLC"))
+        self.assertNotIn("matthew", supported_book_slugs("WLC"))
+
+    def test_version_supports_book_slug(self):
+        self.assertTrue(version_supports_book_slug("NRSVUE", "1esdras"))
+        self.assertFalse(version_supports_book_slug("NABRE", "1esdras"))
 
     def test_decode_linked_reference_for_apocrypha(self):
         self.assertEqual(

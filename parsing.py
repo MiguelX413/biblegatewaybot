@@ -5,7 +5,9 @@ from state import DEFAULT_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
     APOCRYPHA_VERSION_CODES,
+    VERSION_PROVIDERS,
     VERSION_SUPPORTED_APOCRYPHA_BOOKS,
+    VERSION_SUPPORTED_BOOK_SLUGS,
     VERSIONS,
 )
 
@@ -83,6 +85,18 @@ def supported_apocrypha_books(version: str) -> frozenset[str]:
 
 def version_supports_apocrypha_book(version: str, book_title: str) -> bool:
     return book_title in supported_apocrypha_books(version)
+
+
+def get_version_provider(version: str) -> str | None:
+    return VERSION_PROVIDERS.get(version.upper())
+
+
+def supported_book_slugs(version: str) -> frozenset[str]:
+    return VERSION_SUPPORTED_BOOK_SLUGS.get(version.upper(), frozenset())
+
+
+def version_supports_book_slug(version: str, book_slug: str) -> bool:
+    return book_slug in supported_book_slugs(version)
 
 
 def parse_apocrypha_reference(text: str) -> str | None:

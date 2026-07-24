@@ -528,8 +528,8 @@ VERSION_LOOKUP = {
     "New King James Version (NKJV)": "NKJV",
     "Nueva Versi\xf3n Internacional (Castilian) (CST)": "CST",
 }
-VERSIONS = VERSION_LOOKUP.values()
-BOOKS = (
+VERSIONS = tuple(VERSION_LOOKUP.values())
+PROTESTANT_CANON_BOOK_SLUGS = (
     "genesis",
     "exodus",
     "leviticus",
@@ -597,6 +597,8 @@ BOOKS = (
     "jude",
     "revelation",
 )
+OLD_TESTAMENT_BOOK_SLUGS = PROTESTANT_CANON_BOOK_SLUGS[:39]
+NEW_TESTAMENT_BOOK_SLUGS = PROTESTANT_CANON_BOOK_SLUGS[39:]
 
 APOCRYPHA_BOOK_DATA = (
     {"title": "Tobit", "slug": "tobit", "aliases": ("tobit", "tob")},
@@ -654,6 +656,7 @@ APOCRYPHA_BOOK_DATA = (
 )
 
 APOCRYPHA_BOOK_SLUGS = tuple(book["slug"] for book in APOCRYPHA_BOOK_DATA)
+APOCRYPHA_TITLE_TO_SLUG = {book["title"]: book["slug"] for book in APOCRYPHA_BOOK_DATA}
 APOCRYPHA_VERSION_CODES = frozenset(
     {
         "CEB",
@@ -714,4 +717,35 @@ VERSION_SUPPORTED_APOCRYPHA_BOOKS = {
     "TLA": CORE_DEUTEROCANON_BOOK_TITLES,
     "WYC": CORE_DEUTEROCANON_BOOK_TITLES,
 }
-BOOKS = BOOKS + APOCRYPHA_BOOK_SLUGS
+EXTENDED_APOCRYPHA_BOOK_SLUGS = frozenset(
+    APOCRYPHA_TITLE_TO_SLUG[title] for title in EXTENDED_APOCRYPHA_BOOK_TITLES
+)
+CORE_DEUTEROCANON_BOOK_SLUGS = frozenset(
+    APOCRYPHA_TITLE_TO_SLUG[title] for title in CORE_DEUTEROCANON_BOOK_TITLES
+)
+VERSION_PROVIDERS = {code: "biblegateway" for code in VERSIONS}
+VERSION_SUPPORTED_BOOK_SLUGS = {
+    code: frozenset(PROTESTANT_CANON_BOOK_SLUGS) for code in VERSIONS
+}
+for code in VERSION_SUPPORTED_APOCRYPHA_BOOKS:
+    if code in {
+        "NRSV",
+        "NRSVA",
+        "NRSVUE",
+        "RSV",
+    }:
+        VERSION_SUPPORTED_BOOK_SLUGS[code] = (
+            frozenset(PROTESTANT_CANON_BOOK_SLUGS) | EXTENDED_APOCRYPHA_BOOK_SLUGS
+        )
+    else:
+        VERSION_SUPPORTED_BOOK_SLUGS[code] = (
+            frozenset(PROTESTANT_CANON_BOOK_SLUGS) | CORE_DEUTEROCANON_BOOK_SLUGS
+        )
+
+# Known scope overrides for current BibleGateway versions that are not full Bible editions.
+for code in ("DLNT", "MOUNCE", "PHILLIPS", "WE"):
+    VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
+VERSION_SUPPORTED_BOOK_SLUGS["HHH"] = frozenset(NEW_TESTAMENT_BOOK_SLUGS)
+VERSION_SUPPORTED_BOOK_SLUGS["WLC"] = frozenset(OLD_TESTAMENT_BOOK_SLUGS)
+
+BOOKS = PROTESTANT_CANON_BOOK_SLUGS + APOCRYPHA_BOOK_SLUGS
