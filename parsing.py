@@ -4,6 +4,7 @@ from typing import Any
 from state import DEFAULT_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
+    APOCRYPHA_TITLE_TO_SLUG,
     APOCRYPHA_VERSION_CODES,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_APOCRYPHA_BOOKS,
@@ -62,6 +63,78 @@ APOCRYPHA_ALIAS_PATTERNS = [
 ]
 APOCRYPHA_ALIAS_PATTERNS.sort(key=lambda item: len(item[0].pattern), reverse=True)
 APOCRYPHA_SLUG_TO_TITLE = {book["slug"]: book["title"] for book in APOCRYPHA_BOOK_DATA}
+BOOK_SLUG_SPECIAL_CASES = {
+    "revelationofjesuschrist": ("revelation", "Revelation"),
+    "songofsongs": ("songofsolomon", "Song of Solomon"),
+    "psalms": ("psalm", "Psalm"),
+}
+BOOK_NAME_ALIASES = {
+    "gen": ("genesis", "Genesis"),
+    "ge": ("genesis", "Genesis"),
+    "ex": ("exodus", "Exodus"),
+    "exo": ("exodus", "Exodus"),
+    "exod": ("exodus", "Exodus"),
+    "lev": ("leviticus", "Leviticus"),
+    "num": ("numbers", "Numbers"),
+    "deut": ("deuteronomy", "Deuteronomy"),
+    "jos": ("joshua", "Joshua"),
+    "josh": ("joshua", "Joshua"),
+    "judg": ("judges", "Judges"),
+    "jdg": ("judges", "Judges"),
+    "ps": ("psalm", "Psalm"),
+    "psa": ("psalm", "Psalm"),
+    "prov": ("proverbs", "Proverbs"),
+    "prv": ("proverbs", "Proverbs"),
+    "eccl": ("ecclesiastes", "Ecclesiastes"),
+    "ecc": ("ecclesiastes", "Ecclesiastes"),
+    "sos": ("songofsolomon", "Song of Solomon"),
+    "song": ("songofsolomon", "Song of Solomon"),
+    "isa": ("isaiah", "Isaiah"),
+    "jer": ("jeremiah", "Jeremiah"),
+    "ezek": ("ezekiel", "Ezekiel"),
+    "dan": ("daniel", "Daniel"),
+    "hos": ("hosea", "Hosea"),
+    "obad": ("obadiah", "Obadiah"),
+    "mic": ("micah", "Micah"),
+    "hab": ("habakkuk", "Habakkuk"),
+    "zep": ("zephaniah", "Zephaniah"),
+    "hag": ("haggai", "Haggai"),
+    "zech": ("zechariah", "Zechariah"),
+    "mal": ("malachi", "Malachi"),
+    "mt": ("matthew", "Matthew"),
+    "matt": ("matthew", "Matthew"),
+    "mk": ("mark", "Mark"),
+    "mrk": ("mark", "Mark"),
+    "lk": ("luke", "Luke"),
+    "jn": ("john", "John"),
+    "jhn": ("john", "John"),
+    "acts": ("acts", "Acts"),
+    "ac": ("acts", "Acts"),
+    "rom": ("romans", "Romans"),
+    "ro": ("romans", "Romans"),
+    "1co": ("1corinthians", "1 Corinthians"),
+    "2co": ("2corinthians", "2 Corinthians"),
+    "gal": ("galatians", "Galatians"),
+    "eph": ("ephesians", "Ephesians"),
+    "php": ("philippians", "Philippians"),
+    "phil": ("philippians", "Philippians"),
+    "col": ("colossians", "Colossians"),
+    "1th": ("1thessalonians", "1 Thessalonians"),
+    "2th": ("2thessalonians", "2 Thessalonians"),
+    "1ti": ("1timothy", "1 Timothy"),
+    "2ti": ("2timothy", "2 Timothy"),
+    "phm": ("philemon", "Philemon"),
+    "heb": ("hebrews", "Hebrews"),
+    "jas": ("james", "James"),
+    "1pe": ("1peter", "1 Peter"),
+    "2pe": ("2peter", "2 Peter"),
+    "1jn": ("1john", "1 John"),
+    "2jn": ("2john", "2 John"),
+    "3jn": ("3john", "3 John"),
+    "jud": ("jude", "Jude"),
+    "rev": ("revelation", "Revelation"),
+    "re": ("revelation", "Revelation"),
+}
 
 
 def find_apocrypha_book(text: str) -> str | None:
@@ -97,6 +170,57 @@ def supported_book_slugs(version: str) -> frozenset[str]:
 
 def version_supports_book_slug(version: str, book_slug: str) -> bool:
     return book_slug in supported_book_slugs(version)
+
+
+def normalize_book_name(book_name: str) -> tuple[str | None, str]:
+    collapsed = re.sub(r"[^a-z0-9]+", "", book_name.lower())
+    if collapsed in BOOK_NAME_ALIASES:
+        return BOOK_NAME_ALIASES[collapsed]
+    if collapsed in BOOK_SLUG_SPECIAL_CASES:
+        return BOOK_SLUG_SPECIAL_CASES[collapsed]
+
+    normalized_title = " ".join(part for part in book_name.split()).strip()
+    if not collapsed:
+        return None, normalized_title
+    return collapsed, normalized_title
+
+
+def extract_leading_book_name(text: str) -> str | None:
+    match = re.search(r"(?i)^\s*((?:[1-4]\s+)?[a-z][a-z'\s]+?)\s+\d", text)
+    if match:
+        return " ".join(match.group(1).split()).strip()
+
+    compact_match = re.search(r"(?i)^\s*([1-4]?[a-z]{2,})(?=\d)", text)
+    if compact_match:
+        return compact_match.group(1).strip()
+
+    return None
+
+
+def find_requested_book(text: str) -> tuple[str, str] | None:
+    apocrypha_book = find_apocrypha_book(text)
+    if apocrypha_book:
+        return APOCRYPHA_TITLE_TO_SLUG[apocrypha_book], apocrypha_book
+
+    book_name = extract_leading_book_name(
+        text.lower().replace("revelations", "revelation")
+    )
+    if book_name is None:
+        return None
+
+    slug, title = normalize_book_name(book_name.title())
+    if slug is None:
+        return None
+    return slug, title
+
+
+def version_supports_passage(version: str, passage: str) -> tuple[bool, str | None]:
+    requested_book = find_requested_book(passage)
+    if requested_book is None:
+        return True, None
+
+    book_slug, book_title = requested_book
+    return version_supports_book_slug(version, book_slug), book_title
 
 
 def parse_apocrypha_reference(text: str) -> str | None:

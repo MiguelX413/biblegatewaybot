@@ -3,7 +3,10 @@ import unittest
 from parsing import (
     build_passage_from_ref,
     decode_linked_reference,
+    extract_leading_book_name,
+    find_requested_book,
     get_version_provider,
+    normalize_book_name,
     other_version,
     parse_apocrypha_reference,
     parse_get_request,
@@ -13,6 +16,7 @@ from parsing import (
     version_supports_book_slug,
     version_supports_apocrypha_book,
     version_supports_apocrypha,
+    version_supports_passage,
 )
 
 
@@ -45,6 +49,38 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("Wisdom 3:5-7", parse_apocrypha_reference("wisdom 3:5-7"))
         self.assertEqual(
             "1 Maccabees 2:1", parse_apocrypha_reference("1 maccabees 2:1")
+        )
+
+    def test_normalize_book_name_handles_special_cases(self):
+        self.assertEqual(
+            ("revelation", "Revelation"),
+            normalize_book_name("Revelation of Jesus Christ"),
+        )
+        self.assertEqual(
+            ("songofsolomon", "Song of Solomon"), normalize_book_name("Song of Songs")
+        )
+        self.assertEqual(("psalm", "Psalm"), normalize_book_name("Psalms"))
+        self.assertEqual(("1corinthians", "1 Corinthians"), normalize_book_name("1co"))
+        self.assertEqual(("john", "John"), normalize_book_name("jn"))
+
+    def test_extract_leading_book_name_handles_compact_forms(self):
+        self.assertEqual("1co", extract_leading_book_name("1co13:4-7"))
+        self.assertEqual("jn", extract_leading_book_name("jn3:16"))
+        self.assertEqual(
+            "Song of Songs", extract_leading_book_name("Song of Songs 1:1")
+        )
+
+    def test_find_requested_book(self):
+        self.assertEqual(("john", "John"), find_requested_book("John 3:16"))
+        self.assertEqual(("john", "John"), find_requested_book("jn 3:16"))
+        self.assertEqual(
+            ("1corinthians", "1 Corinthians"), find_requested_book("1co13:4-7")
+        )
+        self.assertEqual(("genesis", "Genesis"), find_requested_book("gen 1:1"))
+        self.assertEqual(("tobit", "Tobit"), find_requested_book("Tobit 4:7"))
+        self.assertEqual(
+            ("songofsolomon", "Song of Solomon"),
+            find_requested_book("Song of Songs 1:1"),
         )
 
     def test_passage_uses_apocrypha(self):
@@ -86,6 +122,18 @@ class ParsingTests(unittest.TestCase):
     def test_version_supports_book_slug(self):
         self.assertTrue(version_supports_book_slug("NRSVUE", "1esdras"))
         self.assertFalse(version_supports_book_slug("NABRE", "1esdras"))
+
+    def test_version_supports_passage(self):
+        self.assertEqual((False, "John"), version_supports_passage("JPS", "John 3:16"))
+        self.assertEqual((False, "John"), version_supports_passage("JPS", "jn3:16"))
+        self.assertEqual(
+            (True, "Genesis"), version_supports_passage("JPS", "Genesis 1:1")
+        )
+        self.assertEqual((True, "Genesis"), version_supports_passage("JPS", "gen 1:1"))
+        self.assertEqual((False, "Tobit"), version_supports_passage("JPS", "Tobit 4:7"))
+        self.assertEqual(
+            (True, "Tobit"), version_supports_passage("NABRE", "Tobit 4:7")
+        )
 
     def test_decode_linked_reference_for_apocrypha(self):
         self.assertEqual(

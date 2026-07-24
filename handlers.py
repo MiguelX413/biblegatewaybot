@@ -25,8 +25,7 @@ from parsing import (
     passage_uses_apocrypha,
     other_version,
     parse_get_request,
-    version_supports_apocrypha_book,
-    version_supports_apocrypha,
+    version_supports_passage,
     get_version_provider,
 )
 from state import (
@@ -153,13 +152,11 @@ async def reply_with_passage_result(
     *,
     reply_markup: ReplyKeyboardRemove | None = None,
 ) -> None:
-    apocrypha_book = (
-        find_apocrypha_book(passage) if passage_uses_apocrypha(passage) else None
-    )
-    if apocrypha_book and not version_supports_apocrypha_book(version, apocrypha_book):
+    supports_passage, requested_book = version_supports_passage(version, passage)
+    if not supports_passage and requested_book:
         await update.effective_message.reply_text(
-            f"Sorry {display_name}, {version} on BibleGateway does not appear to include {apocrypha_book}. "
-            "Try a translation with that book in its Apocrypha/Deuterocanonical set.",
+            f"Sorry {display_name}, {version} does not appear to include {requested_book}. "
+            "Try a translation that includes that book.",
             reply_markup=reply_markup,
         )
         return
@@ -470,6 +467,16 @@ async def handle_inline_query(
     else:
         passage = query
         version = default_version
+
+    supports_passage, _ = version_supports_passage(version, passage)
+    if not supports_passage:
+        await inline_query.answer(
+            [],
+            cache_time=0,
+            switch_pm_text=f"Default version: {default_version}",
+            switch_pm_parameter="setdefault",
+        )
+        return
 
     response = await fetch_passage(context, passage, version, inline_details=True)
     if response in (None, EMPTY):
