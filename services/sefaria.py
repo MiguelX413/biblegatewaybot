@@ -20,8 +20,8 @@ except (
 ):  # pragma: no cover - exercised only in dependency-missing environments
     httpx = None
 
-SEFARIA_API_BASE_URL = "https://sefaria.org/api/v3/texts"
-SEFARIA_V1_API_BASE_URL = "https://sefaria.org/api/texts"
+SEFARIA_API_BASE_URL = "https://www.sefaria.org/api/v3/texts"
+SEFARIA_V1_API_BASE_URL = "https://www.sefaria.org/api/texts"
 SEFARIA_V1_HE_FIELD_VERSIONS = frozenset({"NEUHAUSEN1914"})
 SEFARIA_V1_TEXT_FIELD_VERSIONS = frozenset({"FERRARA"})
 SEFARIA_INDEX_TITLE_BY_BOOK_SLUG = {
