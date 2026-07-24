@@ -1,4 +1,4 @@
-from telegram.ext import Application
+from typing import Any
 
 from state import DEFAULT_VERSION
 from versions import VERSIONS
@@ -12,7 +12,7 @@ def ensure_text(value) -> str:
     return str(value)
 
 
-def build_bot_handle(application: Application) -> str:
+def build_bot_handle(application: Any) -> str:
     username = application.bot.username or "biblegatewaybot"
     return f"@{username}"
 

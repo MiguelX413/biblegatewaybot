@@ -1,8 +1,11 @@
 import logging
 from urllib.parse import quote
 
-import httpx
 from bs4 import BeautifulSoup
+try:
+    import httpx
+except ImportError:  # pragma: no cover - exercised only in dependency-missing environments
+    httpx = None
 
 from parsing import ensure_text
 from state import DEFAULT_VERSION, EMPTY, InlinePassageResult, MAX_SEARCH_RESULTS, REQUEST_TIMEOUT_SECONDS
@@ -135,7 +138,9 @@ def parse_search_results_html(text: str, start: int = 0) -> str:
 
 
 class BibleGatewayClient:
-    def __init__(self, client: httpx.AsyncClient | None = None):
+    def __init__(self, client=None):
+        if httpx is None:
+            raise RuntimeError("httpx is required to use BibleGatewayClient.")
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(
             timeout=REQUEST_TIMEOUT_SECONDS,
