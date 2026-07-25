@@ -20,7 +20,7 @@ Basic commands:
 
 Configuration:
 
-- set `TOKEN` in the environment, or provide a local `secrets.py`
+- set `TOKEN` in the environment, or copy `secrets.example.py` to a local `secrets.py` and fill it in
 - optional: `ADMIN_ID`
 - optional: `BOTFAMILY_HASH`
 - optional: `OFFLINE_BIBLES_PATH`
