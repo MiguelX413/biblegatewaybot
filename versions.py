@@ -18,7 +18,7 @@ type BookSlug = str
 type BookTitle = str
 type ProviderName = str
 type ScriptureSystemId = Literal["bible", "lds", "quran"]
-type VersionDataMap = OrderedDict[LanguageGroup, list[VersionLabel]]
+type VersionDataMap = OrderedDict[LanguageCode, list[VersionLabel]]
 type SefariaVersionConfig = str | dict[BookSlug, str]
 
 
@@ -96,12 +96,15 @@ LANGUAGE_GROUP_LABELS: Final[dict[LanguageCode, LanguageGroup]] = {
     "YI": _language_group("ייִדיש", "YI"),
     "ZH": _language_group("中文", "ZH"),
 }
+LANGUAGE_GROUP_CODES: Final[dict[LanguageGroup, LanguageCode]] = {
+    label: code for code, label in LANGUAGE_GROUP_LABELS.items()
+}
 
 
 BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
     [
         (
-            LANGUAGE_GROUP_LABELS["EN"],
+            "EN",
             [
                 "21st Century King James Version (KJ21)",
                 "American Standard Version (ASV)",
@@ -176,7 +179,7 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["ZH"],
+            "ZH",
             [
                 "Chinese Contemporary Bible (CCB)",
                 "Chinese New Testament: Easy-to-Read Version (ERV-ZH)",
@@ -190,9 +193,9 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
                 "Chinese Union Version Modern Punctuation (Traditional) (CUVMPT)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["AMU"], ["Amuzgo de Guerrero (AMU)"]),
+        ("AMU", ["Amuzgo de Guerrero (AMU)"]),
         (
-            LANGUAGE_GROUP_LABELS["AR"],
+            "AR",
             [
                 "Arabic Bible: Easy-to-Read Version (ERV-AR)",
                 "Ketab El Hayat (NAV)",
@@ -204,11 +207,11 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["AWA"],
+            "AWA",
             ["Awadhi Bible: Easy-to-Read Version (ERV-AWA)"],
         ),
         (
-            LANGUAGE_GROUP_LABELS["BG"],
+            "BG",
             [
                 "1940 Bulgarian Bible (BG1940)",
                 "Bulgarian Bible (BULG)",
@@ -216,27 +219,27 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
                 "Bulgarian Protestant Bible (BPB)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["CCO"], ["Chinanteco de Comaltepec (CCO)"]),
-        (LANGUAGE_GROUP_LABELS["CEB"], ["Ang Pulong Sa Dios (APSD-CEB)"]),
+        ("CCO", ["Chinanteco de Comaltepec (CCO)"]),
+        ("CEB", ["Ang Pulong Sa Dios (APSD-CEB)"]),
         (
-            LANGUAGE_GROUP_LABELS["CHR"],
+            "CHR",
             ["Cherokee New Testament (CHR)"],
         ),
-        (LANGUAGE_GROUP_LABELS["CKW"], ["Cakchiquel Occidental (CKW)"]),
+        ("CKW", ["Cakchiquel Occidental (CKW)"]),
         (
-            LANGUAGE_GROUP_LABELS["CS"],
+            "CS",
             ["Bible 21 (B21)", "Slovo na cestu (SNC)"],
         ),
-        (LANGUAGE_GROUP_LABELS["CY"], ["Beibl William Morgan (BWM)"]),
+        ("CY", ["Beibl William Morgan (BWM)"]),
         (
-            LANGUAGE_GROUP_LABELS["DA"],
+            "DA",
             [
                 "Bibelen på hverdagsdansk (BPH)",
                 "Dette er Biblen på dansk (DN1933)",
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["DE"],
+            "DE",
             [
                 "Hoffnung für Alle (HOF)",
                 "Luther Bibel 1545 (LUTH1545)",
@@ -246,7 +249,7 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["ES"],
+            "ES",
             [
                 "La Biblia de las Américas (LBLA)",
                 "Dios Habla Hoy (DHH)",
@@ -267,9 +270,9 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
                 "Traducción en lenguaje actual (TLA)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["FI"], ["Raamattu 1933/38 (R1933)"]),
+        ("FI", ["Raamattu 1933/38 (R1933)"]),
         (
-            LANGUAGE_GROUP_LABELS["FR"],
+            "FR",
             [
                 "La Bible du Semeur (BDS)",
                 "Louis Segond (LSG)",
@@ -278,7 +281,7 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["GRC"],
+            "GRC",
             [
                 "1550 Stephanus New Testament (TR1550)",
                 "1881 Westcott-Hort New Testament (WHNU)",
@@ -287,34 +290,34 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["HE"],
+            "HE",
             [
                 "Habrit Hakhadasha/Haderekh (HHH)",
                 "The Westminster Leningrad Codex (WLC)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["HI"], ["Hindi Bible: Easy-to-Read Version (ERV-HI)"]),
-        (LANGUAGE_GROUP_LABELS["HIL"], ["Ang Pulong Sang Dios (HLGN)"]),
+        ("HI", ["Hindi Bible: Easy-to-Read Version (ERV-HI)"]),
+        ("HIL", ["Ang Pulong Sang Dios (HLGN)"]),
         (
-            LANGUAGE_GROUP_LABELS["HR"],
+            "HR",
             [
                 "Hrvatski Novi Zavjet – Rijeka 2001 (HNZ-RI)",
                 "Knijga O Kristu (CRO)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["HT"], ["Haitian Creole Version (HCV)"]),
+        ("HT", ["Haitian Creole Version (HCV)"]),
         (
-            LANGUAGE_GROUP_LABELS["HU"],
+            "HU",
             [
                 "Hungarian Károli (KAR)",
                 "Hungarian Bible: Easy-to-Read Version (ERV-HU)",
                 "Hungarian New Translation (NT-HU)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["HWC"], ["Hawai‘i Pidgin (HWP)"]),
-        (LANGUAGE_GROUP_LABELS["IS"], ["Icelandic Bible (ICELAND)"]),
+        ("HWC", ["Hawai‘i Pidgin (HWP)"]),
+        ("IS", ["Icelandic Bible (ICELAND)"]),
         (
-            LANGUAGE_GROUP_LABELS["IT"],
+            "IT",
             [
                 "La Bibbia della Gioia (BDG)",
                 "Conferenza Episcopale Italiana (CEI)",
@@ -324,47 +327,47 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["LAD"],
+            "LAD",
             [
                 "Biblia de Ferrara (FERRARA)",
                 "Trazladado en la lingua Espanyola, 1873 (BOYADJIAN1873)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["JAC"], ["Jacalteco, Oriental (JAC)"]),
-        (LANGUAGE_GROUP_LABELS["KEK"], ["Kekchi (KEK)"]),
-        (LANGUAGE_GROUP_LABELS["LA"], ["Biblia Sacra Vulgata (VULGATE)"]),
-        (LANGUAGE_GROUP_LABELS["MI"], ["Maori Bible (MAORI)"]),
+        ("JAC", ["Jacalteco, Oriental (JAC)"]),
+        ("KEK", ["Kekchi (KEK)"]),
+        ("LA", ["Biblia Sacra Vulgata (VULGATE)"]),
+        ("MI", ["Maori Bible (MAORI)"]),
         (
-            LANGUAGE_GROUP_LABELS["MK"],
+            "MK",
             ["Macedonian New Testament (MNT)"],
         ),
-        (LANGUAGE_GROUP_LABELS["MR"], ["Marathi Bible: Easy-to-Read Version (ERV-MR)"]),
-        (LANGUAGE_GROUP_LABELS["MVC"], ["Mam, Central (MVC)"]),
+        ("MR", ["Marathi Bible: Easy-to-Read Version (ERV-MR)"]),
+        ("MVC", ["Mam, Central (MVC)"]),
         (
-            LANGUAGE_GROUP_LABELS["MVJ"],
+            "MVJ",
             ["Mam de Todos Santos Chuchumatán (MVJ)"],
         ),
-        (LANGUAGE_GROUP_LABELS["NDS"], ["Reimer 2001 (REIMER)"]),
-        (LANGUAGE_GROUP_LABELS["NE"], ["Nepali Bible: Easy-to-Read Version (ERV-NE)"]),
-        (LANGUAGE_GROUP_LABELS["NGU"], ["Náhuatl de Guerrero (NGU)"]),
-        (LANGUAGE_GROUP_LABELS["NL"], ["Het Boek (HTB)"]),
+        ("NDS", ["Reimer 2001 (REIMER)"]),
+        ("NE", ["Nepali Bible: Easy-to-Read Version (ERV-NE)"]),
+        ("NGU", ["Náhuatl de Guerrero (NGU)"]),
+        ("NL", ["Het Boek (HTB)"]),
         (
-            LANGUAGE_GROUP_LABELS["NO"],
+            "NO",
             ["Det Norsk Bibelselskap 1930 (DNB1930)", "En Levende Bok (LB)"],
         ),
-        (LANGUAGE_GROUP_LABELS["OR"], ["Oriya Bible: Easy-to-Read Version (ERV-OR)"]),
-        (LANGUAGE_GROUP_LABELS["PA"], ["Punjabi Bible: Easy-to-Read Version (ERV-PA)"]),
+        ("OR", ["Oriya Bible: Easy-to-Read Version (ERV-OR)"]),
+        ("PA", ["Punjabi Bible: Easy-to-Read Version (ERV-PA)"]),
         (
-            LANGUAGE_GROUP_LABELS["PL"],
+            "PL",
             [
                 "Nowe Przymierze (NP)",
                 "Słowo Życia (SZ-PL)",
                 "Updated Gdańsk Bible (UBG)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["PPL"], ["Ne Bibliaj Tik Nawat (NBTN)"]),
+        ("PPL", ["Ne Bibliaj Tik Nawat (NBTN)"]),
         (
-            LANGUAGE_GROUP_LABELS["PT"],
+            "PT",
             [
                 "Almeida Revista e Corrigida 2009 (ARC)",
                 "Nova Traduҫão na Linguagem de Hoje 2000 (NTLH)",
@@ -373,20 +376,20 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
                 "Portuguese New Testament: Easy-to-Read Version (VFL)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["QU"], ["Mushuj Testamento Diospaj Shimi (MTDS)"]),
+        ("QU", ["Mushuj Testamento Diospaj Shimi (MTDS)"]),
         (
-            LANGUAGE_GROUP_LABELS["QUT"],
+            "QUT",
             ["Quiché, Centro Occidental (QUT)"],
         ),
         (
-            LANGUAGE_GROUP_LABELS["RO"],
+            "RO",
             [
                 "Cornilescu 1924 - Revised 2010, 2014 (RMNN)",
                 "Nouă Traducere În Limba Română (NTLR)",
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["RU"],
+            "RU",
             [
                 "New Russian Translation (NRT)",
                 "Священное Писание (Восточный Перевод) (CARS)",
@@ -397,15 +400,15 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
                 "Russian Synodal Version (RUSV)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["SK"], ["Nádej pre kazdého (NPK)"]),
-        (LANGUAGE_GROUP_LABELS["SO"], ["Somali Bible (SOM)"]),
-        (LANGUAGE_GROUP_LABELS["SQ"], ["Albanian Bible (ALB)"]),
+        ("SK", ["Nádej pre kazdého (NPK)"]),
+        ("SO", ["Somali Bible (SOM)"]),
+        ("SQ", ["Albanian Bible (ALB)"]),
         (
-            LANGUAGE_GROUP_LABELS["SR"],
+            "SR",
             ["Serbian New Testament: Easy-to-Read Version (ERV-SR)"],
         ),
         (
-            LANGUAGE_GROUP_LABELS["SV"],
+            "SV",
             [
                 "Nya Levande Bibeln (SVL)",
                 "Svenska 1917 (SV1917)",
@@ -413,31 +416,31 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
                 "Svenska Folkbibeln 2014 (SFB2014)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["SW"], ["Neno: Bibilia Takatifu (SNT)"]),
-        (LANGUAGE_GROUP_LABELS["TA"], ["Tamil Bible: Easy-to-Read Version (ERV-TA)"]),
+        ("SW", ["Neno: Bibilia Takatifu (SNT)"]),
+        ("TA", ["Tamil Bible: Easy-to-Read Version (ERV-TA)"]),
         (
-            LANGUAGE_GROUP_LABELS["TH"],
+            "TH",
             [
                 "Thai New Contemporary Bible (TNCV)",
                 "Thai New Testament: Easy-to-Read Version (ERV-TH)",
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["TL"],
+            "TL",
             ["Ang Dating Biblia (1905) (ADB1905)", "Ang Salita ng Diyos (SND)"],
         ),
-        (LANGUAGE_GROUP_LABELS["TWI"], ["Nkwa Asem (NA-TWI)"]),
+        ("TWI", ["Nkwa Asem (NA-TWI)"]),
         (
-            LANGUAGE_GROUP_LABELS["UK"],
+            "UK",
             [
                 "Ukrainian Bible (UKR)",
                 "Ukrainian New Testament: Easy-to-Read Version (ERV-UK)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["UR"], ["Urdu Bible: Easy-to-Read Version (ERV-UR)"]),
-        (LANGUAGE_GROUP_LABELS["USP"], ["Uspanteco (USP)"]),
+        ("UR", ["Urdu Bible: Easy-to-Read Version (ERV-UR)"]),
+        ("USP", ["Uspanteco (USP)"]),
         (
-            LANGUAGE_GROUP_LABELS["VI"],
+            "VI",
             [
                 "1934 Vietnamese Bible (VIET)",
                 "Bản Dịch 2011 (BD2011)",
@@ -445,7 +448,7 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["YI"],
+            "YI",
             [
                 "Tanakh in Yiddish, 1914 (NEUHAUSEN1914)",
                 "Yehoyesh's Yiddish Tanakh Translation (YEHOYESH)",
@@ -460,9 +463,9 @@ LDS_VERSION_LABELS: Final[tuple[VersionLabel, ...]] = (
 )
 QURAN_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
     [
-        (LANGUAGE_GROUP_LABELS["AR"], ["Uthmani Arabic (QURAN)"]),
+        ("AR", ["Uthmani Arabic (QURAN)"]),
         (
-            LANGUAGE_GROUP_LABELS["EN"],
+            "EN",
             [
                 "Saheeh International (QSI)",
                 "Marmaduke Pickthall (QPICK)",
@@ -470,16 +473,16 @@ QURAN_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             ],
         ),
         (
-            LANGUAGE_GROUP_LABELS["FA"],
+            "FA",
             [
                 "AbdolMohammad Ayati (QAYATI)",
                 "Mohammad Mahdi Fooladvand (QFOOL)",
             ],
         ),
-        (LANGUAGE_GROUP_LABELS["UZ"], ["Muhammad Sodik Muhammad Yusuf (QSODIK)"]),
-        (LANGUAGE_GROUP_LABELS["UR"], ["Fateh Muhammad Jalandhry (QJAL)"]),
-        (LANGUAGE_GROUP_LABELS["TR"], ["Diyanet İşleri (QDIYANET)"]),
-        (LANGUAGE_GROUP_LABELS["RU"], ["Elmir Kuliev (QKULIEV)"]),
+        ("UZ", ["Muhammad Sodik Muhammad Yusuf (QSODIK)"]),
+        ("UR", ["Fateh Muhammad Jalandhry (QJAL)"]),
+        ("TR", ["Diyanet İşleri (QDIYANET)"]),
+        ("RU", ["Elmir Kuliev (QKULIEV)"]),
     ]
 )
 
@@ -498,6 +501,14 @@ def _version_labels_from_data(version_data: VersionDataMap) -> tuple[VersionLabe
     return tuple(
         label for group_labels in version_data.values() for label in group_labels
     )
+
+
+def format_language_group(code: LanguageCode) -> LanguageGroup:
+    return LANGUAGE_GROUP_LABELS[code]
+
+
+def resolve_language_group(label: str) -> LanguageCode | None:
+    return LANGUAGE_GROUP_CODES.get(label)
 
 
 SCRIPTURE_SYSTEMS: Final[dict[ScriptureSystemId, ScriptureSystem]] = {
