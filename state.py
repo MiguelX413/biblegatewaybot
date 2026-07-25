@@ -3,9 +3,11 @@ from pathlib import Path
 
 DEFAULT_BIBLE_VERSION = "NIV"
 DEFAULT_LDS_VERSION = "BOM"
+DEFAULT_QURAN_VERSION = "QURAN"
 DEFAULT_VERSION_BY_SYSTEM: dict[str, str | tuple[tuple[str, ...], ...]] = {
     "bible": (("NIV", "NRSVUE"),),
     "lds": DEFAULT_LDS_VERSION,
+    "quran": DEFAULT_QURAN_VERSION,
 }
 EMPTY = "empty"
 MAX_SEARCH_RESULTS = 5
@@ -23,6 +25,7 @@ PERSISTENCE_FILE = Path(__file__).with_name("scripturebot-state.pkl")
 USER_DEFAULT_VERSION_KEY_BY_SYSTEM = {
     "bible": "default_bible_version",
     "lds": "default_lds_version",
+    "quran": "default_quran_version",
 }
 CHAT_LINK_EMBEDS_ENABLED_KEY = "link_embeds_enabled"
 USER_INLINE_LINK_EMBEDS_ENABLED_KEY = "inline_link_embeds_enabled"
@@ -30,6 +33,7 @@ USER_SEARCH_KEY = "last_search"
 USER_STARTED_KEY = "started"
 PENDING_GET_VERSION_KEY = "pending_get_version"
 PENDING_GET_VERSION_EXPLICIT_KEY = "pending_get_version_explicit"
+PENDING_SETDEFAULT_SYSTEM_KEY = "pending_setdefault_system"
 
 BACK_TO_COLLECTIONS = "🔙 to scripture collections"
 BACK_TO_LANGUAGES = "🔙 to language list"

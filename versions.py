@@ -16,7 +16,7 @@ type LanguageGroup = str
 type BookSlug = str
 type BookTitle = str
 type ProviderName = str
-type ScriptureSystemId = Literal["bible", "lds"]
+type ScriptureSystemId = Literal["bible", "lds", "quran"]
 type VersionDataMap = OrderedDict[LanguageGroup, list[VersionLabel]]
 type SefariaVersionConfig = str | dict[BookSlug, str]
 
@@ -405,6 +405,30 @@ LDS_VERSION_LABELS: Final[tuple[VersionLabel, ...]] = (
     "Doctrine and Covenants (DC)",
     "Pearl of Great Price (PGP)",
 )
+QURAN_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
+    [
+        ("—العربية (AR)—", ["Uthmani Arabic (QURAN)"]),
+        (
+            "—English (EN)—",
+            [
+                "Saheeh International (QSI)",
+                "Marmaduke Pickthall (QPICK)",
+                "Abdullah Yusuf Ali (QYUSUF)",
+            ],
+        ),
+        (
+            "—فارسی (FA)—",
+            [
+                "AbdolMohammad Ayati (QAYATI)",
+                "Mohammad Mahdi Fooladvand (QFOOL)",
+            ],
+        ),
+        ("—Oʻzbek (UZ)—", ["Muhammad Sodik Muhammad Yusuf (QSODIK)"]),
+        ("—اُرْدُو (UR)—", ["Fateh Muhammad Jalandhry (QJAL)"]),
+        ("—Türkçe (TR)—", ["Diyanet İşleri (QDIYANET)"]),
+        ("—Ру́сский (RU)—", ["Elmir Kuliev (QKULIEV)"]),
+    ]
+)
 
 
 @dataclass(frozen=True)
@@ -435,8 +459,18 @@ SCRIPTURE_SYSTEMS: Final[dict[ScriptureSystemId, ScriptureSystem]] = {
         display_name="LDS scriptures",
         version_labels=LDS_VERSION_LABELS,
     ),
+    "quran": ScriptureSystem(
+        id="quran",
+        display_name="Qurʾan",
+        version_labels=_version_labels_from_data(QURAN_VERSION_DATA),
+        version_data=QURAN_VERSION_DATA,
+    ),
 }
-SCRIPTURE_SYSTEM_ORDER: Final[tuple[ScriptureSystemId, ...]] = ("bible", "lds")
+SCRIPTURE_SYSTEM_ORDER: Final[tuple[ScriptureSystemId, ...]] = (
+    "bible",
+    "lds",
+    "quran",
+)
 
 
 def get_scripture_system(system_id: ScriptureSystemId) -> ScriptureSystem:
@@ -832,6 +866,22 @@ PEARL_OF_GREAT_PRICE_BOOK_DATA: tuple[BookData, ...] = (
 PEARL_OF_GREAT_PRICE_BOOK_SLUGS: tuple[str, ...] = tuple(
     book["slug"] for book in PEARL_OF_GREAT_PRICE_BOOK_DATA
 )
+QURAN_BOOK_DATA: tuple[BookData, ...] = (
+    {
+        "title": "Qurʾan",
+        "slug": "quran",
+        "aliases": (
+            "quran",
+            "qur'an",
+            "qur’an",
+            "qurʾan",
+            "al quran",
+            "al-quran",
+            "koran",
+        ),
+    },
+)
+QURAN_BOOK_SLUGS: tuple[str, ...] = tuple(book["slug"] for book in QURAN_BOOK_DATA)
 LDS_STANDARD_WORKS_BOOK_DATA: tuple[BookData, ...] = (
     BOOK_OF_MORMON_BOOK_DATA
     + DOCTRINE_AND_COVENANTS_BOOK_DATA
@@ -966,6 +1016,19 @@ for code in ("BOM", "DC", "PGP"):
     VERSION_PROVIDERS[code] = "lds"
 for code in ("GNA2025", "GNADC25", "TMA", "TMA-C", "TKA"):
     VERSION_PROVIDERS[code] = "biblecom"
+for code in (
+    "QURAN",
+    "QSI",
+    "QPICK",
+    "QYUSUF",
+    "QAYATI",
+    "QFOOL",
+    "QSODIK",
+    "QJAL",
+    "QDIYANET",
+    "QKULIEV",
+):
+    VERSION_PROVIDERS[code] = "quran"
 VERSION_SUPPORTED_BOOK_SLUGS: dict[str, frozenset[str]] = {
     code: frozenset(PROTESTANT_CANON_BOOK_SLUGS) for code in VERSIONS
 }
@@ -1010,10 +1073,24 @@ VERSION_SUPPORTED_BOOK_SLUGS["BENSIRA1899"] = frozenset({"sirach"})
 VERSION_SUPPORTED_BOOK_SLUGS["BOM"] = frozenset(BOOK_OF_MORMON_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["DC"] = frozenset(DOCTRINE_AND_COVENANTS_BOOK_SLUGS)
 VERSION_SUPPORTED_BOOK_SLUGS["PGP"] = frozenset(PEARL_OF_GREAT_PRICE_BOOK_SLUGS)
+for code in (
+    "QURAN",
+    "QSI",
+    "QPICK",
+    "QYUSUF",
+    "QAYATI",
+    "QFOOL",
+    "QSODIK",
+    "QJAL",
+    "QDIYANET",
+    "QKULIEV",
+):
+    VERSION_SUPPORTED_BOOK_SLUGS[code] = frozenset(QURAN_BOOK_SLUGS)
 
 BOOKS: tuple[str, ...] = (
     PROTESTANT_CANON_BOOK_SLUGS
     + APOCRYPHA_BOOK_SLUGS
     + SEFARIA_EXTRA_BOOK_SLUGS
     + LDS_STANDARD_WORKS_BOOK_SLUGS
+    + QURAN_BOOK_SLUGS
 )

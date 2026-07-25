@@ -11,6 +11,8 @@ from versions import (
     LDS_STANDARD_WORKS_BOOK_DATA,
     LDS_STANDARD_WORKS_BOOK_SLUGS,
     NONCANON_BOOK_SLUGS,
+    QURAN_BOOK_DATA,
+    QURAN_BOOK_SLUGS,
     SEFARIA_EXTRA_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
@@ -572,6 +574,12 @@ for book in LDS_STANDARD_WORKS_BOOK_DATA:
             book["slug"],
             book["title"],
         )
+for book in QURAN_BOOK_DATA:
+    for alias in book["aliases"]:
+        BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
+            book["slug"],
+            book["title"],
+        )
 
 
 def get_version_provider(version: str) -> str | None:
@@ -579,7 +587,11 @@ def get_version_provider(version: str) -> str | None:
 
 
 def get_book_scripture_system(book_slug: str) -> ScriptureSystemId:
-    return "lds" if book_slug in LDS_STANDARD_WORKS_BOOK_SLUGS else "bible"
+    if book_slug in LDS_STANDARD_WORKS_BOOK_SLUGS:
+        return "lds"
+    if book_slug in QURAN_BOOK_SLUGS:
+        return "quran"
+    return "bible"
 
 
 def get_passage_scripture_system(passage: str) -> ScriptureSystemId | None:
@@ -629,7 +641,10 @@ def extract_leading_book_name(text: str) -> str | None:
         if re.search(rf"(?i)^\s*{re.escape(special_case)}(?=\s+\d)", text):
             return special_case.title()
 
-    match = re.search(r"(?i)^\s*((?:[1-4]\s+)?[a-z][a-z'&\-\u2014\s]+?)\s+\d", text)
+    match = re.search(
+        r"(?i)^\s*((?:[1-4]\s+)?[a-z][a-z'&\-\u02bc\u2014\u2019\s]+?)\s+\d",
+        text,
+    )
     if match:
         return " ".join(match.group(1).split()).strip()
 

@@ -220,6 +220,12 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("1 Maccabees 1", passage)
         self.assertTrue(explicit)
 
+    def test_parse_get_accepts_quran_version(self):
+        selection, passage, explicit = parse_get_request("/get Quran 2:255 QSI", "NIV")
+        self.assertEqual((("QSI",),), selection)
+        self.assertEqual("Quran 2:255", passage)
+        self.assertTrue(explicit)
+
     def test_build_passage_from_ref_normalizes_revelation_name(self):
         passage = build_passage_from_ref(("Revelation of Jesus Christ", 1, 1, 1, 3))
         self.assertEqual("Revelation 1:1-1:3", passage)
@@ -291,21 +297,31 @@ class ParsingTests(unittest.TestCase):
             ("songofsolomon", "Song of Solomon"),
             find_requested_book("Song of Songs 1:1"),
         )
+        self.assertEqual(("quran", "Qurʾan"), find_requested_book("Quran 2:255"))
+        self.assertEqual(("quran", "Qurʾan"), find_requested_book("Qur'an 2:255"))
 
-    def test_scripture_systems_keep_bible_and_lds_separate(self):
+    def test_scripture_systems_keep_bible_lds_and_quran_separate(self):
         self.assertEqual("bible", get_book_scripture_system("genesis"))
         self.assertEqual("lds", get_book_scripture_system("1nephi"))
+        self.assertEqual("quran", get_book_scripture_system("quran"))
         self.assertEqual("bible", get_passage_scripture_system("Genesis 1:1"))
         self.assertEqual("lds", get_passage_scripture_system("1 Nephi 1:1"))
+        self.assertEqual("quran", get_passage_scripture_system("Quran 2:255"))
         self.assertEqual("bible", get_version_system("NIV"))
         self.assertEqual("lds", get_version_system("BOM"))
+        self.assertEqual("quran", get_version_system("QSI"))
         self.assertNotIn("BOM", SCRIPTURE_SYSTEMS["bible"].version_labels)
         self.assertIn("Book of Mormon (BOM)", SCRIPTURE_SYSTEMS["lds"].version_labels)
+        self.assertIn(
+            "Saheeh International (QSI)",
+            SCRIPTURE_SYSTEMS["quran"].version_labels,
+        )
 
     def test_is_book_only_request(self):
         self.assertTrue(is_book_only_request("John"))
         self.assertTrue(is_book_only_request("1 Maccabees"))
         self.assertTrue(is_book_only_request("Jubilees"))
+        self.assertTrue(is_book_only_request("Quran"))
         self.assertFalse(is_book_only_request("John 3"))
         self.assertFalse(is_book_only_request("John 3:16"))
         self.assertFalse(is_book_only_request("1 Maccabees 1"))
@@ -350,6 +366,8 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("lds", get_version_provider("BOM"))
         self.assertEqual("lds", get_version_provider("DC"))
         self.assertEqual("lds", get_version_provider("PGP"))
+        self.assertEqual("quran", get_version_provider("QURAN"))
+        self.assertEqual("quran", get_version_provider("QSI"))
 
     def test_supported_book_slugs_capture_scope_overrides(self):
         self.assertIn("genesis", supported_book_slugs("NIV"))
@@ -397,6 +415,8 @@ class ParsingTests(unittest.TestCase):
         self.assertNotIn("1nephi", supported_book_slugs("DC"))
         self.assertIn("abraham", supported_book_slugs("PGP"))
         self.assertNotIn("john", supported_book_slugs("PGP"))
+        self.assertIn("quran", supported_book_slugs("QURAN"))
+        self.assertNotIn("john", supported_book_slugs("QURAN"))
         self.assertIn("3maccabees", supported_book_slugs("NRSVUE"))
         self.assertIn("4maccabees", supported_book_slugs("NRSVUE"))
         self.assertIn("3maccabees", supported_book_slugs("NRSVA"))
@@ -446,6 +466,23 @@ class ParsingTests(unittest.TestCase):
             supported_versions_for_book_slug("testamentsofthetwelvepatriarchs"),
         )
         self.assertIn("NIV", supported_versions_for_book_slug("john"))
+        self.assertEqual(
+            frozenset(
+                {
+                    "QURAN",
+                    "QSI",
+                    "QPICK",
+                    "QYUSUF",
+                    "QAYATI",
+                    "QFOOL",
+                    "QSODIK",
+                    "QJAL",
+                    "QDIYANET",
+                    "QKULIEV",
+                }
+            ),
+            supported_versions_for_book_slug("quran"),
+        )
 
     def test_resolve_auto_version_uses_bom_for_exclusive_books(self):
         self.assertEqual("BOM", resolve_auto_version("NIV", "1 Nephi 3:7"))
@@ -545,6 +582,12 @@ class ParsingTests(unittest.TestCase):
             (True, "Psalm 154"), version_supports_passage("ESHEL", "Psalm 154 1:1")
         )
         self.assertEqual((False, "John"), version_supports_passage("BOM", "John 3:16"))
+        self.assertEqual(
+            (True, "Qurʾan"), version_supports_passage("QSI", "Quran 2:255")
+        )
+        self.assertEqual(
+            (False, "Genesis"), version_supports_passage("QSI", "Genesis 1:1")
+        )
 
     def test_decode_linked_reference_for_apocrypha(self):
         self.assertEqual(
