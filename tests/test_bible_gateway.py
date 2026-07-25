@@ -1,6 +1,7 @@
 import unittest
 
 from services.bible_gateway import (
+    build_bible_gateway_passage_url,
     normalize_block_text,
     parse_passage_html,
     parse_search_results_html,
@@ -63,6 +64,12 @@ SEARCH_HTML = """
 
 
 class BibleGatewayParsingTests(unittest.TestCase):
+    def test_build_bible_gateway_passage_url_uses_public_host(self):
+        self.assertEqual(
+            "https://biblegateway.com/passage/?search=John%203:16&version=NIV",
+            build_bible_gateway_passage_url("John 3:16", "NIV"),
+        )
+
     def test_normalize_block_text_preserves_intentional_line_breaks(self):
         self.assertEqual(
             "Line one\nLine two",

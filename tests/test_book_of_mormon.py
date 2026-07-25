@@ -3,6 +3,7 @@ import unittest
 from services.lds_scriptures import (
     LDS_BOOK_BY_ALIAS,
     LdsReference,
+    build_lds_passage_url,
     format_reference_title,
     parse_lds_reference,
     parse_passage_html,
@@ -41,6 +42,13 @@ SAMPLE_HTML = """
 
 
 class LdsScripturesParsingTests(unittest.TestCase):
+    def test_build_lds_passage_url_uses_public_host(self):
+        self.assertEqual(
+            "https://churchofjesuschrist.org/study/scriptures/bofm/1-ne/3"
+            "?lang=eng&id=p7#p7",
+            build_lds_passage_url("1 Nephi 3:7"),
+        )
+
     def test_parse_reference_single_verse(self):
         reference = parse_lds_reference("1 Nephi 3:7")
         self.assertIsNotNone(reference)

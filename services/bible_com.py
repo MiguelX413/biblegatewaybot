@@ -27,7 +27,8 @@ except ImportError:  # pragma: no cover - exercised only in dependency-missing e
     httpx = None
 
 
-BIBLE_COM_BASE_URL = "https://bible.com/bible"
+_BIBLE_COM_API_BASE_URL = "https://www.bible.com/bible"
+_BIBLE_COM_PUBLIC_BASE_URL = "https://bible.com/bible"
 BIBLE_COM_VERSION_IDS: dict[str, int] = {
     "GNA2025": 67,
     "GNADC25": 1665,
@@ -229,7 +230,9 @@ def build_bible_com_passage_url(
     version_id = BIBLE_COM_VERSION_IDS.get(version.upper())
     if reference is None or version_id is None:
         return None
-    return f"{BIBLE_COM_BASE_URL}/{version_id}/{_build_usfm_reference(reference)}"
+    return (
+        f"{_BIBLE_COM_PUBLIC_BASE_URL}/{version_id}/{_build_usfm_reference(reference)}"
+    )
 
 
 def _extract_page_props(html: str) -> dict | None:
@@ -386,7 +389,7 @@ class BibleComClient:
         blocks: list[str] = []
         for chapter_number in range(reference.start_chapter, reference.end_chapter + 1):
             url = (
-                f"{BIBLE_COM_BASE_URL}/{version_id}/"
+                f"{_BIBLE_COM_API_BASE_URL}/{version_id}/"
                 f"{reference.book_usfm}.{chapter_number}"
             )
             html = await self.fetch_text(url)

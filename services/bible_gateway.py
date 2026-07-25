@@ -21,11 +21,15 @@ from state import (
     InlinePassageResult,
 )
 
+_BIBLE_GATEWAY_API_BASE_URL = "https://www.biblegateway.com"
+_BIBLE_GATEWAY_PUBLIC_BASE_URL = "https://biblegateway.com"
+
 
 def build_bible_gateway_passage_url(passage: str, version: str) -> str:
     search = quote(ensure_text(passage).strip(), safe=":")
     return (
-        f"https://biblegateway.com/passage/?search={search}&version={version.upper()}"
+        f"{_BIBLE_GATEWAY_PUBLIC_BASE_URL}/passage/?search={search}"
+        f"&version={version.upper()}"
     )
 
 
@@ -177,7 +181,10 @@ class BibleGatewayClient:
         inline_details: bool = False,
     ) -> str | InlinePassageResult | None:
         search = quote(ensure_text(passage).lower().strip())
-        url = f"https://biblegateway.com/passage/?search={search}&version={version}&interface=print"
+        url = (
+            f"{_BIBLE_GATEWAY_API_BASE_URL}/passage/?search={search}"
+            f"&version={version}&interface=print"
+        )
         html = await self.fetch_text(url)
         if html is None:
             return None
@@ -185,7 +192,7 @@ class BibleGatewayClient:
 
     async def get_search_results(self, text: str, start: int = 0) -> str | None:
         query = quote(ensure_text(text).lower().strip())
-        url = f"http://biblehub.net/search.php?q={query}"
+        url = f"https://biblehub.com/search.php?q={query}"
         html = await self.fetch_text(url)
         if html is None:
             return None

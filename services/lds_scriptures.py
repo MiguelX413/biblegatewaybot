@@ -15,7 +15,8 @@ except ImportError:  # pragma: no cover - exercised only in dependency-missing e
     httpx = None
 
 
-LDS_SCRIPTURES_BASE_URL = "https://churchofjesuschrist.org/study/scriptures"
+_LDS_SCRIPTURES_API_BASE_URL = "https://www.churchofjesuschrist.org/study/scriptures"
+_LDS_SCRIPTURES_PUBLIC_BASE_URL = "https://churchofjesuschrist.org/study/scriptures"
 
 
 @dataclass(frozen=True)
@@ -170,7 +171,7 @@ def build_lds_passage_url(passage: str) -> str | None:
         return None
 
     url = (
-        f"{LDS_SCRIPTURES_BASE_URL}/"
+        f"{_LDS_SCRIPTURES_PUBLIC_BASE_URL}/"
         f"{reference.book.collection_path}/"
         f"{reference.book.book_path}/"
         f"{reference.start_chapter}?lang=eng"
@@ -363,7 +364,7 @@ class LdsScripturesClient:
 
     async def _get_chapter_html(self, book: LdsBook, chapter: int) -> str | None:
         url = (
-            f"{LDS_SCRIPTURES_BASE_URL}/"
+            f"{_LDS_SCRIPTURES_API_BASE_URL}/"
             f"{book.collection_path}/{book.book_path}/{chapter}?lang=eng"
         )
         return await self.fetch_text(url)
