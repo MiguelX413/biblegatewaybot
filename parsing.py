@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
 
+from quran import parse_quran_reference
 from state import DEFAULT_BIBLE_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
@@ -253,6 +254,9 @@ def format_parallel_passage_entities(
 
 def _chunk_header(header: str, body: str) -> str:
     """Build a reference header for the verses that occur in one message chunk."""
+
+    if header.startswith("Qurʾān, "):
+        return header
 
     verse_matches = list(re.finditer(f"[{SUPERSCRIPT_DIGITS}]+", body))
     chapter_match = re.search(r"(?m)^(\d+)\s+", body)
@@ -599,6 +603,8 @@ def get_book_scripture_system(book_slug: str) -> ScriptureSystemId:
 
 
 def get_passage_scripture_system(passage: str) -> ScriptureSystemId | None:
+    if parse_quran_reference(passage) is not None:
+        return ScriptureSystemId.QURAN
     requested_book = find_requested_book(passage)
     if requested_book is None:
         return None
@@ -687,6 +693,9 @@ def is_book_only_request(text: str) -> bool:
 
 
 def version_supports_passage(version: str, passage: str) -> tuple[bool, str | None]:
+    if parse_quran_reference(passage) is not None:
+        return version_supports_book_slug(version, "quran"), "Qurʾān"
+
     requested_book = find_requested_book(passage)
     if requested_book is None:
         return True, None
@@ -699,6 +708,9 @@ def resolve_auto_version(
     version: str, passage: str, *, explicit_version: bool = False
 ) -> str:
     if explicit_version:
+        return version
+
+    if parse_quran_reference(passage) is not None:
         return version
 
     requested_book = find_requested_book(passage)

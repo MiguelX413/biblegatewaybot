@@ -80,6 +80,24 @@ class ParsingTests(unittest.TestCase):
         self.assertTrue(chunks[0][0].startswith("John 3:1 NIV\n"))
         self.assertTrue(chunks[1][0].startswith("John 3:2 NIV\n"))
 
+    def test_format_passage_chunks_preserves_quran_citation_header(self):
+        paragraph = f"¹ {'x' * 2500}"
+        chunks = format_passage_chunks(
+            "Qurʾān, al-Baqarah (2):255–257 (Saheeh International)\n\n"
+            f"{paragraph}\n\n{paragraph}"
+        )
+        self.assertEqual(2, len(chunks))
+        self.assertTrue(
+            chunks[0][0].startswith(
+                "Qurʾān, al-Baqarah (2):255–257 (Saheeh International)\n"
+            )
+        )
+        self.assertTrue(
+            chunks[1][0].startswith(
+                "Qurʾān, al-Baqarah (2):255–257 (Saheeh International)\n"
+            )
+        )
+
     def test_format_passage_chunks_treats_a_chapter_number_as_verse_one(self):
         first_paragraph = f"3 {'x' * 2500} ² {'x' * 10}"
         second_paragraph = f"4 {'x' * 2500}"
@@ -226,6 +244,21 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("Quran 2:255", passage)
         self.assertTrue(explicit)
 
+    def test_parse_get_accepts_named_quran_surah_forms(self):
+        selection, passage, explicit = parse_get_request(
+            "/get Al-Baqarah 255 QSI", "NIV"
+        )
+        self.assertEqual((("QSI",),), selection)
+        self.assertEqual("Al-Baqarah 255", passage)
+        self.assertTrue(explicit)
+
+        selection, passage, explicit = parse_get_request(
+            "/get Qur'an al-Baqarah 2:255 QSI", "NIV"
+        )
+        self.assertEqual((("QSI",),), selection)
+        self.assertEqual("Qur'an al-Baqarah 2:255", passage)
+        self.assertTrue(explicit)
+
     def test_build_passage_from_ref_normalizes_revelation_name(self):
         passage = build_passage_from_ref(("Revelation of Jesus Christ", 1, 1, 1, 3))
         self.assertEqual("Revelation 1:1-1:3", passage)
@@ -312,6 +345,13 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual(
             ScriptureSystemId.QURAN, get_passage_scripture_system("Quran 2:255")
+        )
+        self.assertEqual(
+            ScriptureSystemId.QURAN, get_passage_scripture_system("Al-Baqarah 255")
+        )
+        self.assertEqual(
+            ScriptureSystemId.QURAN,
+            get_passage_scripture_system("Qur'an al-Baqarah 2:255"),
         )
         self.assertEqual(ScriptureSystemId.BIBLE, get_version_system("NIV"))
         self.assertEqual(ScriptureSystemId.LDS, get_version_system("BOM"))
@@ -595,7 +635,7 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual((False, "John"), version_supports_passage("BOM", "John 3:16"))
         self.assertEqual(
-            (True, "Qurʾan"), version_supports_passage("QSI", "Quran 2:255")
+            (True, "Qurʾān"), version_supports_passage("QSI", "Quran 2:255")
         )
         self.assertEqual(
             (False, "Genesis"), version_supports_passage("QSI", "Genesis 1:1")
