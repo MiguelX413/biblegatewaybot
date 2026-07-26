@@ -23,7 +23,6 @@ Configuration:
 - set `TOKEN` in the environment, or copy `secrets.example.py` to a local `secrets.py` and fill it in
 - optional: `ADMIN_ID`
 - optional: `BOTFAMILY_HASH`
-- optional: `OFFLINE_BIBLES_PATH`
 - optional: `OFFLINE_ONLY=1`
 
 Runtime model:
@@ -68,6 +67,11 @@ Notes:
 - LDS scripture examples: `/get 1 Nephi 3:7 LDSENG`, `/get D&C 1:1 LDSESP`, `/get Abraham 3:22 LDSFRA`
 - apocrypha defaults to `NRSVue` when available and otherwise falls back to supported Sefaria-backed versions
 - Sefaria/apocrypha examples: `/get Tobit 4:7 NABRE`, `/get 3 Maccabees 1:1`, `/get Jubilees 1:1`
+- offline 1 Enoch example: `/get 1 Enoch 1:1 HERM`
 - accepted Bible.com version aliases include `GNADC`, `TMA-C`, `TKA`, `TKʿ`, and `ت.ك.ع`
-- offline passage files live under `OFFLINE_BIBLES_PATH` as `<VERSION>.json`
-- each offline JSON file should be an object mapping references like `John 3:16` to either a string, a list of paragraph strings, or an object with `title`, `text`, and optional `description`
+- offline passage files live under the hardcoded `offline/` directory and are discovered automatically at startup
+- offline version-family files live under `offline/versions/`
+- offline one-work-per-file text files live under `offline/works/`
+- version files declare `code`, `name`, `language`, `system`, and optional `aliases`
+- work files declare `version_code`, `title`, `slug`, `aliases`, optional `source_url`, and `chapters`
+- `tools/import_1_enoch_epub.py` converts the Hermeneia 1 Enoch EPUB into `offline/versions/HERM.json` and `offline/works/1enoch.herm.json`, stripping footnote markers entirely
