@@ -393,7 +393,7 @@ def quran_translation_label(version: str) -> str | None:
     if canonical == "UTHMANI":
         return None
     labels = {
-        "QSI": "Saheeh International",
+        "ṢI": "Ṣaḥīḥ International",
         "QPICK": "Pickthall",
         "QYUSUF": "Yusuf Ali",
     }

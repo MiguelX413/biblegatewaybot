@@ -212,8 +212,8 @@ class QuranParsingTests(unittest.TestCase):
             format_quran_reference(reference),
         )
         self.assertEqual(
-            "Qurʾān, al-Baqarah (2):255 (Saheeh International)",
-            format_quran_reference(reference, "QSI"),
+            "Qurʾān, al-Baqarah (2):255 (Ṣaḥīḥ International)",
+            format_quran_reference(reference, "ṢI"),
         )
         self.assertEqual(
             "Qurʾān, al-Baqarah (2):255 (Pickthall)",
@@ -249,8 +249,8 @@ class QuranParsingTests(unittest.TestCase):
             format_quran_reference(reference),
         )
         self.assertEqual(
-            "Qurʾān, al-Fātiḥah (1):2–al-Baqarah (2):4 (Saheeh International)",
-            format_quran_reference(reference, "QSI"),
+            "Qurʾān, al-Fātiḥah (1):2–al-Baqarah (2):4 (Ṣaḥīḥ International)",
+            format_quran_reference(reference, "ṢI"),
         )
 
     def test_machine_reference_and_urls_remain_compact(self):
@@ -259,7 +259,7 @@ class QuranParsingTests(unittest.TestCase):
         self.assertEqual("1:2-2:4", format_quran_machine_reference(reference))
         self.assertEqual(
             "https://quran.com/1?startingVerse=2",
-            build_quran_passage_url(reference, "QSI"),
+            build_quran_passage_url(reference, "ṢI"),
         )
         self.assertEqual("https://quran.com/1", build_quran_passage_url("Quran 1-2"))
 
@@ -268,12 +268,12 @@ class QuranParsingTests(unittest.TestCase):
         assert reference is not None
         result = parse_surah_payload(
             SURAH_ONE_PAYLOAD,
-            version="QSI",
+            version="ṢI",
             reference=reference,
         )
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
-        self.assertIn("Qurʾān, al-Fātiḥah (1):1–3 (Saheeh International)", result)
+        self.assertIn("Qurʾān, al-Fātiḥah (1):1–3 (Ṣaḥīḥ International)", result)
         self.assertIn("¹ In the name of Allah.", result)
         self.assertIn("² All praise is due to Allah.", result)
 
@@ -282,15 +282,15 @@ class QuranParsingTests(unittest.TestCase):
         assert reference is not None
         result = parse_surah_payload(
             SURAH_ONE_PAYLOAD,
-            version="QSI",
+            version="ṢI",
             reference=reference,
             inline_details=True,
         )
         self.assertIsInstance(result, InlinePassageResult)
         assert isinstance(result, InlinePassageResult)
-        self.assertEqual("quran/1:1-3/QSI", result.result_id)
+        self.assertEqual("quran/1:1-3/ṢI", result.result_id)
         self.assertEqual(
-            "Qurʾān, al-Fātiḥah (1):1–3 (Saheeh International)",
+            "Qurʾān, al-Fātiḥah (1):1–3 (Ṣaḥīḥ International)",
             result.title,
         )
         self.assertEqual("https://quran.com/1?startingVerse=1", result.header_url)
@@ -308,7 +308,7 @@ class QuranParsingTests(unittest.TestCase):
 
     def test_known_edition_ids(self):
         self.assertEqual("quran-uthmani", ALQURAN_CLOUD_EDITION_IDS["UTHMANI"])
-        self.assertEqual("en.sahih", ALQURAN_CLOUD_EDITION_IDS["QSI"])
+        self.assertEqual("en.sahih", ALQURAN_CLOUD_EDITION_IDS["ṢI"])
         self.assertEqual("fa.ayati", ALQURAN_CLOUD_EDITION_IDS["QAYATI"])
         self.assertEqual("uz.sodik", ALQURAN_CLOUD_EDITION_IDS["QSODIK"])
 

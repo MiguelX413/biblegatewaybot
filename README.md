@@ -36,7 +36,7 @@ Runtime model:
 - BibleGateway, Bible.com, Sefaria, LDS, and Qurʾan fetching use async `httpx`
 - LDS scripture passages are fetched from the official Church scripture pages under language-based versions such as `LDSENG`, `LDSESP`, `LDSPOR`, `LDSFRA`, and `LDSDEU`
 - Bible.com-backed Arabic versions include `GNA2025`, `GNADC25`, `TMA`, `TMA-C`, and `TKA`
-- AlQuran Cloud-backed Qurʾan versions include Arabic `QURAN`, English `QSI` / `QPICK` / `QYUSUF`, Persian `QAYATI` / `QFOOL`, Uzbek `QSODIK`, Urdu `QJAL`, Turkish `QDIYANET`, and Russian `QKULIEV`
+- AlQuran Cloud-backed Qurʾan versions include Arabic `QURAN`, English `ṢI` / `QPICK` / `QYUSUF`, Persian `QAYATI` / `QFOOL`, Uzbek `QSODIK`, Urdu `QJAL`, Turkish `QDIYANET`, and Russian `QKULIEV`
 - Sefaria-backed versions support JPS-family texts and additional apocrypha not available on BibleGateway
 - optional local/offline passage files are checked before remote providers
 - chat and user state is persisted locally in `scripturebot-state.pkl`
@@ -65,7 +65,7 @@ Notes:
 - combine versions with ordered fallbacks and parallels: `/get 1 Maccabees 1 NIV,NRSVue&GNADC` tries `NIV`, then `NRSVue`, and also returns `GNADC`; commas denote fallbacks and `&` denotes separately returned versions
 - the default Bible selection is `NIV,NRSVue`, so apocryphal passages unavailable in NIV naturally fall back to NRSVue
 - the same syntax works for defaults: `/setdefault NIV,NRSVue&GNADC`; all versions in one default selection must belong to the same scripture system
-- Qurʾan examples: `/get Quran 1 QURAN`, `/get Quran 2:255 QSI`, `/get Quran 112 QPICK`
+- Qurʾan examples: `/get Quran 1 QURAN`, `/get Quran 2:255 ṢI`, `/get Quran 112 QPICK`
 - `/linkembeds off` or `/linkembeds on` enables or suppresses link previews for passage headers and welcome/source links in the current DM or group; DM settings also apply to that user's inline results
 - chapter requests are supported, but whole-book requests are not
 - Bible.com Arabic examples: `/get Matthew 3 TMA`, `/get Tobit 9 GNADC25`, `/get 2 Maccabees 6 TKA`

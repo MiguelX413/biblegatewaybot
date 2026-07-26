@@ -27,7 +27,7 @@ ALQURAN_CLOUD_API_BASE_URL = "https://api.alquran.cloud/v1"
 QURAN_PUBLIC_BASE_URL = "https://quran.com"
 ALQURAN_CLOUD_EDITION_IDS: dict[str, str] = {
     "UTHMANI": "quran-uthmani",
-    "QSI": "en.sahih",
+    "ṢI": "en.sahih",
     "QPICK": "en.pickthall",
     "QYUSUF": "en.yusufali",
     "QAYATI": "fa.ayati",

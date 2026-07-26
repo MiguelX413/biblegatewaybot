@@ -1491,7 +1491,7 @@ QURAN_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
         (
             LanguageCode.EN,
             [
-                Version.quran("Saheeh International", "QSI"),
+                Version.quran("Ṣaḥīḥ International", "ṢI", aliases=("SI",)),
                 Version.quran("Marmaduke Pickthall", "QPICK"),
                 Version.quran("Abdullah Yusuf Ali", "QYUSUF"),
             ],

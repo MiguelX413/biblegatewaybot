@@ -86,36 +86,36 @@ class ParsingTests(unittest.TestCase):
     def test_format_passage_chunks_recalculates_quran_header_within_one_surah(self):
         paragraph = f"¹ {'x' * 2500}"
         chunks = format_passage_chunks(
-            "Qurʾān, al-Baqarah (2):255–257 (Saheeh International)\n\n"
+            "Qurʾān, al-Baqarah (2):255–257 (Ṣaḥīḥ International)\n\n"
             f"{paragraph}\n\n{paragraph}"
         )
         self.assertEqual(2, len(chunks))
         self.assertTrue(
             chunks[0][0].startswith(
-                "Qurʾān, al-Baqarah (2):255–257 (Saheeh International)\n"
-                "Qurʾān, al-Baqarah (2):1 (Saheeh International)\n"
+                "Qurʾān, al-Baqarah (2):255–257 (Ṣaḥīḥ International)\n"
+                "Qurʾān, al-Baqarah (2):1 (Ṣaḥīḥ International)\n"
             )
         )
         self.assertTrue(
-            chunks[1][0].startswith("Qurʾān, al-Baqarah (2):1 (Saheeh International)\n")
+            chunks[1][0].startswith("Qurʾān, al-Baqarah (2):1 (Ṣaḥīḥ International)\n")
         )
 
     def test_format_passage_chunks_recalculates_quran_header_across_surahs(self):
         first_paragraph = f"al-Fātiḥah (1)\n\n² {'x' * 2500}"
         second_paragraph = f"Āl ʿImrān (3)\n\n¹ {'x' * 2500}"
         chunks = format_passage_chunks(
-            "Qurʾān, al-Fātiḥah (1):2–Āl ʿImrān (3):2 (Saheeh International)\n\n"
+            "Qurʾān, al-Fātiḥah (1):2–Āl ʿImrān (3):2 (Ṣaḥīḥ International)\n\n"
             f"{first_paragraph}\n\n{second_paragraph}"
         )
         self.assertEqual(2, len(chunks))
         self.assertTrue(
             chunks[0][0].startswith(
-                "Qurʾān, al-Fātiḥah (1):2–Āl ʿImrān (3):2 (Saheeh International)\n"
-                "Qurʾān, al-Fātiḥah (1):2 (Saheeh International)\n"
+                "Qurʾān, al-Fātiḥah (1):2–Āl ʿImrān (3):2 (Ṣaḥīḥ International)\n"
+                "Qurʾān, al-Fātiḥah (1):2 (Ṣaḥīḥ International)\n"
             )
         )
         self.assertTrue(
-            chunks[1][0].startswith("Qurʾān, Āl ʿImrān (3):1 (Saheeh International)\n")
+            chunks[1][0].startswith("Qurʾān, Āl ʿImrān (3):1 (Ṣaḥīḥ International)\n")
         )
 
     def test_format_passage_chunks_treats_a_chapter_number_as_verse_one(self):
@@ -293,23 +293,29 @@ class ParsingTests(unittest.TestCase):
         self.assertTrue(explicit)
 
     def test_parse_get_accepts_quran_version(self):
-        selection, passage, explicit = parse_get_request("/get Quran 2:255 QSI", "NIV")
-        self.assertEqual((("QSI",),), selection)
+        selection, passage, explicit = parse_get_request("/get Quran 2:255 ṢI", "NIV")
+        self.assertEqual((("ṢI",),), selection)
+        self.assertEqual("Quran 2:255", passage)
+        self.assertTrue(explicit)
+
+    def test_parse_get_accepts_si_as_alias_for_sadih_international(self):
+        selection, passage, explicit = parse_get_request("/get Quran 2:255 SI", "NIV")
+        self.assertEqual((("ṢI",),), selection)
         self.assertEqual("Quran 2:255", passage)
         self.assertTrue(explicit)
 
     def test_parse_get_accepts_named_quran_surah_forms(self):
         selection, passage, explicit = parse_get_request(
-            "/get Al-Baqarah 255 QSI", "NIV"
+            "/get Al-Baqarah 255 ṢI", "NIV"
         )
-        self.assertEqual((("QSI",),), selection)
+        self.assertEqual((("ṢI",),), selection)
         self.assertEqual("Al-Baqarah 255", passage)
         self.assertTrue(explicit)
 
         selection, passage, explicit = parse_get_request(
-            "/get Qur'an al-Baqarah 2:255 QSI", "NIV"
+            "/get Qur'an al-Baqarah 2:255 ṢI", "NIV"
         )
-        self.assertEqual((("QSI",),), selection)
+        self.assertEqual((("ṢI",),), selection)
         self.assertEqual("Qur'an al-Baqarah 2:255", passage)
         self.assertTrue(explicit)
 
@@ -410,7 +416,7 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual(ScriptureSystemId.BIBLE, get_version_system("NIV"))
         self.assertEqual(ScriptureSystemId.LDS, get_version_system("LDSENG"))
-        self.assertEqual(ScriptureSystemId.QURAN, get_version_system("QSI"))
+        self.assertEqual(ScriptureSystemId.QURAN, get_version_system("ṢI"))
         self.assertNotIn(
             "BOM",
             VERSION_CATALOG.systems_by_id[ScriptureSystemId.BIBLE].version_labels,
@@ -420,7 +426,7 @@ class ParsingTests(unittest.TestCase):
             VERSION_CATALOG.systems_by_id[ScriptureSystemId.LDS].version_labels,
         )
         self.assertIn(
-            "Saheeh International (QSI)",
+            "Ṣaḥīḥ International (ṢI)",
             VERSION_CATALOG.systems_by_id[ScriptureSystemId.QURAN].version_labels,
         )
 
@@ -476,7 +482,8 @@ class ParsingTests(unittest.TestCase):
         self.assertIsNone(get_version_provider("DC"))
         self.assertIsNone(get_version_provider("PGP"))
         self.assertEqual("quran", get_version_provider("QURAN"))
-        self.assertEqual("quran", get_version_provider("QSI"))
+        self.assertEqual("quran", get_version_provider("ṢI"))
+        self.assertEqual("quran", get_version_provider("SI"))
 
     def test_supported_book_slugs_capture_scope_overrides(self):
         self.assertIn("genesis", supported_book_slugs("NIV"))
@@ -584,7 +591,7 @@ class ParsingTests(unittest.TestCase):
             frozenset(
                 {
                     "UTHMANI",
-                    "QSI",
+                    "ṢI",
                     "QPICK",
                     "QYUSUF",
                     "QAYATI",
@@ -704,10 +711,10 @@ class ParsingTests(unittest.TestCase):
             (False, "John"), version_supports_passage("LDSENG", "John 3:16")
         )
         self.assertEqual(
-            (True, "Qurʾān"), version_supports_passage("QSI", "Quran 2:255")
+            (True, "Qurʾān"), version_supports_passage("ṢI", "Quran 2:255")
         )
         self.assertEqual(
-            (False, "Genesis"), version_supports_passage("QSI", "Genesis 1:1")
+            (False, "Genesis"), version_supports_passage("ṢI", "Genesis 1:1")
         )
 
     def test_decode_linked_reference_for_apocrypha(self):
