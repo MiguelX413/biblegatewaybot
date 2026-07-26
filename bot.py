@@ -33,6 +33,7 @@ from handlers import (
     setdefault_language_message,
     setdefault_version_message,
     settings_command,
+    shutdown_command,
     start,
     start_setdefault_entry,
 )
@@ -174,6 +175,7 @@ def build_application() -> Application:
     application.add_handler(CommandHandler("settings", settings_command))
     application.add_handler(CommandHandler("linkembeds", link_embeds_command))
     application.add_handler(CommandHandler("more", more_command))
+    application.add_handler(CommandHandler("shutdown", shutdown_command))
     application.add_handler(
         CommandHandler("botfamily_verification_code", botfamily_verification_command)
     )

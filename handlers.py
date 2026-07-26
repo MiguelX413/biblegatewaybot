@@ -825,6 +825,18 @@ async def botfamily_verification_command(
         await message.reply_text("BOTFAMILY_HASH is not configured.")
 
 
+async def shutdown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = require_message(update)
+    if not is_admin_user(update, context):
+        await message.reply_text("Sorry, only the admin may shut me down.")
+        return
+
+    user = require_user(update)
+    logging.info("Shutdown requested by admin user %s", user.id)
+    await message.reply_text("Shutting down.")
+    context.application.stop_running()
+
+
 async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     message = require_message(update)
     user_data = require_user_data(context)
