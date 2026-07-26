@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any
 
 from scriptures import extract as extract_refs
@@ -54,6 +55,7 @@ from state import (
     BACK_TO_COLLECTIONS,
     BACK_TO_LANGUAGES,
     CHAT_LINK_EMBEDS_ENABLED_KEY,
+    CHAT_REQUEST_TIMESTAMPS_KEY,
     CHOOSE_COLLECTION_PROMPT,
     CHOOSE_LANGUAGE_PROMPT,
     DEFAULT_VERSION_BY_SYSTEM,
@@ -70,6 +72,7 @@ from state import (
     SETDEFAULT_VERSION_STATE,
     USER_DEFAULT_VERSION_KEY_BY_SYSTEM,
     USER_INLINE_LINK_EMBEDS_ENABLED_KEY,
+    USER_REQUEST_TIMESTAMPS_KEY,
     USER_SEARCH_KEY,
     USER_STARTED_KEY,
     InlinePassageResult,
@@ -85,6 +88,12 @@ from versions import (
     get_sefaria_version_config,
     get_version_system,
 )
+
+MAX_PASSAGE_RESPONSE_MESSAGES = 4
+REQUEST_THROTTLE_WINDOW_SECONDS = 10.0
+REQUEST_THROTTLE_MIN_INTERVAL_SECONDS = 1.0
+MAX_USER_REQUESTS_PER_WINDOW = 4
+MAX_CHAT_REQUESTS_PER_WINDOW = 10
 
 
 def build_input_message_content(
@@ -244,6 +253,110 @@ def build_buttons(menu: list[str]) -> ReplyKeyboardMarkup:
         one_time_keyboard=True,
         resize_keyboard=True,
         selective=True,
+    )
+
+
+def _prune_request_timestamps(
+    timestamps: list[float], *, now: float, window_seconds: float
+) -> list[float]:
+    return [timestamp for timestamp in timestamps if now - timestamp < window_seconds]
+
+
+def get_request_throttle_retry_after(
+    user_data: dict[Any, Any],
+    chat_data: dict[Any, Any] | None,
+    *,
+    now: float,
+) -> float | None:
+    user_timestamps = _prune_request_timestamps(
+        list(user_data.get(USER_REQUEST_TIMESTAMPS_KEY, ())),
+        now=now,
+        window_seconds=REQUEST_THROTTLE_WINDOW_SECONDS,
+    )
+    user_data[USER_REQUEST_TIMESTAMPS_KEY] = user_timestamps
+    if user_timestamps:
+        retry_after = REQUEST_THROTTLE_MIN_INTERVAL_SECONDS - (
+            now - user_timestamps[-1]
+        )
+        if retry_after > 0:
+            return retry_after
+    if len(user_timestamps) >= MAX_USER_REQUESTS_PER_WINDOW:
+        return REQUEST_THROTTLE_WINDOW_SECONDS - (now - user_timestamps[0])
+
+    if chat_data is None:
+        return None
+
+    chat_timestamps = _prune_request_timestamps(
+        list(chat_data.get(CHAT_REQUEST_TIMESTAMPS_KEY, ())),
+        now=now,
+        window_seconds=REQUEST_THROTTLE_WINDOW_SECONDS,
+    )
+    chat_data[CHAT_REQUEST_TIMESTAMPS_KEY] = chat_timestamps
+    if len(chat_timestamps) >= MAX_CHAT_REQUESTS_PER_WINDOW:
+        return REQUEST_THROTTLE_WINDOW_SECONDS - (now - chat_timestamps[0])
+    return None
+
+
+def record_request_timestamp(
+    user_data: dict[Any, Any], chat_data: dict[Any, Any] | None, *, now: float
+) -> None:
+    user_timestamps = list(user_data.get(USER_REQUEST_TIMESTAMPS_KEY, ()))
+    user_timestamps.append(now)
+    user_data[USER_REQUEST_TIMESTAMPS_KEY] = user_timestamps
+
+    if chat_data is None:
+        return
+    chat_timestamps = list(chat_data.get(CHAT_REQUEST_TIMESTAMPS_KEY, ()))
+    chat_timestamps.append(now)
+    chat_data[CHAT_REQUEST_TIMESTAMPS_KEY] = chat_timestamps
+
+
+def is_admin_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    config: BotConfig = context.application.bot_data["config"]
+    admin_id = config.admin_id
+    if admin_id is None:
+        return False
+    user = update.effective_user
+    return user is not None and user.id == admin_id
+
+
+async def enforce_request_throttle(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    silent: bool = False,
+) -> bool:
+    if is_admin_user(update, context):
+        return True
+
+    user_data = require_user_data(context)
+    chat_data = context.chat_data
+    now = time.monotonic()
+    retry_after = get_request_throttle_retry_after(user_data, chat_data, now=now)
+    if retry_after is not None:
+        if not silent:
+            message = require_message(update)
+            await message.reply_text(
+                "Too many requests too quickly. "
+                f"Please wait about {max(1, round(retry_after))} seconds and try again."
+            )
+        return False
+
+    record_request_timestamp(user_data, chat_data, now=now)
+    return True
+
+
+def count_passage_result_messages(passage_results: list[tuple[str, str | None]]) -> int:
+    combined_message = (
+        format_parallel_passage_entities(passage_results)
+        if len(passage_results) > 1
+        else None
+    )
+    if combined_message is not None:
+        return 1
+    return sum(
+        len(format_passage_chunks(response, header_url=header_url))
+        for response, header_url in passage_results
     )
 
 
@@ -504,6 +617,17 @@ async def reply_with_passage_result(
         header_url = build_passage_header_url(passage, version)
         passage_results.append((str(response), header_url))
 
+    if (
+        passage_results
+        and count_passage_result_messages(passage_results)
+        > MAX_PASSAGE_RESPONSE_MESSAGES
+    ):
+        await message.reply_text(
+            f"Sorry {display_name}, that request is too large to send safely. "
+            "Please narrow the range."
+        )
+        return
+
     combined_message = (
         format_parallel_passage_entities(passage_results)
         if len(passage_results) > 1
@@ -681,6 +805,8 @@ async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
 
     if passage:
+        if not await enforce_request_throttle(update, context):
+            return ConversationHandler.END
         if not explicit_version:
             selection = get_passage_default_version(context, passage)
         if is_book_only_request(passage):
@@ -714,6 +840,8 @@ async def get_conversation_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     message = require_message(update)
+    if not await enforce_request_throttle(update, context):
+        return ConversationHandler.END
     user_data = require_user_data(context)
     selection = user_data.pop(PENDING_GET_VERSION_KEY, ())
     explicit_version = bool(user_data.pop(PENDING_GET_VERSION_EXPLICIT_KEY, False))
@@ -746,6 +874,8 @@ async def search_command_entry(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     message = require_message(update)
+    if not await enforce_request_throttle(update, context):
+        return ConversationHandler.END
     raw_text = ensure_text(message.text).strip()
     parts = raw_text.split(maxsplit=1)
     if len(parts) == 1:
@@ -767,6 +897,8 @@ async def search_conversation_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     message = require_message(update)
+    if not await enforce_request_throttle(update, context):
+        return ConversationHandler.END
     display_name, _, _ = get_identity(update)
     await reply_with_search_results(
         update,
@@ -780,6 +912,8 @@ async def search_conversation_message(
 
 async def more_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message = require_message(update)
+    if not await enforce_request_throttle(update, context):
+        return
     user_data = require_user_data(context)
     display_name, _, _ = get_identity(update)
     search_state = user_data.get(USER_SEARCH_KEY)
@@ -961,6 +1095,13 @@ async def handle_inline_query(
             button=build_inline_results_button(default_version),
         )
         return
+    if not await enforce_request_throttle(update, context, silent=True):
+        await inline_query.answer(
+            [],
+            cache_time=1,
+            button=build_inline_results_button(default_version),
+        )
+        return
 
     words = query.split()
     selection = parse_version_selection(words[-1]) if len(words) > 1 else None
@@ -1042,6 +1183,8 @@ async def linked_passage_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     message = require_message(update)
+    if not await enforce_request_throttle(update, context, silent=True):
+        return
     raw_text = ensure_text(message.text).strip()
     display_name, _, _ = get_identity(update)
     reference = raw_text[1:]
@@ -1073,6 +1216,8 @@ async def quick_lookup_handler(
         and not replied_to_bot(update)
     ):
         logging.info("Ignoring non-directed group message")
+        return
+    if not await enforce_request_throttle(update, context, silent=True):
         return
 
     display_name, _, _ = get_identity(update)
