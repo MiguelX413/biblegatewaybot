@@ -81,11 +81,9 @@ from versions import (
     SEFARIA_VERSION_CONFIGS,
     VERSION_LOOKUP,
     ScriptureSystemId,
-    format_language_group,
     format_version_full_label,
     get_scripture_system,
     get_version_system,
-    resolve_language_group,
 )
 
 
@@ -277,13 +275,11 @@ async def reply_service_unavailable(
 async def reply_choose_language(
     message: Message, scripture_system: ScriptureSystemId
 ) -> None:
-    version_data = SCRIPTURE_SYSTEMS[scripture_system].version_data
-    assert version_data is not None
+    system = SCRIPTURE_SYSTEMS[scripture_system]
     await message.reply_text(
         CHOOSE_LANGUAGE_PROMPT,
         reply_markup=build_buttons(
-            [format_language_group(code) for code in version_data]
-            + [BACK_TO_COLLECTIONS]
+            list(system.language_group_labels) + [BACK_TO_COLLECTIONS]
         ),
     )
 
@@ -885,20 +881,23 @@ async def setdefault_language_message(
     if scripture_system not in SCRIPTURE_SYSTEMS:
         scripture_system = "bible"
     system = SCRIPTURE_SYSTEMS[scripture_system]
-    version_data = system.version_data
-    assert version_data is not None
-    language_code = resolve_language_group(raw_text)
+    language_code = system.resolve_language_group(raw_text)
     if raw_text == BACK_TO_COLLECTIONS:
         user_data.pop(PENDING_SETDEFAULT_SYSTEM_KEY, None)
         await reply_choose_collection(message)
         return SETDEFAULT_COLLECTION_STATE
-    if language_code is None or language_code not in version_data:
+    versions = (
+        system.get_versions_for_language(language_code)
+        if language_code is not None
+        else None
+    )
+    if versions is None:
         await reply_choose_language(message, scripture_system)
         return SETDEFAULT_LANGUAGE_STATE
 
     await message.reply_text(
         SELECT_VERSION_PROMPT,
-        reply_markup=build_buttons(version_data[language_code] + [BACK_TO_LANGUAGES]),
+        reply_markup=build_buttons(list(versions) + [BACK_TO_LANGUAGES]),
     )
     return SETDEFAULT_VERSION_STATE
 

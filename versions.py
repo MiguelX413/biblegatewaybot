@@ -1,6 +1,7 @@
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Final, Literal, TypedDict
 
 
@@ -13,477 +14,576 @@ class BookData(TypedDict):
 type VersionLabel = str
 type VersionCode = str
 type LanguageGroup = str
-type LanguageCode = str
 type BookSlug = str
 type BookTitle = str
 type ProviderName = str
 type ScriptureSystemId = Literal["bible", "lds", "quran"]
+type RawVersionDataMap = OrderedDict[str, list[VersionLabel]]
 type VersionDataMap = OrderedDict[LanguageCode, list[VersionLabel]]
 type SefariaVersionConfig = str | dict[BookSlug, str]
+
+
+class LanguageCode(StrEnum):
+    AMU = "AMU"
+    AR = "AR"
+    AWA = "AWA"
+    BG = "BG"
+    CCO = "CCO"
+    CEB = "CEB"
+    CHR = "CHR"
+    CKW = "CKW"
+    CS = "CS"
+    CY = "CY"
+    DA = "DA"
+    DE = "DE"
+    EN = "EN"
+    ES = "ES"
+    FA = "FA"
+    FI = "FI"
+    FR = "FR"
+    GRC = "GRC"
+    HE = "HE"
+    HI = "HI"
+    HIL = "HIL"
+    HR = "HR"
+    HT = "HT"
+    HU = "HU"
+    HWC = "HWC"
+    IS = "IS"
+    IT = "IT"
+    JAC = "JAC"
+    KEK = "KEK"
+    LAD = "LAD"
+    LA = "LA"
+    MI = "MI"
+    MK = "MK"
+    MR = "MR"
+    MVC = "MVC"
+    MVJ = "MVJ"
+    NDS = "NDS"
+    NE = "NE"
+    NGU = "NGU"
+    NL = "NL"
+    NO = "NO"
+    OR = "OR"
+    PA = "PA"
+    PL = "PL"
+    PPL = "PPL"
+    PT = "PT"
+    QU = "QU"
+    QUT = "QUT"
+    RO = "RO"
+    RU = "RU"
+    SK = "SK"
+    SO = "SO"
+    SQ = "SQ"
+    SR = "SR"
+    SV = "SV"
+    SW = "SW"
+    TA = "TA"
+    TH = "TH"
+    TL = "TL"
+    TR = "TR"
+    TWI = "TWI"
+    UK = "UK"
+    UR = "UR"
+    USP = "USP"
+    UZ = "UZ"
+    VI = "VI"
+    YI = "YI"
+    ZH = "ZH"
 
 
 def _language_group(label: str, code: LanguageCode) -> LanguageGroup:
     return f"—{label} ({code})—"
 
 
+def _build_version_data(version_data: RawVersionDataMap) -> VersionDataMap:
+    return OrderedDict(
+        (LanguageCode(language_code), version_labels)
+        for language_code, version_labels in version_data.items()
+    )
+
+
+RAW_LANGUAGE_LABELS: Final[dict[str, str]] = {
+    "AMU": "Amuzgo de Guerrero",
+    "AR": "الْعَرَبِيَّة",
+    "AWA": "अवधी",
+    "BG": "Бъ́лгарски",
+    "CCO": "Chinanteco de Comaltepec",
+    "CEB": "Cebuano",
+    "CHR": "ᏣᎳᎩ ᎦᏬᏂᎯᏍ",
+    "CKW": "Cakchiquel Occidental",
+    "CS": "Čeština",
+    "CY": "Cymraeg",
+    "DA": "Dansk",
+    "DE": "Deutsch",
+    "EN": "English",
+    "ES": "Español",
+    "FA": "فارسی",
+    "FI": "Suomi",
+    "FR": "Français",
+    "GRC": "Ἀρχαίᾱ Ἑλληνική",
+    "HE": "עִבְרִית",
+    "HI": "हिन्दी",
+    "HIL": "Ilonggo",
+    "HR": "Hrvatski",
+    "HT": "Kreyòl ayisyen",
+    "HU": "Magyar",
+    "HWC": "Hawai‘i Pidgin",
+    "IS": "Íslenska",
+    "IT": "Italiano",
+    "JAC": "Jacalteco, Oriental",
+    "KEK": "Kekchi",
+    "LAD": "Ladino",
+    "LA": "Latīna",
+    "MI": "Māori",
+    "MK": "Македонски",
+    "MR": "मराठी",
+    "MVC": "Mam, Central",
+    "MVJ": "Mam, Todos Santos",
+    "NDS": "Plautdietsch",
+    "NE": "नेपाली",
+    "NGU": "Náhuatl de Guerrero",
+    "NL": "Nederlands",
+    "NO": "Norsk",
+    "OR": "ଓଡ଼ିଆ",
+    "PA": "ਪੰਜਾਬੀ",
+    "PL": "Polski",
+    "PPL": "Nāwat",
+    "PT": "Português",
+    "QU": "Quichua",
+    "QUT": "Quiché, Centro Occidental",
+    "RO": "Română",
+    "RU": "Ру́сский",
+    "SK": "Slovenčina",
+    "SO": "Somali",
+    "SQ": "Shqip",
+    "SR": "Српски",
+    "SV": "Svenska",
+    "SW": "Kiswahili",
+    "TA": "தமிழ்",
+    "TH": "ภาษาไทย",
+    "TL": "Tagalog",
+    "TR": "Türkçe",
+    "TWI": "Twi",
+    "UK": "Украї́нська",
+    "UR": "اُرْدُو",
+    "USP": "Uspanteco",
+    "UZ": "Oʻzbek",
+    "VI": "Tiếng Việt",
+    "YI": "ייִדיש",
+    "ZH": "中文",
+}
 LANGUAGE_GROUP_LABELS: Final[dict[LanguageCode, LanguageGroup]] = {
-    "AMU": _language_group("Amuzgo de Guerrero", "AMU"),
-    "AR": _language_group("الْعَرَبِيَّة", "AR"),
-    "AWA": _language_group("अवधी", "AWA"),
-    "BG": _language_group("Бъ́лгарски", "BG"),
-    "CCO": _language_group("Chinanteco de Comaltepec", "CCO"),
-    "CEB": _language_group("Cebuano", "CEB"),
-    "CHR": _language_group("ᏣᎳᎩ ᎦᏬᏂᎯᏍ", "CHR"),
-    "CKW": _language_group("Cakchiquel Occidental", "CKW"),
-    "CS": _language_group("Čeština", "CS"),
-    "CY": _language_group("Cymraeg", "CY"),
-    "DA": _language_group("Dansk", "DA"),
-    "DE": _language_group("Deutsch", "DE"),
-    "EN": _language_group("English", "EN"),
-    "ES": _language_group("Español", "ES"),
-    "FA": _language_group("فارسی", "FA"),
-    "FI": _language_group("Suomi", "FI"),
-    "FR": _language_group("Français", "FR"),
-    "GRC": _language_group("Ἀρχαίᾱ Ἑλληνική", "GRC"),
-    "HE": _language_group("עִבְרִית", "HE"),
-    "HI": _language_group("हिन्दी", "HI"),
-    "HIL": _language_group("Ilonggo", "HIL"),
-    "HR": _language_group("Hrvatski", "HR"),
-    "HT": _language_group("Kreyòl ayisyen", "HT"),
-    "HU": _language_group("Magyar", "HU"),
-    "HWC": _language_group("Hawai‘i Pidgin", "HWC"),
-    "IS": _language_group("Íslenska", "IS"),
-    "IT": _language_group("Italiano", "IT"),
-    "JAC": _language_group("Jacalteco, Oriental", "JAC"),
-    "KEK": _language_group("Kekchi", "KEK"),
-    "LAD": _language_group("Ladino", "LAD"),
-    "LA": _language_group("Latīna", "LA"),
-    "MI": _language_group("Māori", "MI"),
-    "MK": _language_group("Македонски", "MK"),
-    "MR": _language_group("मराठी", "MR"),
-    "MVC": _language_group("Mam, Central", "MVC"),
-    "MVJ": _language_group("Mam, Todos Santos", "MVJ"),
-    "NDS": _language_group("Plautdietsch", "NDS"),
-    "NE": _language_group("नेपाली", "NE"),
-    "NGU": _language_group("Náhuatl de Guerrero", "NGU"),
-    "NL": _language_group("Nederlands", "NL"),
-    "NO": _language_group("Norsk", "NO"),
-    "OR": _language_group("ଓଡ଼ିଆ", "OR"),
-    "PA": _language_group("ਪੰਜਾਬੀ", "PA"),
-    "PL": _language_group("Polski", "PL"),
-    "PPL": _language_group("Nāwat", "PPL"),
-    "PT": _language_group("Português", "PT"),
-    "QU": _language_group("Quichua", "QU"),
-    "QUT": _language_group("Quiché, Centro Occidental", "QUT"),
-    "RO": _language_group("Română", "RO"),
-    "RU": _language_group("Ру́сский", "RU"),
-    "SK": _language_group("Slovenčina", "SK"),
-    "SO": _language_group("Somali", "SO"),
-    "SQ": _language_group("Shqip", "SQ"),
-    "SR": _language_group("Српски", "SR"),
-    "SV": _language_group("Svenska", "SV"),
-    "SW": _language_group("Kiswahili", "SW"),
-    "TA": _language_group("தமிழ்", "TA"),
-    "TH": _language_group("ภาษาไทย", "TH"),
-    "TL": _language_group("Tagalog", "TL"),
-    "TR": _language_group("Türkçe", "TR"),
-    "TWI": _language_group("Twi", "TWI"),
-    "UK": _language_group("Украї́нська", "UK"),
-    "UR": _language_group("اُرْدُو", "UR"),
-    "USP": _language_group("Uspanteco", "USP"),
-    "UZ": _language_group("Oʻzbek", "UZ"),
-    "VI": _language_group("Tiếng Việt", "VI"),
-    "YI": _language_group("ייִדיש", "YI"),
-    "ZH": _language_group("中文", "ZH"),
+    LanguageCode(code): _language_group(label, LanguageCode(code))
+    for code, label in RAW_LANGUAGE_LABELS.items()
 }
 LANGUAGE_GROUP_CODES: Final[dict[LanguageGroup, LanguageCode]] = {
     label: code for code, label in LANGUAGE_GROUP_LABELS.items()
 }
 
 
-BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
-    [
-        (
-            "EN",
-            [
-                "21st Century King James Version (KJ21)",
-                "American Standard Version (ASV)",
-                "Amplified Bible (AMP)",
-                "Amplified Bible, Classic Edition (AMPC)",
-                "BRG Bible (BRG)",
-                "Common English Bible (CEB)",
-                "Complete Jewish Bible (CJB)",
-                "Contemporary English Version (CEV)",
-                "Darby Translation (DARBY)",
-                "Disciples’ Literal New Testament (DLNT)",
-                "Douay-Rheims 1899 American Edition (DRA)",
-                "Easy-to-Read Version (ERV)",
-                "English Standard Version (ESV)",
-                "English Standard Version Anglicised (ESVUK)",
-                "Expanded Bible (EXB)",
-                "1599 Geneva Bible (GNV)",
-                "GOD’S WORD Translation (GW)",
-                "Good News Translation (GNT)",
-                "Holman Christian Standard Bible (HCSB)",
-                "International Children’s Bible (ICB)",
-                "International Standard Version (ISV)",
-                "J.B. Phillips New Testament (PHILLIPS)",
-                "Jubilee Bible 2000 (JUB)",
-                "JPS 1917 (JPS)",
-                "JPS, 1985 (NJPS)",
-                "The Koren Jerusalem Bible (KOREN)",
-                "The Contemporary Torah, JPS, 2006 (CTJPS)",
-                "The Five Books of Moses, by Everett Fox (FOX)",
-                "Sefaria Community Translation (SCOMM)",
-                "Brenton's Septuagint (BRENTON)",
-                "R. H. Charles Translation (CHARLES)",
-                "Rabbi Mike Feuer, Jerusalem Anthology (FEUER)",
-                "The Book of Tobit, English translation by A. Neubauer, 1878 "
-                "(NEUBAUER)",
-                "The Letter of Aristeas, The Clarendon Press, 1913 (ARISTEAS)",
-                "the Open Siddur Project (OPENSID)",
-                "Translated by Hanan and Esther Eshel (ESHEL)",
-                "Metsudah Chumash, Metsudah Publications, 2009 (METSUDAH)",
-                "Revised JPS, 2023 (RJPS)",
-                "King James Version (KJV)",
-                "Authorized (King James) Version (AKJV)",
-                "Lexham English Bible (LEB)",
-                "Living Bible (TLB)",
-                "The Message (MSG)",
-                "Modern English Version (MEV)",
-                "Mounce Reverse-Interlinear New Testament (MOUNCE)",
-                "Names of God Bible (NOG)",
-                "New American Bible (Revised Edition) (NABRE)",
-                "New American Standard Bible (NASB)",
-                "New Century Version (NCV)",
-                "New English Translation (NET Bible)",
-                "New International Reader's Version (NIrV)",
-                "New International Version (NIV)",
-                "New International Version - UK (NIVUK)",
-                "New King James Version (NKJV)",
-                "New Life Version (NLV)",
-                "New Living Translation (NLT)",
-                "New Revised Standard Version (NRSV)",
-                "New Revised Standard Version, Anglicised (NRSVA)",
-                "New Revised Standard Version, Anglicised Catholic Edition (NRSVACE)",
-                "New Revised Standard Version Catholic Edition (NRSVCE)",
-                "New Revised Standard Version Updated Edition (NRSVue)",
-                "Orthodox Jewish Bible (OJB)",
-                "Revised Standard Version (RSV)",
-                "Revised Standard Version Catholic Edition (RSVCE)",
-                "The Voice (VOICE)",
-                "World English Bible (WEB)",
-                "Worldwide English (New Testament) (WE)",
-                "Wycliffe Bible (WYC)",
-                "Young's Literal Translation (YLT)",
-            ],
-        ),
-        (
-            "ZH",
-            [
-                "Chinese Contemporary Bible (CCB)",
-                "Chinese New Testament: Easy-to-Read Version (ERV-ZH)",
-                "Chinese New Version (Simplified) (CNVS)",
-                "Chinese New Version (Traditional) (CNVT)",
-                "Chinese Standard Bible (Simplified) (CSBS)",
-                "Chinese Standard Bible (Traditional) (CSBT)",
-                "Chinese Union Version (Simplified) (CUVS)",
-                "Chinese Union Version (Traditional) (CUV)",
-                "Chinese Union Version Modern Punctuation (Simplified) (CUVMPS)",
-                "Chinese Union Version Modern Punctuation (Traditional) (CUVMPT)",
-            ],
-        ),
-        ("AMU", ["Amuzgo de Guerrero (AMU)"]),
-        (
-            "AR",
-            [
-                "Arabic Bible: Easy-to-Read Version (ERV-AR)",
-                "Ketab El Hayat (NAV)",
-                "الترجمة العربية المشتركة (GNA2025)",
-                "2025 الترجمة العربية المشتركة (GNADC25)",
-                "المعنى الصحيح لإنجيل المسيح (TMA)",
-                "المعنى الصحيح لإنجيل المسيح - ترتيل (TMA-C)",
-                "الترجمة الكاثوليكيّة (اليسوعيّة) (TKA)",
-            ],
-        ),
-        (
-            "AWA",
-            ["Awadhi Bible: Easy-to-Read Version (ERV-AWA)"],
-        ),
-        (
-            "BG",
-            [
-                "1940 Bulgarian Bible (BG1940)",
-                "Bulgarian Bible (BULG)",
-                "Bulgarian New Testament: Easy-to-Read Version (ERV-BG)",
-                "Bulgarian Protestant Bible (BPB)",
-            ],
-        ),
-        ("CCO", ["Chinanteco de Comaltepec (CCO)"]),
-        ("CEB", ["Ang Pulong Sa Dios (APSD-CEB)"]),
-        (
-            "CHR",
-            ["Cherokee New Testament (CHR)"],
-        ),
-        ("CKW", ["Cakchiquel Occidental (CKW)"]),
-        (
-            "CS",
-            ["Bible 21 (B21)", "Slovo na cestu (SNC)"],
-        ),
-        ("CY", ["Beibl William Morgan (BWM)"]),
-        (
-            "DA",
-            [
-                "Bibelen på hverdagsdansk (BPH)",
-                "Dette er Biblen på dansk (DN1933)",
-            ],
-        ),
-        (
-            "DE",
-            [
-                "Hoffnung für Alle (HOF)",
-                "Luther Bibel 1545 (LUTH1545)",
-                "Neue Genfer Übersetzung (NGU-DE)",
-                "Schlachter 1951 (SCH1951)",
-                "Schlachter 2000 (SCH2000)",
-            ],
-        ),
-        (
-            "ES",
-            [
-                "La Biblia de las Américas (LBLA)",
-                "Dios Habla Hoy (DHH)",
-                "Jubilee Bible 2000 (Spanish) (JBS)",
-                "Nueva Biblia al Día (NBD)",
-                "Nueva Biblia Latinoamericana de Hoy (NBLH)",
-                "Nueva Traducción Viviente (NTV)",
-                "Nueva Versión Internacional (NVI)",
-                "Nueva Versión Internacional (Castilian) (CST)",
-                "Palabra de Dios para Todos (PDT)",
-                "La Palabra (España) (BLP)",
-                "La Palabra (Hispanoamérica) (BLPH)",
-                "Reina Valera Contemporánea (RVC)",
-                "Reina-Valera 1960 (RVR1960)",
-                "Reina Valera 1977 (RVR1977)",
-                "Reina-Valera 1995 (RVR1995)",
-                "Reina-Valera Antigua (RVA)",
-                "Traducción en lenguaje actual (TLA)",
-            ],
-        ),
-        ("FI", ["Raamattu 1933/38 (R1933)"]),
-        (
-            "FR",
-            [
-                "La Bible du Semeur (BDS)",
-                "Louis Segond (LSG)",
-                "Nouvelle Edition de Genève – NEG1979 (NEG1979)",
-                "Segond 21 (SG21)",
-            ],
-        ),
-        (
-            "GRC",
-            [
-                "1550 Stephanus New Testament (TR1550)",
-                "1881 Westcott-Hort New Testament (WHNU)",
-                "1894 Scrivener New Testament (TR1894)",
-                "SBL Greek New Testament (SBLGNT)",
-            ],
-        ),
-        (
-            "HE",
-            [
-                "Habrit Hakhadasha/Haderekh (HHH)",
-                "The Westminster Leningrad Codex (WLC)",
-            ],
-        ),
-        ("HI", ["Hindi Bible: Easy-to-Read Version (ERV-HI)"]),
-        ("HIL", ["Ang Pulong Sang Dios (HLGN)"]),
-        (
-            "HR",
-            [
-                "Hrvatski Novi Zavjet – Rijeka 2001 (HNZ-RI)",
-                "Knijga O Kristu (CRO)",
-            ],
-        ),
-        ("HT", ["Haitian Creole Version (HCV)"]),
-        (
-            "HU",
-            [
-                "Hungarian Károli (KAR)",
-                "Hungarian Bible: Easy-to-Read Version (ERV-HU)",
-                "Hungarian New Translation (NT-HU)",
-            ],
-        ),
-        ("HWC", ["Hawai‘i Pidgin (HWP)"]),
-        ("IS", ["Icelandic Bible (ICELAND)"]),
-        (
-            "IT",
-            [
-                "La Bibbia della Gioia (BDG)",
-                "Conferenza Episcopale Italiana (CEI)",
-                "La Nuova Diodati (LND)",
-                "Nuova Riveduta 1994 (NR1994)",
-                "Nuova Riveduta 2006 (NR2006)",
-            ],
-        ),
-        (
-            "LAD",
-            [
-                "Biblia de Ferrara (FERRARA)",
-                "Trazladado en la lingua Espanyola, 1873 (BOYADJIAN1873)",
-            ],
-        ),
-        ("JAC", ["Jacalteco, Oriental (JAC)"]),
-        ("KEK", ["Kekchi (KEK)"]),
-        ("LA", ["Biblia Sacra Vulgata (VULGATE)"]),
-        ("MI", ["Maori Bible (MAORI)"]),
-        (
-            "MK",
-            ["Macedonian New Testament (MNT)"],
-        ),
-        ("MR", ["Marathi Bible: Easy-to-Read Version (ERV-MR)"]),
-        ("MVC", ["Mam, Central (MVC)"]),
-        (
-            "MVJ",
-            ["Mam de Todos Santos Chuchumatán (MVJ)"],
-        ),
-        ("NDS", ["Reimer 2001 (REIMER)"]),
-        ("NE", ["Nepali Bible: Easy-to-Read Version (ERV-NE)"]),
-        ("NGU", ["Náhuatl de Guerrero (NGU)"]),
-        ("NL", ["Het Boek (HTB)"]),
-        (
-            "NO",
-            ["Det Norsk Bibelselskap 1930 (DNB1930)", "En Levende Bok (LB)"],
-        ),
-        ("OR", ["Oriya Bible: Easy-to-Read Version (ERV-OR)"]),
-        ("PA", ["Punjabi Bible: Easy-to-Read Version (ERV-PA)"]),
-        (
-            "PL",
-            [
-                "Nowe Przymierze (NP)",
-                "Słowo Życia (SZ-PL)",
-                "Updated Gdańsk Bible (UBG)",
-            ],
-        ),
-        ("PPL", ["Ne Bibliaj Tik Nawat (NBTN)"]),
-        (
-            "PT",
-            [
-                "Almeida Revista e Corrigida 2009 (ARC)",
-                "Nova Traduҫão na Linguagem de Hoje 2000 (NTLH)",
-                "Nova Versão Internacional (NVI-PT)",
-                "O Livro (OL)",
-                "Portuguese New Testament: Easy-to-Read Version (VFL)",
-            ],
-        ),
-        ("QU", ["Mushuj Testamento Diospaj Shimi (MTDS)"]),
-        (
-            "QUT",
-            ["Quiché, Centro Occidental (QUT)"],
-        ),
-        (
-            "RO",
-            [
-                "Cornilescu 1924 - Revised 2010, 2014 (RMNN)",
-                "Nouă Traducere În Limba Română (NTLR)",
-            ],
-        ),
-        (
-            "RU",
-            [
-                "New Russian Translation (NRT)",
-                "Священное Писание (Восточный Перевод) (CARS)",
-                "Священное Писание (Восточный перевод), версия для "
-                "Таджикистана (CARST)",
-                "Священное Писание (Восточный перевод), версия с «Аллахом» (CARSA)",
-                "Russian New Testament: Easy-to-Read Version (ERV-RU)",
-                "Russian Synodal Version (RUSV)",
-            ],
-        ),
-        ("SK", ["Nádej pre kazdého (NPK)"]),
-        ("SO", ["Somali Bible (SOM)"]),
-        ("SQ", ["Albanian Bible (ALB)"]),
-        (
-            "SR",
-            ["Serbian New Testament: Easy-to-Read Version (ERV-SR)"],
-        ),
-        (
-            "SV",
-            [
-                "Nya Levande Bibeln (SVL)",
-                "Svenska 1917 (SV1917)",
-                "Svenska Folkbibeln (SFB)",
-                "Svenska Folkbibeln 2014 (SFB2014)",
-            ],
-        ),
-        ("SW", ["Neno: Bibilia Takatifu (SNT)"]),
-        ("TA", ["Tamil Bible: Easy-to-Read Version (ERV-TA)"]),
-        (
-            "TH",
-            [
-                "Thai New Contemporary Bible (TNCV)",
-                "Thai New Testament: Easy-to-Read Version (ERV-TH)",
-            ],
-        ),
-        (
-            "TL",
-            ["Ang Dating Biblia (1905) (ADB1905)", "Ang Salita ng Diyos (SND)"],
-        ),
-        ("TWI", ["Nkwa Asem (NA-TWI)"]),
-        (
-            "UK",
-            [
-                "Ukrainian Bible (UKR)",
-                "Ukrainian New Testament: Easy-to-Read Version (ERV-UK)",
-            ],
-        ),
-        ("UR", ["Urdu Bible: Easy-to-Read Version (ERV-UR)"]),
-        ("USP", ["Uspanteco (USP)"]),
-        (
-            "VI",
-            [
-                "1934 Vietnamese Bible (VIET)",
-                "Bản Dịch 2011 (BD2011)",
-                "Vietnamese Bible: Easy-to-Read Version (BPT)",
-            ],
-        ),
-        (
-            "YI",
-            [
-                "Tanakh in Yiddish, 1914 (NEUHAUSEN1914)",
-                "Yehoyesh's Yiddish Tanakh Translation (YEHOYESH)",
-            ],
-        ),
-    ]
+@dataclass(frozen=True)
+class VersionGroup:
+    language: LanguageCode
+    versions: tuple[VersionLabel, ...]
+
+    @property
+    def display_label(self) -> LanguageGroup:
+        return format_language_group(self.language)
+
+
+BIBLE_VERSION_DATA: Final[VersionDataMap] = _build_version_data(
+    OrderedDict(
+        [
+            (
+                "EN",
+                [
+                    "21st Century King James Version (KJ21)",
+                    "American Standard Version (ASV)",
+                    "Amplified Bible (AMP)",
+                    "Amplified Bible, Classic Edition (AMPC)",
+                    "BRG Bible (BRG)",
+                    "Common English Bible (CEB)",
+                    "Complete Jewish Bible (CJB)",
+                    "Contemporary English Version (CEV)",
+                    "Darby Translation (DARBY)",
+                    "Disciples’ Literal New Testament (DLNT)",
+                    "Douay-Rheims 1899 American Edition (DRA)",
+                    "Easy-to-Read Version (ERV)",
+                    "English Standard Version (ESV)",
+                    "English Standard Version Anglicised (ESVUK)",
+                    "Expanded Bible (EXB)",
+                    "1599 Geneva Bible (GNV)",
+                    "GOD’S WORD Translation (GW)",
+                    "Good News Translation (GNT)",
+                    "Holman Christian Standard Bible (HCSB)",
+                    "International Children’s Bible (ICB)",
+                    "International Standard Version (ISV)",
+                    "J.B. Phillips New Testament (PHILLIPS)",
+                    "Jubilee Bible 2000 (JUB)",
+                    "JPS 1917 (JPS)",
+                    "JPS, 1985 (NJPS)",
+                    "The Koren Jerusalem Bible (KOREN)",
+                    "The Contemporary Torah, JPS, 2006 (CTJPS)",
+                    "The Five Books of Moses, by Everett Fox (FOX)",
+                    "Sefaria Community Translation (SCOMM)",
+                    "Brenton's Septuagint (BRENTON)",
+                    "R. H. Charles Translation (CHARLES)",
+                    "Rabbi Mike Feuer, Jerusalem Anthology (FEUER)",
+                    "The Book of Tobit, English translation by A. Neubauer, 1878 "
+                    "(NEUBAUER)",
+                    "The Letter of Aristeas, The Clarendon Press, 1913 (ARISTEAS)",
+                    "the Open Siddur Project (OPENSID)",
+                    "Translated by Hanan and Esther Eshel (ESHEL)",
+                    "Metsudah Chumash, Metsudah Publications, 2009 (METSUDAH)",
+                    "Revised JPS, 2023 (RJPS)",
+                    "King James Version (KJV)",
+                    "Authorized (King James) Version (AKJV)",
+                    "Lexham English Bible (LEB)",
+                    "Living Bible (TLB)",
+                    "The Message (MSG)",
+                    "Modern English Version (MEV)",
+                    "Mounce Reverse-Interlinear New Testament (MOUNCE)",
+                    "Names of God Bible (NOG)",
+                    "New American Bible (Revised Edition) (NABRE)",
+                    "New American Standard Bible (NASB)",
+                    "New Century Version (NCV)",
+                    "New English Translation (NET Bible)",
+                    "New International Reader's Version (NIrV)",
+                    "New International Version (NIV)",
+                    "New International Version - UK (NIVUK)",
+                    "New King James Version (NKJV)",
+                    "New Life Version (NLV)",
+                    "New Living Translation (NLT)",
+                    "New Revised Standard Version (NRSV)",
+                    "New Revised Standard Version, Anglicised (NRSVA)",
+                    (
+                        "New Revised Standard Version, Anglicised Catholic Edition "
+                        "(NRSVACE)"
+                    ),
+                    "New Revised Standard Version Catholic Edition (NRSVCE)",
+                    "New Revised Standard Version Updated Edition (NRSVue)",
+                    "Orthodox Jewish Bible (OJB)",
+                    "Revised Standard Version (RSV)",
+                    "Revised Standard Version Catholic Edition (RSVCE)",
+                    "The Voice (VOICE)",
+                    "World English Bible (WEB)",
+                    "Worldwide English (New Testament) (WE)",
+                    "Wycliffe Bible (WYC)",
+                    "Young's Literal Translation (YLT)",
+                ],
+            ),
+            (
+                "ZH",
+                [
+                    "Chinese Contemporary Bible (CCB)",
+                    "Chinese New Testament: Easy-to-Read Version (ERV-ZH)",
+                    "Chinese New Version (Simplified) (CNVS)",
+                    "Chinese New Version (Traditional) (CNVT)",
+                    "Chinese Standard Bible (Simplified) (CSBS)",
+                    "Chinese Standard Bible (Traditional) (CSBT)",
+                    "Chinese Union Version (Simplified) (CUVS)",
+                    "Chinese Union Version (Traditional) (CUV)",
+                    "Chinese Union Version Modern Punctuation (Simplified) (CUVMPS)",
+                    "Chinese Union Version Modern Punctuation (Traditional) (CUVMPT)",
+                ],
+            ),
+            ("AMU", ["Amuzgo de Guerrero (AMU)"]),
+            (
+                "AR",
+                [
+                    "Arabic Bible: Easy-to-Read Version (ERV-AR)",
+                    "Ketab El Hayat (NAV)",
+                    "الترجمة العربية المشتركة (GNA2025)",
+                    "2025 الترجمة العربية المشتركة (GNADC25)",
+                    "المعنى الصحيح لإنجيل المسيح (TMA)",
+                    "المعنى الصحيح لإنجيل المسيح - ترتيل (TMA-C)",
+                    "الترجمة الكاثوليكيّة (اليسوعيّة) (TKA)",
+                ],
+            ),
+            (
+                "AWA",
+                ["Awadhi Bible: Easy-to-Read Version (ERV-AWA)"],
+            ),
+            (
+                "BG",
+                [
+                    "1940 Bulgarian Bible (BG1940)",
+                    "Bulgarian Bible (BULG)",
+                    "Bulgarian New Testament: Easy-to-Read Version (ERV-BG)",
+                    "Bulgarian Protestant Bible (BPB)",
+                ],
+            ),
+            ("CCO", ["Chinanteco de Comaltepec (CCO)"]),
+            ("CEB", ["Ang Pulong Sa Dios (APSD-CEB)"]),
+            (
+                "CHR",
+                ["Cherokee New Testament (CHR)"],
+            ),
+            ("CKW", ["Cakchiquel Occidental (CKW)"]),
+            (
+                "CS",
+                ["Bible 21 (B21)", "Slovo na cestu (SNC)"],
+            ),
+            ("CY", ["Beibl William Morgan (BWM)"]),
+            (
+                "DA",
+                [
+                    "Bibelen på hverdagsdansk (BPH)",
+                    "Dette er Biblen på dansk (DN1933)",
+                ],
+            ),
+            (
+                "DE",
+                [
+                    "Hoffnung für Alle (HOF)",
+                    "Luther Bibel 1545 (LUTH1545)",
+                    "Neue Genfer Übersetzung (NGU-DE)",
+                    "Schlachter 1951 (SCH1951)",
+                    "Schlachter 2000 (SCH2000)",
+                ],
+            ),
+            (
+                "ES",
+                [
+                    "La Biblia de las Américas (LBLA)",
+                    "Dios Habla Hoy (DHH)",
+                    "Jubilee Bible 2000 (Spanish) (JBS)",
+                    "Nueva Biblia al Día (NBD)",
+                    "Nueva Biblia Latinoamericana de Hoy (NBLH)",
+                    "Nueva Traducción Viviente (NTV)",
+                    "Nueva Versión Internacional (NVI)",
+                    "Nueva Versión Internacional (Castilian) (CST)",
+                    "Palabra de Dios para Todos (PDT)",
+                    "La Palabra (España) (BLP)",
+                    "La Palabra (Hispanoamérica) (BLPH)",
+                    "Reina Valera Contemporánea (RVC)",
+                    "Reina-Valera 1960 (RVR1960)",
+                    "Reina Valera 1977 (RVR1977)",
+                    "Reina-Valera 1995 (RVR1995)",
+                    "Reina-Valera Antigua (RVA)",
+                    "Traducción en lenguaje actual (TLA)",
+                ],
+            ),
+            ("FI", ["Raamattu 1933/38 (R1933)"]),
+            (
+                "FR",
+                [
+                    "La Bible du Semeur (BDS)",
+                    "Louis Segond (LSG)",
+                    "Nouvelle Edition de Genève – NEG1979 (NEG1979)",
+                    "Segond 21 (SG21)",
+                ],
+            ),
+            (
+                "GRC",
+                [
+                    "1550 Stephanus New Testament (TR1550)",
+                    "1881 Westcott-Hort New Testament (WHNU)",
+                    "1894 Scrivener New Testament (TR1894)",
+                    "SBL Greek New Testament (SBLGNT)",
+                ],
+            ),
+            (
+                "HE",
+                [
+                    "Habrit Hakhadasha/Haderekh (HHH)",
+                    "The Westminster Leningrad Codex (WLC)",
+                ],
+            ),
+            ("HI", ["Hindi Bible: Easy-to-Read Version (ERV-HI)"]),
+            ("HIL", ["Ang Pulong Sang Dios (HLGN)"]),
+            (
+                "HR",
+                [
+                    "Hrvatski Novi Zavjet – Rijeka 2001 (HNZ-RI)",
+                    "Knijga O Kristu (CRO)",
+                ],
+            ),
+            ("HT", ["Haitian Creole Version (HCV)"]),
+            (
+                "HU",
+                [
+                    "Hungarian Károli (KAR)",
+                    "Hungarian Bible: Easy-to-Read Version (ERV-HU)",
+                    "Hungarian New Translation (NT-HU)",
+                ],
+            ),
+            ("HWC", ["Hawai‘i Pidgin (HWP)"]),
+            ("IS", ["Icelandic Bible (ICELAND)"]),
+            (
+                "IT",
+                [
+                    "La Bibbia della Gioia (BDG)",
+                    "Conferenza Episcopale Italiana (CEI)",
+                    "La Nuova Diodati (LND)",
+                    "Nuova Riveduta 1994 (NR1994)",
+                    "Nuova Riveduta 2006 (NR2006)",
+                ],
+            ),
+            (
+                "LAD",
+                [
+                    "Biblia de Ferrara (FERRARA)",
+                    "Trazladado en la lingua Espanyola, 1873 (BOYADJIAN1873)",
+                ],
+            ),
+            ("JAC", ["Jacalteco, Oriental (JAC)"]),
+            ("KEK", ["Kekchi (KEK)"]),
+            ("LA", ["Biblia Sacra Vulgata (VULGATE)"]),
+            ("MI", ["Maori Bible (MAORI)"]),
+            (
+                "MK",
+                ["Macedonian New Testament (MNT)"],
+            ),
+            ("MR", ["Marathi Bible: Easy-to-Read Version (ERV-MR)"]),
+            ("MVC", ["Mam, Central (MVC)"]),
+            (
+                "MVJ",
+                ["Mam de Todos Santos Chuchumatán (MVJ)"],
+            ),
+            ("NDS", ["Reimer 2001 (REIMER)"]),
+            ("NE", ["Nepali Bible: Easy-to-Read Version (ERV-NE)"]),
+            ("NGU", ["Náhuatl de Guerrero (NGU)"]),
+            ("NL", ["Het Boek (HTB)"]),
+            (
+                "NO",
+                ["Det Norsk Bibelselskap 1930 (DNB1930)", "En Levende Bok (LB)"],
+            ),
+            ("OR", ["Oriya Bible: Easy-to-Read Version (ERV-OR)"]),
+            ("PA", ["Punjabi Bible: Easy-to-Read Version (ERV-PA)"]),
+            (
+                "PL",
+                [
+                    "Nowe Przymierze (NP)",
+                    "Słowo Życia (SZ-PL)",
+                    "Updated Gdańsk Bible (UBG)",
+                ],
+            ),
+            ("PPL", ["Ne Bibliaj Tik Nawat (NBTN)"]),
+            (
+                "PT",
+                [
+                    "Almeida Revista e Corrigida 2009 (ARC)",
+                    "Nova Traduҫão na Linguagem de Hoje 2000 (NTLH)",
+                    "Nova Versão Internacional (NVI-PT)",
+                    "O Livro (OL)",
+                    "Portuguese New Testament: Easy-to-Read Version (VFL)",
+                ],
+            ),
+            ("QU", ["Mushuj Testamento Diospaj Shimi (MTDS)"]),
+            (
+                "QUT",
+                ["Quiché, Centro Occidental (QUT)"],
+            ),
+            (
+                "RO",
+                [
+                    "Cornilescu 1924 - Revised 2010, 2014 (RMNN)",
+                    "Nouă Traducere În Limba Română (NTLR)",
+                ],
+            ),
+            (
+                "RU",
+                [
+                    "New Russian Translation (NRT)",
+                    "Священное Писание (Восточный Перевод) (CARS)",
+                    "Священное Писание (Восточный перевод), версия для "
+                    "Таджикистана (CARST)",
+                    "Священное Писание (Восточный перевод), версия с «Аллахом» (CARSA)",
+                    "Russian New Testament: Easy-to-Read Version (ERV-RU)",
+                    "Russian Synodal Version (RUSV)",
+                ],
+            ),
+            ("SK", ["Nádej pre kazdého (NPK)"]),
+            ("SO", ["Somali Bible (SOM)"]),
+            ("SQ", ["Albanian Bible (ALB)"]),
+            (
+                "SR",
+                ["Serbian New Testament: Easy-to-Read Version (ERV-SR)"],
+            ),
+            (
+                "SV",
+                [
+                    "Nya Levande Bibeln (SVL)",
+                    "Svenska 1917 (SV1917)",
+                    "Svenska Folkbibeln (SFB)",
+                    "Svenska Folkbibeln 2014 (SFB2014)",
+                ],
+            ),
+            ("SW", ["Neno: Bibilia Takatifu (SNT)"]),
+            ("TA", ["Tamil Bible: Easy-to-Read Version (ERV-TA)"]),
+            (
+                "TH",
+                [
+                    "Thai New Contemporary Bible (TNCV)",
+                    "Thai New Testament: Easy-to-Read Version (ERV-TH)",
+                ],
+            ),
+            (
+                "TL",
+                ["Ang Dating Biblia (1905) (ADB1905)", "Ang Salita ng Diyos (SND)"],
+            ),
+            ("TWI", ["Nkwa Asem (NA-TWI)"]),
+            (
+                "UK",
+                [
+                    "Ukrainian Bible (UKR)",
+                    "Ukrainian New Testament: Easy-to-Read Version (ERV-UK)",
+                ],
+            ),
+            ("UR", ["Urdu Bible: Easy-to-Read Version (ERV-UR)"]),
+            ("USP", ["Uspanteco (USP)"]),
+            (
+                "VI",
+                [
+                    "1934 Vietnamese Bible (VIET)",
+                    "Bản Dịch 2011 (BD2011)",
+                    "Vietnamese Bible: Easy-to-Read Version (BPT)",
+                ],
+            ),
+            (
+                "YI",
+                [
+                    "Tanakh in Yiddish, 1914 (NEUHAUSEN1914)",
+                    "Yehoyesh's Yiddish Tanakh Translation (YEHOYESH)",
+                ],
+            ),
+        ]
+    )
 )
 LDS_VERSION_LABELS: Final[tuple[VersionLabel, ...]] = (
     "Book of Mormon (BOM)",
     "Doctrine and Covenants (DC)",
     "Pearl of Great Price (PGP)",
 )
-QURAN_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
-    [
-        ("AR", ["Uthmani Arabic (QURAN)"]),
-        (
-            "EN",
-            [
-                "Saheeh International (QSI)",
-                "Marmaduke Pickthall (QPICK)",
-                "Abdullah Yusuf Ali (QYUSUF)",
-            ],
-        ),
-        (
-            "FA",
-            [
-                "AbdolMohammad Ayati (QAYATI)",
-                "Mohammad Mahdi Fooladvand (QFOOL)",
-            ],
-        ),
-        ("UZ", ["Muhammad Sodik Muhammad Yusuf (QSODIK)"]),
-        ("UR", ["Fateh Muhammad Jalandhry (QJAL)"]),
-        ("TR", ["Diyanet İşleri (QDIYANET)"]),
-        ("RU", ["Elmir Kuliev (QKULIEV)"]),
-    ]
+QURAN_VERSION_DATA: Final[VersionDataMap] = _build_version_data(
+    OrderedDict(
+        [
+            ("AR", ["Uthmani Arabic (QURAN)"]),
+            (
+                "EN",
+                [
+                    "Saheeh International (QSI)",
+                    "Marmaduke Pickthall (QPICK)",
+                    "Abdullah Yusuf Ali (QYUSUF)",
+                ],
+            ),
+            (
+                "FA",
+                [
+                    "AbdolMohammad Ayati (QAYATI)",
+                    "Mohammad Mahdi Fooladvand (QFOOL)",
+                ],
+            ),
+            ("UZ", ["Muhammad Sodik Muhammad Yusuf (QSODIK)"]),
+            ("UR", ["Fateh Muhammad Jalandhry (QJAL)"]),
+            ("TR", ["Diyanet İşleri (QDIYANET)"]),
+            ("RU", ["Elmir Kuliev (QKULIEV)"]),
+        ]
+    )
 )
 
 
@@ -493,13 +593,40 @@ class ScriptureSystem:
 
     id: ScriptureSystemId
     display_name: str
-    version_labels: tuple[VersionLabel, ...]
-    version_data: VersionDataMap | None = None
+    direct_version_labels: tuple[VersionLabel, ...] = ()
+    version_groups: tuple[VersionGroup, ...] = ()
+
+    @property
+    def version_labels(self) -> tuple[VersionLabel, ...]:
+        if self.version_groups:
+            return tuple(
+                label for group in self.version_groups for label in group.versions
+            )
+        return self.direct_version_labels
+
+    @property
+    def language_group_labels(self) -> tuple[LanguageGroup, ...]:
+        return tuple(group.display_label for group in self.version_groups)
+
+    def resolve_language_group(self, label: str) -> LanguageCode | None:
+        for group in self.version_groups:
+            if group.display_label == label:
+                return group.language
+        return None
+
+    def get_versions_for_language(
+        self, language: LanguageCode
+    ) -> tuple[VersionLabel, ...] | None:
+        for group in self.version_groups:
+            if group.language == language:
+                return group.versions
+        return None
 
 
-def _version_labels_from_data(version_data: VersionDataMap) -> tuple[VersionLabel, ...]:
+def _version_groups_from_data(version_data: VersionDataMap) -> tuple[VersionGroup, ...]:
     return tuple(
-        label for group_labels in version_data.values() for label in group_labels
+        VersionGroup(language=language, versions=tuple(version_labels))
+        for language, version_labels in version_data.items()
     )
 
 
@@ -515,19 +642,17 @@ SCRIPTURE_SYSTEMS: Final[dict[ScriptureSystemId, ScriptureSystem]] = {
     "bible": ScriptureSystem(
         id="bible",
         display_name="Bible",
-        version_labels=_version_labels_from_data(BIBLE_VERSION_DATA),
-        version_data=BIBLE_VERSION_DATA,
+        version_groups=_version_groups_from_data(BIBLE_VERSION_DATA),
     ),
     "lds": ScriptureSystem(
         id="lds",
         display_name="LDS scriptures",
-        version_labels=LDS_VERSION_LABELS,
+        direct_version_labels=LDS_VERSION_LABELS,
     ),
     "quran": ScriptureSystem(
         id="quran",
         display_name="Qurʾan",
-        version_labels=_version_labels_from_data(QURAN_VERSION_DATA),
-        version_data=QURAN_VERSION_DATA,
+        version_groups=_version_groups_from_data(QURAN_VERSION_DATA),
     ),
 }
 SCRIPTURE_SYSTEM_ORDER: Final[tuple[ScriptureSystemId, ...]] = (
