@@ -2,6 +2,7 @@ import unittest
 
 from parsing import (
     TELEGRAM_MESSAGE_LIMIT,
+    batch_parallel_passage_entities,
     build_passage_from_ref,
     canonicalize_reference,
     decode_linked_reference,
@@ -151,6 +152,25 @@ class ParsingTests(unittest.TestCase):
         self.assertIsNone(
             format_parallel_passage_entities([(text, None), (text, None)])
         )
+
+    def test_batch_parallel_passage_entities_packs_whole_passages_greedily(self):
+        small = "John 3:16 NIV\n\nFor God so loved the world."
+        large = f"John 3 NIV\n\n{'x' * 3000}"
+        batches = batch_parallel_passage_entities(
+            [
+                (small, "https://niv"),
+                (small.replace("NIV", "NRSVue"), "https://nrsvue"),
+                (small.replace("NIV", "WLC"), "https://wlc"),
+                (large.replace("NIV", "KJV"), None),
+                (large.replace("NIV", "NASB"), None),
+            ]
+        )
+        self.assertEqual(2, len(batches))
+        self.assertIn("John 3:16 NIV", batches[0][0])
+        self.assertIn("John 3:16 NRSVue", batches[0][0])
+        self.assertIn("John 3:16 WLC", batches[0][0])
+        self.assertIn("John 3 KJV", batches[0][0])
+        self.assertIn("John 3 NASB", batches[1][0])
 
     def test_format_inline_passage_entities_truncates_long_messages(self):
         paragraph = "x" * 3000

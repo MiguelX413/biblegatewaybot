@@ -25,6 +25,7 @@ from telegram.ext import CallbackContext, ContextTypes, ConversationHandler
 from config import BotConfig
 from parsing import (
     VersionSelection,
+    batch_parallel_passage_entities,
     build_bot_handle,
     build_passage_from_ref,
     canonicalize_reference,
@@ -32,7 +33,6 @@ from parsing import (
     decode_linked_reference,
     ensure_text,
     find_requested_book,
-    format_parallel_passage_entities,
     format_passage_chunks,
     format_passage_entities,
     format_version_selection,
@@ -347,13 +347,8 @@ async def enforce_request_throttle(
 
 
 def count_passage_result_messages(passage_results: list[tuple[str, str | None]]) -> int:
-    combined_message = (
-        format_parallel_passage_entities(passage_results)
-        if len(passage_results) > 1
-        else None
-    )
-    if combined_message is not None:
-        return 1
+    if len(passage_results) > 1:
+        return len(batch_parallel_passage_entities(passage_results))
     return sum(
         len(format_passage_chunks(response, header_url=header_url))
         for response, header_url in passage_results
@@ -628,20 +623,17 @@ async def reply_with_passage_result(
         )
         return
 
-    combined_message = (
-        format_parallel_passage_entities(passage_results)
-        if len(passage_results) > 1
-        else None
-    )
-    if combined_message is not None:
-        message_text, entities = combined_message
-        await message.reply_text(
-            message_text,
-            entities=entities,
-            reply_markup=reply_markup,
-            link_preview_options=get_link_preview_options(context),
-        )
-        return
+    if len(passage_results) > 1:
+        combined_messages = batch_parallel_passage_entities(passage_results)
+        if combined_messages:
+            for index, (message_text, entities) in enumerate(combined_messages):
+                await message.reply_text(
+                    message_text,
+                    entities=entities,
+                    reply_markup=reply_markup if index == 0 else None,
+                    link_preview_options=get_link_preview_options(context),
+                )
+            return
 
     sent_response = False
     for response, header_url in passage_results:

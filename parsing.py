@@ -252,6 +252,46 @@ def format_parallel_passage_entities(
     return message_text, cast(Sequence[MessageEntity], utf16_entities)
 
 
+def batch_parallel_passage_entities(
+    passages: Sequence[tuple[str, str | None]],
+) -> list[tuple[str, Sequence[MessageEntity]]]:
+    """Greedily pack whole passages into as few Telegram messages as possible."""
+
+    if not passages:
+        return []
+
+    batched_messages: list[tuple[str, Sequence[MessageEntity]]] = []
+    current_batch: list[tuple[str, str | None]] = []
+
+    for passage in passages:
+        candidate_batch = current_batch + [passage]
+        combined = format_parallel_passage_entities(candidate_batch)
+        if combined is not None:
+            current_batch = candidate_batch
+            continue
+
+        if current_batch:
+            current_message = format_parallel_passage_entities(current_batch)
+            assert current_message is not None
+            batched_messages.append(current_message)
+            current_batch = [passage]
+            continue
+
+        single_message = format_parallel_passage_entities([passage])
+        if single_message is not None:
+            batched_messages.append(single_message)
+        else:
+            text, header_url = passage
+            batched_messages.extend(format_passage_chunks(text, header_url=header_url))
+
+    if current_batch:
+        current_message = format_parallel_passage_entities(current_batch)
+        assert current_message is not None
+        batched_messages.append(current_message)
+
+    return batched_messages
+
+
 def _chunk_header(header: str, body: str) -> str:
     """Build a reference header for the verses that occur in one message chunk."""
 
