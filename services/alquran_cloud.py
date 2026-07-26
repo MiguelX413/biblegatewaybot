@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover - exercised only in dependency-missing e
 ALQURAN_CLOUD_API_BASE_URL = "https://api.alquran.cloud/v1"
 QURAN_PUBLIC_BASE_URL = "https://quran.com"
 ALQURAN_CLOUD_EDITION_IDS: dict[str, str] = {
-    "QURAN": "quran-uthmani",
+    "UTHMANI": "quran-uthmani",
     "QSI": "en.sahih",
     "QPICK": "en.pickthall",
     "QYUSUF": "en.yusufali",

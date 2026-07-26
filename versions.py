@@ -1430,7 +1430,7 @@ QURAN_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
     [
         (
             LanguageCode.AR,
-            [Version.quran("Uthmani Arabic", "QURAN")],
+            [Version.quran("Uthmani Arabic", "UTHMANI", aliases=("QURAN",))],
         ),
         (
             LanguageCode.EN,

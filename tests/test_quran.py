@@ -94,7 +94,7 @@ class QuranParsingTests(unittest.TestCase):
         )
 
     def test_known_edition_ids(self):
-        self.assertEqual("quran-uthmani", ALQURAN_CLOUD_EDITION_IDS["QURAN"])
+        self.assertEqual("quran-uthmani", ALQURAN_CLOUD_EDITION_IDS["UTHMANI"])
         self.assertEqual("en.sahih", ALQURAN_CLOUD_EDITION_IDS["QSI"])
         self.assertEqual("fa.ayati", ALQURAN_CLOUD_EDITION_IDS["QAYATI"])
         self.assertEqual("uz.sodik", ALQURAN_CLOUD_EDITION_IDS["QSODIK"])

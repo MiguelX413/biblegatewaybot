@@ -584,7 +584,10 @@ for book in QURAN_BOOK_DATA:
 
 
 def get_version_provider(version: str) -> VersionProvider | None:
-    return VERSION_PROVIDERS.get(version.upper())
+    resolved = resolve_version_code(version)
+    if resolved is None:
+        return VERSION_PROVIDERS.get(version.upper())
+    return VERSION_PROVIDERS.get(resolved)
 
 
 def get_book_scripture_system(book_slug: str) -> ScriptureSystemId:
@@ -604,7 +607,10 @@ def get_passage_scripture_system(passage: str) -> ScriptureSystemId | None:
 
 
 def supported_book_slugs(version: str) -> frozenset[str]:
-    return VERSION_SUPPORTED_BOOK_SLUGS.get(version.upper(), frozenset())
+    resolved = resolve_version_code(version)
+    if resolved is None:
+        return VERSION_SUPPORTED_BOOK_SLUGS.get(version.upper(), frozenset())
+    return VERSION_SUPPORTED_BOOK_SLUGS.get(resolved, frozenset())
 
 
 def version_supports_book_slug(version: str, book_slug: str) -> bool:

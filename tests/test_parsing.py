@@ -481,7 +481,7 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(
             frozenset(
                 {
-                    "QURAN",
+                    "UTHMANI",
                     "QSI",
                     "QPICK",
                     "QYUSUF",
