@@ -282,8 +282,13 @@ class Version:
         )
 
     @classmethod
-    def book_of_mormon(
-        cls, name: str, abbreviation: str, *, aliases: tuple[str, ...] = ()
+    def lds(
+        cls,
+        name: str,
+        abbreviation: str,
+        supported_book_slugs: frozenset[BookSlug],
+        *,
+        aliases: tuple[str, ...] = (),
     ) -> Version:
         return cls(
             name,
@@ -291,33 +296,8 @@ class Version:
             VersionProvider.LDS,
             aliases,
             None,
-            VersionSupportScope.BOOK_OF_MORMON,
-        )
-
-    @classmethod
-    def doctrine_and_covenants(
-        cls, name: str, abbreviation: str, *, aliases: tuple[str, ...] = ()
-    ) -> Version:
-        return cls(
-            name,
-            abbreviation,
-            VersionProvider.LDS,
-            aliases,
-            None,
-            VersionSupportScope.DOCTRINE_AND_COVENANTS,
-        )
-
-    @classmethod
-    def pearl_of_great_price(
-        cls, name: str, abbreviation: str, *, aliases: tuple[str, ...] = ()
-    ) -> Version:
-        return cls(
-            name,
-            abbreviation,
-            VersionProvider.LDS,
-            aliases,
-            None,
-            VersionSupportScope.PEARL_OF_GREAT_PRICE,
+            VersionSupportScope.CUSTOM,
+            supported_book_slugs,
         )
 
     @classmethod
@@ -1419,9 +1399,51 @@ LDS_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
         (
             LanguageCode.EN,
             [
-                Version.book_of_mormon("Book of Mormon", "BOM"),
-                Version.doctrine_and_covenants("Doctrine and Covenants", "DC"),
-                Version.pearl_of_great_price("Pearl of Great Price", "PGP"),
+                Version.lds(
+                    "English LDS scriptures",
+                    "LDSENG",
+                    frozenset(LDS_STANDARD_WORKS_BOOK_SLUGS),
+                )
+            ],
+        ),
+        (
+            LanguageCode.ES,
+            [
+                Version.lds(
+                    "Spanish LDS scriptures",
+                    "LDSESP",
+                    frozenset(LDS_STANDARD_WORKS_BOOK_SLUGS),
+                )
+            ],
+        ),
+        (
+            LanguageCode.PT,
+            [
+                Version.lds(
+                    "Portuguese LDS scriptures",
+                    "LDSPOR",
+                    frozenset(LDS_STANDARD_WORKS_BOOK_SLUGS),
+                )
+            ],
+        ),
+        (
+            LanguageCode.FR,
+            [
+                Version.lds(
+                    "French LDS scriptures",
+                    "LDSFRA",
+                    frozenset(LDS_STANDARD_WORKS_BOOK_SLUGS),
+                )
+            ],
+        ),
+        (
+            LanguageCode.DE,
+            [
+                Version.lds(
+                    "German LDS scriptures",
+                    "LDSDEU",
+                    frozenset(LDS_STANDARD_WORKS_BOOK_SLUGS),
+                )
             ],
         ),
     ]

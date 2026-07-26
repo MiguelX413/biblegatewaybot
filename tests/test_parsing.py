@@ -62,10 +62,12 @@ class ParsingTests(unittest.TestCase):
 
     def test_format_passage_chunks_splits_long_messages(self):
         paragraph = "x" * 3000
-        chunks = format_passage_chunks(f"1 Nephi 1 BOM\n\n{paragraph}\n\n{paragraph}")
+        chunks = format_passage_chunks(
+            f"1 Nephi 1 LDSENG\n\n{paragraph}\n\n{paragraph}"
+        )
         self.assertEqual(2, len(chunks))
-        self.assertTrue(chunks[0][0].startswith("1 Nephi 1 BOM\n"))
-        self.assertTrue(chunks[1][0].startswith("1 Nephi 1 BOM\n"))
+        self.assertTrue(chunks[0][0].startswith("1 Nephi 1 LDSENG\n"))
+        self.assertTrue(chunks[1][0].startswith("1 Nephi 1 LDSENG\n"))
         self.assertEqual("expandable_blockquote", chunks[0][1][-1].type)
         self.assertEqual("expandable_blockquote", chunks[1][1][-1].type)
         self.assertLessEqual(len(chunks[0][0]), TELEGRAM_MESSAGE_LIMIT)
@@ -196,9 +198,9 @@ class ParsingTests(unittest.TestCase):
     def test_format_inline_passage_entities_truncates_long_messages(self):
         paragraph = "x" * 3000
         text, entities = format_inline_passage_entities(
-            f"1 Nephi 1 BOM\n\n{paragraph}\n\n{paragraph}"
+            f"1 Nephi 1 LDSENG\n\n{paragraph}\n\n{paragraph}"
         )
-        self.assertTrue(text.startswith("1 Nephi 1 BOM\n"))
+        self.assertTrue(text.startswith("1 Nephi 1 LDSENG\n"))
         self.assertIn("…continued; use /get for the full passage.", text)
         self.assertLessEqual(len(text), TELEGRAM_MESSAGE_LIMIT)
         self.assertEqual(2, len(entities))
@@ -406,14 +408,14 @@ class ParsingTests(unittest.TestCase):
             get_passage_scripture_system("Qur'an al-Baqarah 2:255"),
         )
         self.assertEqual(ScriptureSystemId.BIBLE, get_version_system("NIV"))
-        self.assertEqual(ScriptureSystemId.LDS, get_version_system("BOM"))
+        self.assertEqual(ScriptureSystemId.LDS, get_version_system("LDSENG"))
         self.assertEqual(ScriptureSystemId.QURAN, get_version_system("QSI"))
         self.assertNotIn(
             "BOM",
             VERSION_CATALOG.systems_by_id[ScriptureSystemId.BIBLE].version_labels,
         )
         self.assertIn(
-            "Book of Mormon (BOM)",
+            "English LDS scriptures (LDSENG)",
             VERSION_CATALOG.systems_by_id[ScriptureSystemId.LDS].version_labels,
         )
         self.assertIn(
@@ -467,9 +469,11 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("biblecom", get_version_provider("TMA"))
         self.assertEqual("biblecom", get_version_provider("TMA-C"))
         self.assertEqual("biblecom", get_version_provider("TKA"))
-        self.assertEqual("lds", get_version_provider("BOM"))
-        self.assertEqual("lds", get_version_provider("DC"))
-        self.assertEqual("lds", get_version_provider("PGP"))
+        self.assertEqual("lds", get_version_provider("LDSENG"))
+        self.assertEqual("lds", get_version_provider("LDSESP"))
+        self.assertIsNone(get_version_provider("BOM"))
+        self.assertIsNone(get_version_provider("DC"))
+        self.assertIsNone(get_version_provider("PGP"))
         self.assertEqual("quran", get_version_provider("QURAN"))
         self.assertEqual("quran", get_version_provider("QSI"))
 
@@ -513,12 +517,12 @@ class ParsingTests(unittest.TestCase):
         self.assertNotIn("isaiah", supported_book_slugs("METSUDAH"))
         self.assertIn("genesis", supported_book_slugs("RJPS"))
         self.assertNotIn("matthew", supported_book_slugs("RJPS"))
-        self.assertIn("1nephi", supported_book_slugs("BOM"))
-        self.assertNotIn("genesis", supported_book_slugs("BOM"))
-        self.assertIn("doctrineandcovenants", supported_book_slugs("DC"))
-        self.assertNotIn("1nephi", supported_book_slugs("DC"))
-        self.assertIn("abraham", supported_book_slugs("PGP"))
-        self.assertNotIn("john", supported_book_slugs("PGP"))
+        self.assertIn("1nephi", supported_book_slugs("LDSENG"))
+        self.assertIn("doctrineandcovenants", supported_book_slugs("LDSENG"))
+        self.assertIn("abraham", supported_book_slugs("LDSENG"))
+        self.assertEqual(frozenset(), supported_book_slugs("BOM"))
+        self.assertEqual(frozenset(), supported_book_slugs("DC"))
+        self.assertEqual(frozenset(), supported_book_slugs("PGP"))
         self.assertIn("quran", supported_book_slugs("QURAN"))
         self.assertNotIn("john", supported_book_slugs("QURAN"))
         self.assertIn("3maccabees", supported_book_slugs("NRSVUE"))
@@ -532,12 +536,17 @@ class ParsingTests(unittest.TestCase):
         self.assertFalse(version_supports_book_slug("NABRE", "1esdras"))
 
     def test_supported_versions_for_book_slug(self):
-        self.assertEqual(frozenset({"BOM"}), supported_versions_for_book_slug("1nephi"))
         self.assertEqual(
-            frozenset({"DC"}), supported_versions_for_book_slug("doctrineandcovenants")
+            frozenset({"LDSENG", "LDSESP", "LDSPOR", "LDSFRA", "LDSDEU"}),
+            supported_versions_for_book_slug("1nephi"),
         )
         self.assertEqual(
-            frozenset({"PGP"}), supported_versions_for_book_slug("abraham")
+            frozenset({"LDSENG", "LDSESP", "LDSPOR", "LDSFRA", "LDSDEU"}),
+            supported_versions_for_book_slug("doctrineandcovenants"),
+        )
+        self.assertEqual(
+            frozenset({"LDSENG", "LDSESP", "LDSPOR", "LDSFRA", "LDSDEU"}),
+            supported_versions_for_book_slug("abraham"),
         )
         self.assertEqual(
             frozenset({"SCOMM", "CHARLES"}),
@@ -588,10 +597,10 @@ class ParsingTests(unittest.TestCase):
             supported_versions_for_book_slug("quran"),
         )
 
-    def test_resolve_auto_version_uses_bom_for_exclusive_books(self):
-        self.assertEqual("BOM", resolve_auto_version("NIV", "1 Nephi 3:7"))
-        self.assertEqual("DC", resolve_auto_version("NIV", "D&C 1:1"))
-        self.assertEqual("PGP", resolve_auto_version("NIV", "Abraham 3:22"))
+    def test_resolve_auto_version_uses_lds_default_for_exclusive_books(self):
+        self.assertEqual("LDSENG", resolve_auto_version("NIV", "1 Nephi 3:7"))
+        self.assertEqual("LDSENG", resolve_auto_version("NIV", "D&C 1:1"))
+        self.assertEqual("LDSENG", resolve_auto_version("NIV", "Abraham 3:22"))
         self.assertEqual("CHARLES", resolve_auto_version("NIV", "Jubilees 1:1"))
         self.assertEqual(
             "ARISTEAS", resolve_auto_version("NIV", "Letter of Aristeas 1:1")
@@ -637,15 +646,20 @@ class ParsingTests(unittest.TestCase):
             (True, "Tobit"), version_supports_passage("NABRE", "Tobit 4:7")
         )
         self.assertEqual(
-            (True, "1 Nephi"), version_supports_passage("BOM", "1 Nephi 3:7")
+            (True, "1 Nephi"), version_supports_passage("LDSENG", "1 Nephi 3:7")
         )
         self.assertEqual(
             (True, "Doctrine and Covenants"),
-            version_supports_passage("DC", "Doctrine and Covenants 1:1"),
+            version_supports_passage("LDSENG", "Doctrine and Covenants 1:1"),
         )
-        self.assertEqual((False, "John"), version_supports_passage("DC", "John 3:16"))
         self.assertEqual(
-            (True, "Abraham"), version_supports_passage("PGP", "Abraham 3:22")
+            (False, "John"), version_supports_passage("LDSENG", "John 3:16")
+        )
+        self.assertEqual(
+            (True, "Abraham"), version_supports_passage("LDSENG", "Abraham 3:22")
+        )
+        self.assertEqual(
+            (True, "1 Nephi"), version_supports_passage("LDSENG", "1 Nephi 3:7")
         )
         self.assertEqual(
             (True, "Jubilees"),
@@ -685,7 +699,9 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(
             (True, "Psalm 154"), version_supports_passage("ESHEL", "Psalm 154 1:1")
         )
-        self.assertEqual((False, "John"), version_supports_passage("BOM", "John 3:16"))
+        self.assertEqual(
+            (False, "John"), version_supports_passage("LDSENG", "John 3:16")
+        )
         self.assertEqual(
             (True, "Qurʾān"), version_supports_passage("QSI", "Quran 2:255")
         )

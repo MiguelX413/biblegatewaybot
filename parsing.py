@@ -5,7 +5,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
 
 from quran import QuranReference, format_quran_reference, parse_quran_reference
-from state import DEFAULT_BIBLE_VERSION
+from state import DEFAULT_BIBLE_VERSION, DEFAULT_VERSION_BY_SYSTEM
 from versions import (
     APOCRYPHA_BOOK_DATA,
     BOOKS,
@@ -1072,8 +1072,16 @@ def resolve_auto_version(
         return version
 
     book_slug, _ = requested_book
+    requested_system = get_book_scripture_system(book_slug)
+    current_system = get_version_system(version)
+    if requested_system is not None and current_system is not requested_system:
+        system_default = DEFAULT_VERSION_BY_SYSTEM[requested_system]
+        if isinstance(system_default, str):
+            return system_default
+        return system_default[0][0]
+
     supported_versions = supported_versions_for_book_slug(
-        book_slug, scripture_system=get_book_scripture_system(book_slug)
+        book_slug, scripture_system=requested_system
     )
     if len(supported_versions) == 1:
         return next(iter(supported_versions))

@@ -12,6 +12,7 @@ from parsing import (
     normalize_display_reference,
 )
 from state import EMPTY, REQUEST_TIMEOUT_SECONDS, InlinePassageResult
+from versions import VERSION_SUPPORTED_BOOK_SLUGS, resolve_version_code
 
 try:
     httpx: Any = import_module("httpx")
@@ -27,7 +28,7 @@ _LDS_SCRIPTURES_PUBLIC_BASE_URL = "https://churchofjesuschrist.org/study/scriptu
 class LdsBook:
     title: str
     slug: str
-    version: str
+    collection_code: str
     collection_path: str
     book_path: str
     chapters: int
@@ -168,17 +169,33 @@ LDS_BOOK_BY_ALIAS = {
     normalize_lds_book_name(alias): book for book in LDS_BOOKS for alias in book.aliases
 }
 
+LDS_LANGUAGE_CODES = {
+    "LDSENG": "eng",
+    "LDSESP": "spa",
+    "LDSPOR": "por",
+    "LDSFRA": "fra",
+    "LDSDEU": "deu",
+}
 
-def build_lds_passage_url(passage: str) -> str | None:
+
+def resolve_lds_language_code(version: str) -> str | None:
+    normalized = resolve_version_code(version) or version.upper()
+    return LDS_LANGUAGE_CODES.get(normalized)
+
+
+def build_lds_passage_url(passage: str, version: str = "LDSENG") -> str | None:
     reference = parse_lds_reference(passage)
     if reference is None:
+        return None
+    language_code = resolve_lds_language_code(version)
+    if language_code is None:
         return None
 
     url = (
         f"{_LDS_SCRIPTURES_PUBLIC_BASE_URL}/"
         f"{reference.book.collection_path}/"
         f"{reference.book.book_path}/"
-        f"{reference.start_chapter}?lang=eng"
+        f"{reference.start_chapter}?lang={language_code}"
     )
     anchor_verse = reference.start_verse
     if anchor_verse is not None:
@@ -303,6 +320,7 @@ def parse_passage_html(
     html: str,
     reference: LdsReference,
     *,
+    version: str = "LDSENG",
     inline_details: bool = False,
 ) -> str | InlinePassageResult:
     soup = BeautifulSoup(html, "lxml")
@@ -328,9 +346,7 @@ def parse_passage_html(
     if not selected_lines:
         return EMPTY
 
-    header = build_passage_header(
-        format_reference_title(reference), reference.book.version
-    )
+    header = build_passage_header(format_reference_title(reference), version)
     final_text = "\n\n".join([header, *selected_lines]).strip()
     if not inline_details:
         return final_text
@@ -339,7 +355,7 @@ def parse_passage_html(
     description = f"{content[:150]}..." if len(content) > 153 else content
     return InlinePassageResult(
         passage=final_text,
-        result_id=f"{reference.book.slug}.{reference.start_chapter}/{reference.book.version}",
+        result_id=f"{reference.book.slug}.{reference.start_chapter}/{version}",
         title=header,
         description=description,
     )
@@ -370,9 +386,14 @@ class LdsScripturesClient:
             return None
 
     async def _get_chapter_html(self, book: LdsBook, chapter: int) -> str | None:
+        return await self._get_chapter_html_for_language(book, chapter, "eng")
+
+    async def _get_chapter_html_for_language(
+        self, book: LdsBook, chapter: int, language_code: str
+    ) -> str | None:
         url = (
             f"{_LDS_SCRIPTURES_API_BASE_URL}/"
-            f"{book.collection_path}/{book.book_path}/{chapter}?lang=eng"
+            f"{book.collection_path}/{book.book_path}/{chapter}?lang={language_code}"
         )
         return await self.fetch_text(url)
 
@@ -385,7 +406,15 @@ class LdsScripturesClient:
         reference = parse_lds_reference(passage)
         if reference is None:
             return EMPTY
-        if reference.book.version != version.upper():
+        normalized_version = resolve_version_code(version) or version.upper()
+        language_code = resolve_lds_language_code(normalized_version)
+        if language_code is None:
+            return EMPTY
+        supported_book_slugs = VERSION_SUPPORTED_BOOK_SLUGS.get(normalized_version)
+        if (
+            supported_book_slugs is None
+            or reference.book.slug not in supported_book_slugs
+        ):
             return EMPTY
 
         chapter_outputs: list[str] = []
@@ -403,11 +432,16 @@ class LdsScripturesClient:
                     reference.end_verse if chapter == reference.end_chapter else None
                 ),
             )
-            html = await self._get_chapter_html(reference.book, chapter)
+            html = await self._get_chapter_html_for_language(
+                reference.book, chapter, language_code
+            )
             if html is None:
                 return None
             chapter_text = parse_passage_html(
-                html, chapter_reference, inline_details=False
+                html,
+                chapter_reference,
+                version=normalized_version,
+                inline_details=False,
             )
             if chapter_text == EMPTY:
                 return EMPTY

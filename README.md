@@ -30,7 +30,7 @@ Runtime model:
 
 - the bot now runs with `python-telegram-bot` long polling
 - BibleGateway, Bible.com, Sefaria, LDS, and Qurʾan fetching use async `httpx`
-- Book of Mormon, Doctrine and Covenants, and Pearl of Great Price passages are fetched from the official Church scripture pages under versions `BOM`, `DC`, and `PGP`
+- LDS scripture passages are fetched from the official Church scripture pages under language-based versions such as `LDSENG`, `LDSESP`, `LDSPOR`, `LDSFRA`, and `LDSDEU`
 - Bible.com-backed Arabic versions include `GNA2025`, `GNADC25`, `TMA`, `TMA-C`, and `TKA`
 - AlQuran Cloud-backed Qurʾan versions include Arabic `QURAN`, English `QSI` / `QPICK` / `QYUSUF`, Persian `QAYATI` / `QFOOL`, Uzbek `QSODIK`, Urdu `QJAL`, Turkish `QDIYANET`, and Russian `QKULIEV`
 - Sefaria-backed versions support JPS-family texts and additional apocrypha not available on BibleGateway
@@ -65,7 +65,7 @@ Notes:
 - `/linkembeds off` or `/linkembeds on` enables or suppresses link previews for passage headers and welcome/source links in the current DM or group; DM settings also apply to that user's inline results
 - chapter requests are supported, but whole-book requests are not
 - Bible.com Arabic examples: `/get Matthew 3 TMA`, `/get Tobit 9 GNADC25`, `/get 2 Maccabees 6 TKA`
-- LDS scripture examples: `/get 1 Nephi 3:7 BOM`, `/get D&C 1:1 DC`, `/get Abraham 3:22 PGP`
+- LDS scripture examples: `/get 1 Nephi 3:7 LDSENG`, `/get D&C 1:1 LDSESP`, `/get Abraham 3:22 LDSFRA`
 - apocrypha defaults to `NRSVue` when available and otherwise falls back to supported Sefaria-backed versions
 - Sefaria/apocrypha examples: `/get Tobit 4:7 NABRE`, `/get 3 Maccabees 1:1`, `/get Jubilees 1:1`
 - accepted Bible.com version aliases include `GNADC`, `TMA-C`, `TKA`, `TKʿ`, and `ت.ك.ع`

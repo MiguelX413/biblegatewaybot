@@ -126,7 +126,7 @@ def build_passage_header_url(passage: str, version: str) -> str | None:
         )
         return build_sefaria_passage_url(passage, version, version_query)
     if provider is VersionProvider.LDS:
-        return build_lds_passage_url(passage)
+        return build_lds_passage_url(passage, version)
     return None
 
 

@@ -70,7 +70,12 @@ class LdsScripturesParsingTests(unittest.TestCase):
         self.assertEqual(
             "https://churchofjesuschrist.org/study/scriptures/bofm/1-ne/3"
             "?lang=eng&id=p7#p7",
-            build_lds_passage_url("1 Nephi 3:7"),
+            build_lds_passage_url("1 Nephi 3:7", "LDSENG"),
+        )
+        self.assertEqual(
+            "https://churchofjesuschrist.org/study/scriptures/bofm/1-ne/3"
+            "?lang=spa&id=p7#p7",
+            build_lds_passage_url("1 Nephi 3:7", "LDSESP"),
         )
 
     def test_parse_reference_single_verse(self):
@@ -121,14 +126,14 @@ class LdsScripturesParsingTests(unittest.TestCase):
         self.assertIsNotNone(reference)
         assert reference is not None
         self.assertEqual("Doctrine and Covenants", reference.book.title)
-        self.assertEqual("DC", reference.book.version)
+        self.assertEqual("DC", reference.book.collection_code)
 
     def test_parse_reference_accepts_pearl_of_great_price_books(self):
         reference = parse_lds_reference("Joseph Smith-History 1:15-17")
         self.assertIsNotNone(reference)
         assert reference is not None
         self.assertEqual("Joseph Smith—History", reference.book.title)
-        self.assertEqual("PGP", reference.book.version)
+        self.assertEqual("PGP", reference.book.collection_code)
 
     def test_parse_reference_rejects_unknown_book(self):
         self.assertIsNone(parse_lds_reference("Heliocentrics 1:1"))
@@ -145,7 +150,7 @@ class LdsScripturesParsingTests(unittest.TestCase):
         result = parse_passage_html(SAMPLE_HTML, reference)
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
-        self.assertIn("1 Nephi 3:7–8 BOM", result)
+        self.assertIn("1 Nephi 3:7–8 LDSENG", result)
         self.assertNotIn("6 Therefore", result)
         self.assertIn("⁷ For I know", result)
         self.assertIn("⁸ And it came to pass", result)
@@ -156,7 +161,7 @@ class LdsScripturesParsingTests(unittest.TestCase):
         result = parse_passage_html(SAMPLE_HTML, reference, inline_details=True)
         self.assertIsInstance(result, InlinePassageResult)
         assert isinstance(result, InlinePassageResult)
-        self.assertEqual("1 Nephi 3:7 BOM", result.title)
+        self.assertEqual("1 Nephi 3:7 LDSENG", result.title)
         self.assertIn("⁷ For I know", result.passage)
 
     def test_parse_passage_html_returns_empty_when_no_match(self):
