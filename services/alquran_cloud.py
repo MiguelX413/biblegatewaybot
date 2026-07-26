@@ -60,7 +60,7 @@ def _parse_named_quran_reference(passage: str) -> QuranReference | None:
         r"(?:(?:qur(?:an|['’ʾ]an)|al(?:[\s-]+)qur(?:an|['’ʾ]an)|koran)\s+)?"
         r"(?:surah\s+)?"
         r"(.+?)"
-        r"(?:\s+(\d{1,3})(?:-(\d{1,3}))?)?"
+        r"(?:[\s:]+(\d{1,3})(?:-(\d{1,3}))?)?"
         r"\s*$",
         normalized,
     )

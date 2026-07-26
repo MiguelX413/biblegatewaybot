@@ -48,7 +48,19 @@ class QuranParsingTests(unittest.TestCase):
         self.assertEqual(1, reference.start_ayah)
         self.assertEqual(3, reference.end_ayah)
 
+        reference = parse_quran_reference("Al-Fatiha:1-3")
+        assert reference is not None
+        self.assertEqual(1, reference.surah)
+        self.assertEqual(1, reference.start_ayah)
+        self.assertEqual(3, reference.end_ayah)
+
         reference = parse_quran_reference("Surah Al-Baqarah 255")
+        assert reference is not None
+        self.assertEqual(2, reference.surah)
+        self.assertEqual(255, reference.start_ayah)
+        self.assertEqual(255, reference.end_ayah)
+
+        reference = parse_quran_reference("Surah Al-Baqarah:255")
         assert reference is not None
         self.assertEqual(2, reference.surah)
         self.assertEqual(255, reference.start_ayah)

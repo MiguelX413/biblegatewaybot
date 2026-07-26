@@ -234,6 +234,13 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("Al-Fatiha 1-3", passage)
         self.assertTrue(explicit)
 
+        selection, passage, explicit = parse_get_request(
+            "/get Al-Fatiha:1-3 QSI", "NIV"
+        )
+        self.assertEqual((("QSI",),), selection)
+        self.assertEqual("Al-Fatiha:1-3", passage)
+        self.assertTrue(explicit)
+
     def test_build_passage_from_ref_normalizes_revelation_name(self):
         passage = build_passage_from_ref(("Revelation of Jesus Christ", 1, 1, 1, 3))
         self.assertEqual("Revelation 1:1-1:3", passage)
