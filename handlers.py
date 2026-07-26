@@ -76,13 +76,13 @@ from state import (
     SearchState,
 )
 from versions import (
-    SCRIPTURE_SYSTEM_ORDER,
-    SCRIPTURE_SYSTEMS,
-    SEFARIA_VERSION_CONFIGS,
+    VERSION_CATALOG,
     VERSION_LOOKUP,
     ScriptureSystemId,
+    VersionProvider,
     format_version_full_label,
     get_scripture_system,
+    get_sefaria_version_config,
     get_version_system,
 )
 
@@ -103,18 +103,18 @@ def build_input_message_content(
 
 def build_passage_header_url(passage: str, version: str) -> str | None:
     provider = get_version_provider(version)
-    if provider == "biblegateway":
+    if provider is VersionProvider.BIBLE_GATEWAY:
         return build_bible_gateway_passage_url(passage, version)
-    if provider == "biblecom":
+    if provider is VersionProvider.BIBLE_COM:
         return build_bible_com_passage_url(passage, version)
-    if provider == "quran":
+    if provider is VersionProvider.QURAN:
         return build_quran_passage_url(passage, version)
-    if provider == "sefaria":
+    if provider is VersionProvider.SEFARIA:
         version_query = resolve_sefaria_version_query(
-            passage, version, SEFARIA_VERSION_CONFIGS
+            passage, get_sefaria_version_config(version)
         )
         return build_sefaria_passage_url(passage, version, version_query)
-    if provider == "lds":
+    if provider is VersionProvider.LDS:
         return build_lds_passage_url(passage)
     return None
 
@@ -275,7 +275,7 @@ async def reply_service_unavailable(
 async def reply_choose_language(
     message: Message, scripture_system: ScriptureSystemId
 ) -> None:
-    system = SCRIPTURE_SYSTEMS[scripture_system]
+    system = VERSION_CATALOG.systems_by_id[scripture_system]
     await message.reply_text(
         CHOOSE_LANGUAGE_PROMPT,
         reply_markup=build_buttons(
@@ -289,18 +289,9 @@ async def reply_choose_collection(message: Message) -> None:
         CHOOSE_COLLECTION_PROMPT,
         reply_markup=build_buttons(
             [
-                SCRIPTURE_SYSTEMS[system_id].display_name
-                for system_id in SCRIPTURE_SYSTEM_ORDER
+                VERSION_CATALOG.systems_by_id[system_id].display_name
+                for system_id in VERSION_CATALOG.system_ids
             ]
-        ),
-    )
-
-
-async def reply_choose_lds_version(message: Message) -> None:
-    await message.reply_text(
-        SELECT_VERSION_PROMPT,
-        reply_markup=build_buttons(
-            list(SCRIPTURE_SYSTEMS["lds"].version_labels) + [BACK_TO_COLLECTIONS]
         ),
     )
 
@@ -324,21 +315,23 @@ def get_user_default_version(
 
 
 def get_bible_default_version(context: CallbackContext) -> VersionSelection:
-    return get_user_default_version(context, "bible")
+    return get_user_default_version(context, ScriptureSystemId.BIBLE)
 
 
 def get_lds_default_version(context: CallbackContext) -> VersionSelection:
-    return get_user_default_version(context, "lds")
+    return get_user_default_version(context, ScriptureSystemId.LDS)
 
 
 def get_quran_default_version(context: CallbackContext) -> VersionSelection:
-    return get_user_default_version(context, "quran")
+    return get_user_default_version(context, ScriptureSystemId.QURAN)
 
 
 def get_passage_default_version(
     context: CallbackContext, passage: str | None
 ) -> VersionSelection:
-    scripture_system = get_passage_scripture_system(passage or "") or "bible"
+    scripture_system = (
+        get_passage_scripture_system(passage or "") or ScriptureSystemId.BIBLE
+    )
     return get_user_default_version(context, scripture_system)
 
 
@@ -432,13 +425,13 @@ async def fetch_passage(
             return local_response
 
     provider = get_version_provider(version)
-    if provider == "sefaria":
+    if provider is VersionProvider.SEFARIA:
         client = context.application.bot_data["sefaria_client"]
-    elif provider == "biblecom":
+    elif provider is VersionProvider.BIBLE_COM:
         client = context.application.bot_data["bible_com_client"]
-    elif provider == "quran":
+    elif provider is VersionProvider.QURAN:
         client = context.application.bot_data["quran_client"]
-    elif provider == "lds":
+    elif provider is VersionProvider.LDS:
         client = context.application.bot_data["lds_client"]
     else:
         client = context.application.bot_data["bible_client"]
@@ -854,17 +847,17 @@ async def setdefault_collection_message(
     message = require_message(update)
     raw_text = ensure_text(message.text).strip()
     user_data = require_user_data(context)
-    if raw_text == SCRIPTURE_SYSTEMS["bible"].display_name:
-        user_data[PENDING_SETDEFAULT_SYSTEM_KEY] = "bible"
-        await reply_choose_language(message, "bible")
+    if raw_text == VERSION_CATALOG.systems_by_id[ScriptureSystemId.BIBLE].display_name:
+        user_data[PENDING_SETDEFAULT_SYSTEM_KEY] = ScriptureSystemId.BIBLE
+        await reply_choose_language(message, ScriptureSystemId.BIBLE)
         return SETDEFAULT_LANGUAGE_STATE
-    if raw_text == SCRIPTURE_SYSTEMS["lds"].display_name:
-        user_data.pop(PENDING_SETDEFAULT_SYSTEM_KEY, None)
-        await reply_choose_lds_version(message)
-        return SETDEFAULT_VERSION_STATE
-    if raw_text == SCRIPTURE_SYSTEMS["quran"].display_name:
-        user_data[PENDING_SETDEFAULT_SYSTEM_KEY] = "quran"
-        await reply_choose_language(message, "quran")
+    if raw_text == VERSION_CATALOG.systems_by_id[ScriptureSystemId.LDS].display_name:
+        user_data[PENDING_SETDEFAULT_SYSTEM_KEY] = ScriptureSystemId.LDS
+        await reply_choose_language(message, ScriptureSystemId.LDS)
+        return SETDEFAULT_LANGUAGE_STATE
+    if raw_text == VERSION_CATALOG.systems_by_id[ScriptureSystemId.QURAN].display_name:
+        user_data[PENDING_SETDEFAULT_SYSTEM_KEY] = ScriptureSystemId.QURAN
+        await reply_choose_language(message, ScriptureSystemId.QURAN)
         return SETDEFAULT_LANGUAGE_STATE
 
     await reply_choose_collection(message)
@@ -877,10 +870,12 @@ async def setdefault_language_message(
     message = require_message(update)
     user_data = require_user_data(context)
     raw_text = ensure_text(message.text).strip()
-    scripture_system = user_data.get(PENDING_SETDEFAULT_SYSTEM_KEY, "bible")
-    if scripture_system not in SCRIPTURE_SYSTEMS:
-        scripture_system = "bible"
-    system = SCRIPTURE_SYSTEMS[scripture_system]
+    scripture_system = user_data.get(
+        PENDING_SETDEFAULT_SYSTEM_KEY, ScriptureSystemId.BIBLE
+    )
+    if scripture_system not in VERSION_CATALOG.systems_by_id:
+        scripture_system = ScriptureSystemId.BIBLE
+    system = VERSION_CATALOG.systems_by_id[scripture_system]
     language_code = system.resolve_language_group(raw_text)
     if raw_text == BACK_TO_COLLECTIONS:
         user_data.pop(PENDING_SETDEFAULT_SYSTEM_KEY, None)
@@ -913,9 +908,11 @@ async def setdefault_version_message(
         await reply_choose_collection(message)
         return SETDEFAULT_COLLECTION_STATE
     if raw_text == BACK_TO_LANGUAGES:
-        scripture_system = user_data.get(PENDING_SETDEFAULT_SYSTEM_KEY, "bible")
-        if scripture_system not in SCRIPTURE_SYSTEMS:
-            scripture_system = "bible"
+        scripture_system = user_data.get(
+            PENDING_SETDEFAULT_SYSTEM_KEY, ScriptureSystemId.BIBLE
+        )
+        if scripture_system not in VERSION_CATALOG.systems_by_id:
+            scripture_system = ScriptureSystemId.BIBLE
         await reply_choose_language(message, scripture_system)
         return SETDEFAULT_LANGUAGE_STATE
 

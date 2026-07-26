@@ -17,6 +17,7 @@ from versions import (
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
     ScriptureSystemId,
+    VersionProvider,
     format_version_label,
     get_version_system,
     resolve_version_code,
@@ -582,16 +583,16 @@ for book in QURAN_BOOK_DATA:
         )
 
 
-def get_version_provider(version: str) -> str | None:
+def get_version_provider(version: str) -> VersionProvider | None:
     return VERSION_PROVIDERS.get(version.upper())
 
 
 def get_book_scripture_system(book_slug: str) -> ScriptureSystemId:
     if book_slug in LDS_STANDARD_WORKS_BOOK_SLUGS:
-        return "lds"
+        return ScriptureSystemId.LDS
     if book_slug in QURAN_BOOK_SLUGS:
-        return "quran"
-    return "bible"
+        return ScriptureSystemId.QURAN
+    return ScriptureSystemId.BIBLE
 
 
 def get_passage_scripture_system(passage: str) -> ScriptureSystemId | None:

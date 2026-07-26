@@ -27,7 +27,7 @@ from parsing import (
     version_supports_book_slug,
     version_supports_passage,
 )
-from versions import SCRIPTURE_SYSTEMS, get_version_system
+from versions import VERSION_CATALOG, ScriptureSystemId, get_version_system
 
 
 class ParsingTests(unittest.TestCase):
@@ -301,20 +301,32 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(("quran", "Qurʾan"), find_requested_book("Qur'an 2:255"))
 
     def test_scripture_systems_keep_bible_lds_and_quran_separate(self):
-        self.assertEqual("bible", get_book_scripture_system("genesis"))
-        self.assertEqual("lds", get_book_scripture_system("1nephi"))
-        self.assertEqual("quran", get_book_scripture_system("quran"))
-        self.assertEqual("bible", get_passage_scripture_system("Genesis 1:1"))
-        self.assertEqual("lds", get_passage_scripture_system("1 Nephi 1:1"))
-        self.assertEqual("quran", get_passage_scripture_system("Quran 2:255"))
-        self.assertEqual("bible", get_version_system("NIV"))
-        self.assertEqual("lds", get_version_system("BOM"))
-        self.assertEqual("quran", get_version_system("QSI"))
-        self.assertNotIn("BOM", SCRIPTURE_SYSTEMS["bible"].version_labels)
-        self.assertIn("Book of Mormon (BOM)", SCRIPTURE_SYSTEMS["lds"].version_labels)
+        self.assertEqual(ScriptureSystemId.BIBLE, get_book_scripture_system("genesis"))
+        self.assertEqual(ScriptureSystemId.LDS, get_book_scripture_system("1nephi"))
+        self.assertEqual(ScriptureSystemId.QURAN, get_book_scripture_system("quran"))
+        self.assertEqual(
+            ScriptureSystemId.BIBLE, get_passage_scripture_system("Genesis 1:1")
+        )
+        self.assertEqual(
+            ScriptureSystemId.LDS, get_passage_scripture_system("1 Nephi 1:1")
+        )
+        self.assertEqual(
+            ScriptureSystemId.QURAN, get_passage_scripture_system("Quran 2:255")
+        )
+        self.assertEqual(ScriptureSystemId.BIBLE, get_version_system("NIV"))
+        self.assertEqual(ScriptureSystemId.LDS, get_version_system("BOM"))
+        self.assertEqual(ScriptureSystemId.QURAN, get_version_system("QSI"))
+        self.assertNotIn(
+            "BOM",
+            VERSION_CATALOG.systems_by_id[ScriptureSystemId.BIBLE].version_labels,
+        )
+        self.assertIn(
+            "Book of Mormon (BOM)",
+            VERSION_CATALOG.systems_by_id[ScriptureSystemId.LDS].version_labels,
+        )
         self.assertIn(
             "Saheeh International (QSI)",
-            SCRIPTURE_SYSTEMS["quran"].version_labels,
+            VERSION_CATALOG.systems_by_id[ScriptureSystemId.QURAN].version_labels,
         )
 
     def test_is_book_only_request(self):

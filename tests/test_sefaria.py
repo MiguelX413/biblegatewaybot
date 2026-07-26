@@ -9,7 +9,7 @@ from services.sefaria import (
     resolve_sefaria_version_query,
 )
 from state import EMPTY, InlinePassageResult
-from versions import SEFARIA_VERSION_CONFIGS
+from versions import get_sefaria_version_config
 
 PASSAGE_PAYLOAD = {
     "ref": "Genesis 1:1-2",
@@ -111,8 +111,7 @@ class SefariaParsingTests(unittest.TestCase):
     def test_build_sefaria_passage_url_includes_specific_version(self):
         version_query = resolve_sefaria_version_query(
             "Genesis 1:1",
-            "JPS",
-            SEFARIA_VERSION_CONFIGS,
+            get_sefaria_version_config("JPS"),
         )
         self.assertEqual(
             "https://sefaria.org/Genesis.1:1"
@@ -123,8 +122,7 @@ class SefariaParsingTests(unittest.TestCase):
     def test_build_sefaria_passage_url_includes_yiddish_version(self):
         version_query = resolve_sefaria_version_query(
             "Genesis 1:1",
-            "YEHOYESH",
-            SEFARIA_VERSION_CONFIGS,
+            get_sefaria_version_config("YEHOYESH"),
         )
         self.assertEqual(
             "yiddish|Yehoyesh's Yiddish Tanakh Translation [yi]",

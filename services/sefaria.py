@@ -16,7 +16,7 @@ from state import (
     REQUEST_TIMEOUT_SECONDS,
     InlinePassageResult,
 )
-from versions import SefariaVersionConfig
+from versions import SefariaVersionConfig, get_sefaria_version_config
 
 try:
     httpx: Any = import_module("httpx")
@@ -192,12 +192,9 @@ def parse_v1_text_passage_payload(
 
 
 class SefariaClient:
-    def __init__(self, version_configs: dict[str, SefariaVersionConfig], client=None):
+    def __init__(self, client=None):
         if httpx is None:
             raise RuntimeError("httpx is required to use SefariaClient.")
-        self._version_configs = {
-            code.upper(): config for code, config in version_configs.items()
-        }
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(
             timeout=REQUEST_TIMEOUT_SECONDS,
@@ -215,7 +212,10 @@ class SefariaClient:
         version: str = DEFAULT_BIBLE_VERSION,
         inline_details: bool = False,
     ) -> str | InlinePassageResult | None:
-        version_query = self._resolve_version_query(passage, version)
+        version_query = resolve_sefaria_version_query(
+            passage,
+            get_sefaria_version_config(version),
+        )
         if not version_query:
             logging.warning("No Sefaria version configured for %s", version)
             return None
@@ -353,22 +353,6 @@ class SefariaClient:
             payload, version=version, inline_details=inline_details
         )
 
-    def _resolve_version_query(self, passage: str, version: str) -> str | None:
-        configured = self._version_configs.get(version.upper())
-        if configured is None:
-            return None
-        if isinstance(configured, str):
-            return _to_version_query(configured)
-
-        requested_book = find_requested_book(passage)
-        if requested_book is None:
-            return None
-        book_slug, _ = requested_book
-        resolved = configured.get(book_slug)
-        if resolved is None:
-            return None
-        return _to_version_query(resolved)
-
 
 def _to_version_query(configured_value: str) -> str:
     if "|" in configured_value:
@@ -378,20 +362,18 @@ def _to_version_query(configured_value: str) -> str:
 
 def resolve_sefaria_version_query(
     passage: str,
-    version: str,
-    version_configs: dict[str, SefariaVersionConfig],
+    version_config: SefariaVersionConfig | None,
 ) -> str | None:
-    configured = version_configs.get(version.upper())
-    if configured is None:
+    if version_config is None:
         return None
-    if isinstance(configured, str):
-        return _to_version_query(configured)
+    if isinstance(version_config, str):
+        return _to_version_query(version_config)
 
     requested_book = find_requested_book(passage)
     if requested_book is None:
         return None
     book_slug, _ = requested_book
-    resolved = configured.get(book_slug)
+    resolved = version_config.get(book_slug)
     if resolved is None:
         return None
     return _to_version_query(resolved)
