@@ -644,6 +644,12 @@ async def reply_with_passage_result(
         and count_passage_result_messages(passage_results)
         > MAX_PASSAGE_RESPONSE_MESSAGES
     ):
+        logging.info(
+            "Refusing oversized passage request %r for user %s: exceeds %s messages",
+            passage,
+            require_user(update).id,
+            MAX_PASSAGE_RESPONSE_MESSAGES,
+        )
         await message.reply_text(
             f"Sorry {display_name}, that request is too large to send safely. "
             "Please narrow the range."
