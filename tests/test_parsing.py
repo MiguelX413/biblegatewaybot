@@ -80,7 +80,7 @@ class ParsingTests(unittest.TestCase):
         self.assertTrue(chunks[0][0].startswith("John 3:1 NIV\n"))
         self.assertTrue(chunks[1][0].startswith("John 3:2 NIV\n"))
 
-    def test_format_passage_chunks_preserves_quran_citation_header(self):
+    def test_format_passage_chunks_recalculates_quran_header_within_one_surah(self):
         paragraph = f"¹ {'x' * 2500}"
         chunks = format_passage_chunks(
             "Qurʾān, al-Baqarah (2):255–257 (Saheeh International)\n\n"
@@ -88,14 +88,25 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual(2, len(chunks))
         self.assertTrue(
-            chunks[0][0].startswith(
-                "Qurʾān, al-Baqarah (2):255–257 (Saheeh International)\n"
-            )
+            chunks[0][0].startswith("Qurʾān, al-Baqarah (2):1 (Saheeh International)\n")
         )
         self.assertTrue(
-            chunks[1][0].startswith(
-                "Qurʾān, al-Baqarah (2):255–257 (Saheeh International)\n"
-            )
+            chunks[1][0].startswith("Qurʾān, al-Baqarah (2):1 (Saheeh International)\n")
+        )
+
+    def test_format_passage_chunks_recalculates_quran_header_across_surahs(self):
+        first_paragraph = f"al-Fātiḥah (1)\n\n² {'x' * 2500}"
+        second_paragraph = f"Āl ʿImrān (3)\n\n¹ {'x' * 2500}"
+        chunks = format_passage_chunks(
+            "Qurʾān, al-Fātiḥah (1):2–Āl ʿImrān (3):2 (Saheeh International)\n\n"
+            f"{first_paragraph}\n\n{second_paragraph}"
+        )
+        self.assertEqual(2, len(chunks))
+        self.assertTrue(
+            chunks[0][0].startswith("Qurʾān, al-Fātiḥah (1):2 (Saheeh International)\n")
+        )
+        self.assertTrue(
+            chunks[1][0].startswith("Qurʾān, Āl ʿImrān (3):1 (Saheeh International)\n")
         )
 
     def test_format_passage_chunks_treats_a_chapter_number_as_verse_one(self):

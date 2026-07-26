@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
 
-from quran import parse_quran_reference
+from quran import QuranReference, format_quran_reference, parse_quran_reference
 from state import DEFAULT_BIBLE_VERSION
 from versions import (
     APOCRYPHA_BOOK_DATA,
@@ -256,7 +256,7 @@ def _chunk_header(header: str, body: str) -> str:
     """Build a reference header for the verses that occur in one message chunk."""
 
     if header.startswith("Qurʾān, "):
-        return header
+        return _chunk_quran_header(header, body)
 
     verse_matches = list(re.finditer(f"[{SUPERSCRIPT_DIGITS}]+", body))
     chapter_match = re.search(r"(?m)^(\d+)\s+", body)
@@ -291,6 +291,119 @@ def _chunk_header(header: str, body: str) -> str:
         first_verse if first_verse == last_verse else f"{first_verse}-{last_verse}"
     )
     return f"{chapter_reference}:{verse_range} {version}"
+
+
+def _parse_quran_display_header(
+    header: str,
+) -> tuple[QuranReference, str | None] | None:
+    match = re.fullmatch(r"^(.*?)(?: \(([^()]*)\))?$", header.strip())
+    if match is None:
+        return None
+
+    reference_text = match.group(1)
+    suffix = match.group(2)
+    translation = (
+        None if suffix and any(character.isdigit() for character in suffix) else suffix
+    )
+    if translation is None and suffix is not None:
+        reference_text = header.strip()
+
+    if translation is not None:
+        reference_text = reference_text.strip()
+
+    whole_surah_match = re.fullmatch(r"Qurʾān, .+ \((\d{1,3})\)", reference_text)
+    if whole_surah_match is not None:
+        surah = int(whole_surah_match.group(1))
+        return QuranReference(surah, None, surah, None), translation
+
+    single_ayah_match = re.fullmatch(
+        r"Qurʾān, .+ \((\d{1,3})\):(\d{1,3})", reference_text
+    )
+    if single_ayah_match is not None:
+        surah = int(single_ayah_match.group(1))
+        ayah = int(single_ayah_match.group(2))
+        return QuranReference(surah, ayah, surah, ayah), translation
+
+    same_surah_range_match = re.fullmatch(
+        r"Qurʾān, .+ \((\d{1,3})\):(\d{1,3})–(\d{1,3})", reference_text
+    )
+    if same_surah_range_match is not None:
+        surah = int(same_surah_range_match.group(1))
+        start_ayah = int(same_surah_range_match.group(2))
+        end_ayah = int(same_surah_range_match.group(3))
+        return QuranReference(surah, start_ayah, surah, end_ayah), translation
+
+    whole_surah_cross_match = re.fullmatch(
+        r"Qurʾān, .+ \((\d{1,3})\)–.+ \((\d{1,3})\)", reference_text
+    )
+    if whole_surah_cross_match is not None:
+        start_surah = int(whole_surah_cross_match.group(1))
+        end_surah = int(whole_surah_cross_match.group(2))
+        return QuranReference(start_surah, None, end_surah, None), translation
+
+    cross_surah_ayah_match = re.fullmatch(
+        r"Qurʾān, .+ \((\d{1,3})\):(\d{1,3})–.+ \((\d{1,3})\):(\d{1,3})",
+        reference_text,
+    )
+    if cross_surah_ayah_match is not None:
+        start_surah = int(cross_surah_ayah_match.group(1))
+        start_ayah = int(cross_surah_ayah_match.group(2))
+        end_surah = int(cross_surah_ayah_match.group(3))
+        end_ayah = int(cross_surah_ayah_match.group(4))
+        return (
+            QuranReference(start_surah, start_ayah, end_surah, end_ayah),
+            translation,
+        )
+    return None
+
+
+def _chunk_quran_header(header: str, body: str) -> str:
+    parsed_header = _parse_quran_display_header(header)
+    if parsed_header is None:
+        return header
+
+    original_reference, translation = parsed_header
+    current_surah: int | None = None
+    first_surah: int | None = None
+    first_ayah: int | None = None
+    last_surah: int | None = None
+    last_ayah: int | None = None
+    surah_marker_pattern = re.compile(r"^.+ \((\d{1,3})\)$")
+    verse_pattern = re.compile(f"^([{SUPERSCRIPT_DIGITS}]+)")
+
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        surah_match = surah_marker_pattern.fullmatch(line)
+        if surah_match is not None and not line.startswith(tuple(SUPERSCRIPT_DIGITS)):
+            current_surah = int(surah_match.group(1))
+            continue
+
+        verse_match = verse_pattern.match(line)
+        if verse_match is None:
+            continue
+
+        ayah = int(verse_match.group(1).translate(SUPERSCRIPT_TO_DIGITS))
+        if first_ayah is None:
+            first_surah = current_surah or original_reference.start_surah
+            first_ayah = ayah
+        last_surah = current_surah or original_reference.end_surah
+        last_ayah = ayah
+
+    if (
+        first_surah is None
+        or first_ayah is None
+        or last_surah is None
+        or last_ayah is None
+    ):
+        return header
+
+    chunk_reference = QuranReference(first_surah, first_ayah, last_surah, last_ayah)
+    if translation is None:
+        return format_quran_reference(chunk_reference)
+    return f"{format_quran_reference(chunk_reference)} ({translation})"
 
 
 def format_passage_chunks(
