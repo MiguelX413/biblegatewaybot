@@ -8,6 +8,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 
+from json_compat import loads as json_loads
 from parsing import (
     build_passage_header,
     find_requested_book,
@@ -241,7 +242,7 @@ def _extract_page_props(html: str) -> dict | None:
     if next_data is None or not next_data.string:
         return None
     try:
-        payload = json.loads(next_data.string)
+        payload = json_loads(next_data.string)
     except json.JSONDecodeError:
         return None
     return payload.get("props", {}).get("pageProps")

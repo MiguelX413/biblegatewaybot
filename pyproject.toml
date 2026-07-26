@@ -12,6 +12,18 @@ dependencies = [
     "python-telegram-bot~=22.8",
 ]
 
+[project.optional-dependencies]
+orjson = [
+    "orjson~=3.11.3",
+]
+ujson = [
+    "ujson~=5.11.0",
+]
+speed = [
+    "orjson~=3.11.3",
+    "ujson~=5.11.0",
+]
+
 [project.scripts]
 scripturebot = "scripturebot:main"
 
@@ -39,6 +51,7 @@ files = [
     "config.py",
     "state.py",
     "parsing.py",
+    "json_compat.py",
     "versions.py",
     "services",
 ]

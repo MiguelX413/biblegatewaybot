@@ -9,6 +9,11 @@ The `uv.lock` file should be committed to version control for reproducible insta
 Setup:
 
 - `uv sync`
+- optional faster JSON paths:
+  - `uv sync --extra orjson`
+  - `uv sync --extra ujson`
+  - `uv sync --extra speed`
+  - prefers `orjson`, then `ujson`, then stdlib `json`
 
 Basic commands:
 

@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from json_compat import loads as json_loads
 from parsing import (
     build_passage_header,
     find_requested_book,
@@ -449,7 +450,7 @@ class LocalBibleClient:
         if self._versions_path.exists():
             for path in sorted(self._versions_path.glob("*.json")):
                 try:
-                    raw_data = json.loads(path.read_text(encoding="utf-8"))
+                    raw_data = json_loads(path.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError) as exc:
                     logging.warning(
                         "Error loading offline version file %s: %s", path, exc
@@ -465,7 +466,7 @@ class LocalBibleClient:
         if self._works_path.exists():
             for path in sorted(self._works_path.glob("*.json")):
                 try:
-                    raw_data = json.loads(path.read_text(encoding="utf-8"))
+                    raw_data = json_loads(path.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError) as exc:
                     logging.warning("Error loading offline work file %s: %s", path, exc)
                     continue
@@ -517,7 +518,7 @@ class LocalBibleClient:
         normalized_entries: dict[str, tuple[str, object]] = {}
         for work in works:
             try:
-                raw_data = json.loads(work.path.read_text(encoding="utf-8"))
+                raw_data = json_loads(work.path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError) as exc:
                 logging.warning(
                     "Error loading offline work file %s: %s", work.path, exc
@@ -561,7 +562,7 @@ class LocalBibleClient:
             return {}
 
         try:
-            raw_data = json.loads(path.read_text(encoding="utf-8"))
+            raw_data = json_loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             logging.warning("Error loading offline Bible file %s: %s", path, exc)
             return None

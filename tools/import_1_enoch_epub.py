@@ -1,10 +1,11 @@
-import json
 import re
 import sys
 from pathlib import Path
 from zipfile import ZipFile
 
 from bs4 import BeautifulSoup
+
+from json_compat import dumps as json_dumps
 
 EPUB_SECTION_FILES = (
     "OEBPS/chapter-001-chapter-1.html",
@@ -229,12 +230,12 @@ def main() -> int:
     works_dir.mkdir(parents=True, exist_ok=True)
 
     version_path.write_text(
-        json.dumps(version_payload(), ensure_ascii=False, indent=2, sort_keys=True)
+        json_dumps(version_payload(), ensure_ascii=False, indent=2, sort_keys=True)
         + "\n",
         encoding="utf-8",
     )
     work_path.write_text(
-        json.dumps(work_payload(chapters), ensure_ascii=False, indent=2, sort_keys=True)
+        json_dumps(work_payload(chapters), ensure_ascii=False, indent=2, sort_keys=True)
         + "\n",
         encoding="utf-8",
     )
