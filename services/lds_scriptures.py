@@ -284,12 +284,15 @@ def _extract_verse_number(verse_tag) -> int | None:
 
 def _clean_verse_text(verse_tag) -> str:
     verse_copy = BeautifulSoup(str(verse_tag), "lxml")
-    for tag in verse_copy.select(".study-note-ref, .page-break, [data-pointer-type]"):
+    for tag in verse_copy.select(".page-break, sup.marker"):
         tag.decompose()
+    for tag in verse_copy.select(".study-note-ref, [data-pointer-type]"):
+        tag.unwrap()
     verse_number = verse_copy.select_one(".verse-number")
     if verse_number is not None:
         verse_number.extract()
-    return " ".join(verse_copy.get_text(" ", strip=True).split())
+    text = " ".join(verse_copy.get_text(" ", strip=True).split())
+    return re.sub(r"\s+([,.;:?!])", r"\1", text)
 
 
 def parse_passage_html(

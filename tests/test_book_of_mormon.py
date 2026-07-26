@@ -33,7 +33,31 @@ SAMPLE_HTML = """
         <span class="iconPointer-OKie_" data-pointer-type="media"></span>
         <span class="verse-number">8 </span>
         And it came to pass that I said unto my father:
-        <a class="study-note-ref" href="#note8_a"><sup class="marker">a</sup>more</a>
+        <a class="study-note-ref" href="#note8_a">more<sup class="marker">a</sup></a>
+      </p>
+    </div>
+  </body>
+</html>
+"""
+
+ABRAHAM_HTML = """
+<html>
+  <body>
+    <div class="body-block">
+      <p class="verse" id="p1">
+        <span class="verse-number">1 </span>
+        In the land of the
+        <a class="study-note-ref" href="#note1_a"
+          >Chaldeans<sup class="marker">a</sup></a
+        >,
+        at the residence of my fathers, I,
+        <a class="study-note-ref" href="#note1_b"
+          >Abraham<sup class="marker">b</sup></a
+        >,
+        saw that it was needful for me to obtain another place of
+        <a class="study-note-ref" href="#note1_c"
+          >residence<sup class="marker">c</sup></a
+        >.
       </p>
     </div>
   </body>
@@ -125,7 +149,7 @@ class LdsScripturesParsingTests(unittest.TestCase):
         self.assertNotIn("6 Therefore", result)
         self.assertIn("⁷ For I know", result)
         self.assertIn("⁸ And it came to pass", result)
-        self.assertNotIn("more", result)
+        self.assertIn("more", result)
 
     def test_parse_passage_html_inline(self):
         reference = LdsReference(LDS_BOOK_BY_ALIAS["1nephi"], 3, 7, 3, 7)
@@ -138,6 +162,18 @@ class LdsScripturesParsingTests(unittest.TestCase):
     def test_parse_passage_html_returns_empty_when_no_match(self):
         reference = LdsReference(LDS_BOOK_BY_ALIAS["1nephi"], 3, 20, 3, 21)
         self.assertEqual(EMPTY, parse_passage_html(SAMPLE_HTML, reference))
+
+    def test_parse_passage_html_preserves_text_inside_pointer_wrappers(self):
+        reference = LdsReference(LDS_BOOK_BY_ALIAS["abraham"], 1, 1, 1, 1)
+        result = parse_passage_html(ABRAHAM_HTML, reference)
+        self.assertIsInstance(result, str)
+        assert isinstance(result, str)
+        self.assertIn(
+            "¹ In the land of the Chaldeans, at the residence of my fathers, "
+            "I, Abraham, saw that it was needful for me to obtain another "
+            "place of residence.",
+            result,
+        )
 
 
 if __name__ == "__main__":
