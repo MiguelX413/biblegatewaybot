@@ -16,8 +16,9 @@ EPUB_SECTION_FILES = (
     "OEBPS/chapter-007-the-birth-of-noah.html",
     "OEBPS/chapter-008-a-final-book-by-enoch.html",
 )
-VERSE_PREFIX_PATTERN = re.compile(r"^(\d+):(\d+)\s+(.*)$", re.DOTALL)
-CONTINUATION_PREFIX_PATTERN = re.compile(r"^(\d+)\s+(.*)$", re.DOTALL)
+VERSE_PREFIX_PATTERN = re.compile(r"^(\d+):(\d+)(?:/|\s+)(.*)$", re.DOTALL)
+CONTINUATION_PREFIX_PATTERN = re.compile(r"^(\d+)(?:/|\s+)(.*)$", re.DOTALL)
+INLINE_VERSE_MARKER_PATTERN = re.compile(r"\s+((?:(\d+):)?(\d+))/\s*")
 FOOTNOTE_NUMBER_PATTERN = re.compile(r"\s*\[\d+\]")
 
 
@@ -28,6 +29,24 @@ def clean_paragraph_text(paragraph) -> str:
     text = " ".join(paragraph_copy.get_text(" ", strip=True).split())
     text = FOOTNOTE_NUMBER_PATTERN.sub("", text)
     return text.strip()
+
+
+def split_inline_verse_segments(text: str) -> list[tuple[int | None, int, str]]:
+    segments: list[tuple[int | None, int, str]] = []
+    matches = list(INLINE_VERSE_MARKER_PATTERN.finditer(text))
+    if not matches:
+        return segments
+
+    for index, match in enumerate(matches):
+        segment_start = match.end()
+        segment_end = (
+            matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        )
+        chapter = int(match.group(2)) if match.group(2) is not None else None
+        verse = int(match.group(3))
+        body = text[segment_start:segment_end].strip()
+        segments.append((chapter, verse, body))
+    return segments
 
 
 def extract_verses_from_html(html: str) -> dict[int, dict[int, str]]:
@@ -48,7 +67,21 @@ def extract_verses_from_html(html: str) -> dict[int, dict[int, str]]:
             body = prefixed_match.group(3).strip()
             current_chapter = chapter
             current_verse = verse
-            if body:
+            inline_segments = split_inline_verse_segments(body)
+            if inline_segments:
+                first_inline_start = INLINE_VERSE_MARKER_PATTERN.search(body)
+                assert first_inline_start is not None
+                leading_body = body[: first_inline_start.start()].strip()
+                if leading_body:
+                    verses.setdefault(chapter, {})[verse] = leading_body
+                for inline_chapter, inline_verse, inline_body in inline_segments:
+                    current_chapter = inline_chapter or current_chapter
+                    current_verse = inline_verse
+                    if inline_body:
+                        verses.setdefault(current_chapter, {})[current_verse] = (
+                            inline_body
+                        )
+            elif body:
                 verses.setdefault(chapter, {})[verse] = body
             continue
 
@@ -61,8 +94,44 @@ def extract_verses_from_html(html: str) -> dict[int, dict[int, str]]:
             verse = int(continuation_match.group(1))
             body = continuation_match.group(2).strip()
             current_verse = verse
-            if body:
+            inline_segments = split_inline_verse_segments(body)
+            if inline_segments:
+                first_inline_start = INLINE_VERSE_MARKER_PATTERN.search(body)
+                assert first_inline_start is not None
+                leading_body = body[: first_inline_start.start()].strip()
+                if leading_body:
+                    verses.setdefault(current_chapter, {})[verse] = leading_body
+                for inline_chapter, inline_verse, inline_body in inline_segments:
+                    current_chapter = inline_chapter or current_chapter
+                    current_verse = inline_verse
+                    if inline_body:
+                        verses.setdefault(current_chapter, {})[current_verse] = (
+                            inline_body
+                        )
+            elif body:
                 verses.setdefault(current_chapter, {})[verse] = body
+            continue
+
+        inline_segments = split_inline_verse_segments(text)
+        if (
+            inline_segments
+            and current_chapter is not None
+            and current_verse is not None
+        ):
+            first_inline_start = INLINE_VERSE_MARKER_PATTERN.search(text)
+            assert first_inline_start is not None
+            current_body = text[: first_inline_start.start()].strip()
+            if current_body:
+                chapter_verses = verses.setdefault(current_chapter, {})
+                existing = chapter_verses.get(current_verse, "")
+                chapter_verses[current_verse] = (
+                    f"{existing} {current_body}".strip() if existing else current_body
+                )
+            for inline_chapter, inline_verse, inline_body in inline_segments:
+                current_chapter = inline_chapter or current_chapter
+                current_verse = inline_verse
+                if inline_body:
+                    verses.setdefault(current_chapter, {})[current_verse] = inline_body
             continue
 
         if current_chapter is None or current_verse is None:
