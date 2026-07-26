@@ -226,6 +226,14 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual("Quran 2:255", passage)
         self.assertTrue(explicit)
 
+    def test_parse_get_accepts_surah_names(self):
+        selection, passage, explicit = parse_get_request(
+            "/get Al-Fatiha 1-3 QSI", "NIV"
+        )
+        self.assertEqual((("QSI",),), selection)
+        self.assertEqual("Al-Fatiha 1-3", passage)
+        self.assertTrue(explicit)
+
     def test_build_passage_from_ref_normalizes_revelation_name(self):
         passage = build_passage_from_ref(("Revelation of Jesus Christ", 1, 1, 1, 3))
         self.assertEqual("Revelation 1:1-1:3", passage)
@@ -299,6 +307,8 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual(("quran", "Qurʾan"), find_requested_book("Quran 2:255"))
         self.assertEqual(("quran", "Qurʾan"), find_requested_book("Qur'an 2:255"))
+        self.assertEqual(("quran", "Qurʾan"), find_requested_book("Al-Fatiha 1-3"))
+        self.assertEqual(("quran", "Qurʾan"), find_requested_book("An-Nas"))
 
     def test_scripture_systems_keep_bible_lds_and_quran_separate(self):
         self.assertEqual(ScriptureSystemId.BIBLE, get_book_scripture_system("genesis"))
@@ -312,6 +322,9 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual(
             ScriptureSystemId.QURAN, get_passage_scripture_system("Quran 2:255")
+        )
+        self.assertEqual(
+            ScriptureSystemId.QURAN, get_passage_scripture_system("Al-Fatiha 1-3")
         )
         self.assertEqual(ScriptureSystemId.BIBLE, get_version_system("NIV"))
         self.assertEqual(ScriptureSystemId.LDS, get_version_system("BOM"))

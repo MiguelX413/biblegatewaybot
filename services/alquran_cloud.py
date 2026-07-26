@@ -11,6 +11,7 @@ from state import (
     REQUEST_TIMEOUT_SECONDS,
     InlinePassageResult,
 )
+from versions import QURAN_SURAH_ALIAS_TO_NUMBER
 
 try:
     httpx: Any = import_module("httpx")
@@ -49,6 +50,43 @@ class QuranReference:
     end_ayah: int | None
 
 
+def _parse_named_quran_reference(passage: str) -> QuranReference | None:
+    normalized = " ".join(str(passage).split()).strip()
+    if not normalized:
+        return None
+
+    match = re.fullmatch(
+        r"(?i)^\s*"
+        r"(?:(?:qur(?:an|['’ʾ]an)|al(?:[\s-]+)qur(?:an|['’ʾ]an)|koran)\s+)?"
+        r"(?:surah\s+)?"
+        r"(.+?)"
+        r"(?:\s+(\d{1,3})(?:-(\d{1,3}))?)?"
+        r"\s*$",
+        normalized,
+    )
+    if match is None:
+        return None
+
+    surah_name = re.sub(r"[^a-z0-9]+", "", match.group(1).lower())
+    surah_number = QURAN_SURAH_ALIAS_TO_NUMBER.get(surah_name)
+    if surah_number is None:
+        return None
+
+    start_ayah = int(match.group(2)) if match.group(2) else None
+    end_ayah = int(match.group(3)) if match.group(3) else start_ayah
+    if start_ayah is not None and start_ayah < 1:
+        return None
+    if end_ayah is not None and end_ayah < 1:
+        return None
+    if start_ayah is not None and end_ayah is not None and end_ayah < start_ayah:
+        return None
+    return QuranReference(
+        surah=surah_number,
+        start_ayah=start_ayah,
+        end_ayah=end_ayah,
+    )
+
+
 def parse_quran_reference(passage: str) -> QuranReference | None:
     normalized = " ".join(str(passage).split()).strip()
     if not normalized:
@@ -56,7 +94,7 @@ def parse_quran_reference(passage: str) -> QuranReference | None:
 
     match = QURAN_REFERENCE_PATTERN.fullmatch(normalized)
     if match is None:
-        return None
+        return _parse_named_quran_reference(normalized)
 
     surah = int(match.group(1))
     start_ayah = int(match.group(2)) if match.group(2) else None

@@ -13,6 +13,7 @@ from versions import (
     NONCANON_BOOK_SLUGS,
     QURAN_BOOK_DATA,
     QURAN_BOOK_SLUGS,
+    QURAN_SURAH_ALIAS_TO_NUMBER,
     SEFARIA_EXTRA_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
@@ -581,6 +582,8 @@ for book in QURAN_BOOK_DATA:
             book["slug"],
             book["title"],
         )
+for alias in QURAN_SURAH_ALIAS_TO_NUMBER:
+    BOOK_NAME_ALIASES[alias] = ("quran", "Qurʾan")
 
 
 def get_version_provider(version: str) -> VersionProvider | None:
@@ -667,6 +670,9 @@ def find_requested_book(text: str) -> tuple[str, str] | None:
         text.lower().replace("revelations", "revelation")
     )
     if book_name is None:
+        collapsed = re.sub(r"[^a-z0-9]+", "", text.lower())
+        if collapsed in QURAN_SURAH_ALIAS_TO_NUMBER:
+            return "quran", "Qurʾan"
         return None
 
     slug, title = normalize_book_name(book_name.title())
@@ -681,6 +687,8 @@ def is_book_only_request(text: str) -> bool:
         return False
 
     collapsed = re.sub(r"[^a-z0-9]+", "", normalized.lower())
+    if collapsed in QURAN_SURAH_ALIAS_TO_NUMBER:
+        return False
     if collapsed in BOOK_NAME_ALIASES:
         return True
     return collapsed in BOOK_SLUG_SPECIAL_CASES or collapsed in BOOKS
