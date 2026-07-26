@@ -2,13 +2,14 @@ import re
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Final, TypedDict
+from typing import Final, NotRequired, TypedDict
 
 
 class BookData(TypedDict):
     title: str
     slug: str
     aliases: tuple[str, ...]
+    source_url: NotRequired[str]
 
 
 type VersionLabel = str
@@ -114,6 +115,7 @@ class VersionProvider(StrEnum):
     SEFARIA = "sefaria"
     LDS = "lds"
     QURAN = "quran"
+    LOCAL = "local"
 
 
 def _language_group(label: str, code: LanguageCode) -> LanguageGroup:
@@ -205,6 +207,7 @@ class Version:
     provider: VersionProvider
     aliases: tuple[str, ...] = ()
     sefaria_config: SefariaVersionConfig | None = None
+    source_url: str | None = None
     support_scope: VersionSupportScope = VersionSupportScope.BIBLE
     supported_book_slugs: frozenset[BookSlug] = frozenset()
     additional_supported_book_slugs: frozenset[BookSlug] = frozenset()
@@ -224,6 +227,7 @@ class Version:
             VersionProvider.BIBLE_GATEWAY,
             aliases,
             None,
+            None,
             VersionSupportScope.BIBLE,
             frozenset(),
             additional_supported_book_slugs,
@@ -239,6 +243,7 @@ class Version:
             VersionProvider.BIBLE_GATEWAY,
             aliases,
             None,
+            None,
             VersionSupportScope.NEW_TESTAMENT,
         )
 
@@ -251,6 +256,7 @@ class Version:
             abbreviation,
             VersionProvider.BIBLE_GATEWAY,
             aliases,
+            None,
             None,
             VersionSupportScope.OLD_TESTAMENT,
         )
@@ -265,6 +271,7 @@ class Version:
             VersionProvider.BIBLE_GATEWAY,
             aliases,
             None,
+            None,
             VersionSupportScope.TORAH,
         )
 
@@ -277,6 +284,7 @@ class Version:
             abbreviation,
             VersionProvider.QURAN,
             aliases,
+            None,
             None,
             VersionSupportScope.QURAN,
         )
@@ -296,6 +304,7 @@ class Version:
             VersionProvider.LDS,
             aliases,
             None,
+            None,
             VersionSupportScope.CUSTOM,
             supported_book_slugs,
         )
@@ -314,6 +323,7 @@ class Version:
             abbreviation,
             VersionProvider.BIBLE_COM,
             aliases,
+            None,
             None,
             VersionSupportScope.BIBLE,
             frozenset(),
@@ -336,6 +346,7 @@ class Version:
             VersionProvider.SEFARIA,
             aliases,
             sefaria_config,
+            None,
             VersionSupportScope.CUSTOM,
             supported_book_slugs,
         )
@@ -348,6 +359,7 @@ class Version:
         supported_book_slugs: frozenset[BookSlug],
         *,
         aliases: tuple[str, ...] = (),
+        source_url: str | None = None,
     ) -> Version:
         return cls(
             name,
@@ -355,6 +367,28 @@ class Version:
             VersionProvider.BIBLE_GATEWAY,
             aliases,
             None,
+            source_url,
+            VersionSupportScope.CUSTOM,
+            supported_book_slugs,
+        )
+
+    @classmethod
+    def local(
+        cls,
+        name: str,
+        abbreviation: str,
+        supported_book_slugs: frozenset[BookSlug],
+        *,
+        aliases: tuple[str, ...] = (),
+        source_url: str | None = None,
+    ) -> Version:
+        return cls(
+            name,
+            abbreviation,
+            VersionProvider.LOCAL,
+            aliases,
+            None,
+            source_url,
             VersionSupportScope.CUSTOM,
             supported_book_slugs,
         )
@@ -1632,7 +1666,7 @@ class VersionCatalog:
         return VERSION_CODE_ALIASES.get(normalized)
 
 
-VERSION_CATALOG: Final[VersionCatalog] = VersionCatalog(
+VERSION_CATALOG: VersionCatalog = VersionCatalog(
     systems=(
         ScriptureSystem(
             id=ScriptureSystemId.BIBLE,
@@ -1657,7 +1691,7 @@ def get_scripture_system(system_id: ScriptureSystemId) -> ScriptureSystem:
     return VERSION_CATALOG.systems_by_id[system_id]
 
 
-ALL_VERSIONS: Final[tuple[Version, ...]] = VERSION_CATALOG.all_versions
+ALL_VERSIONS: list[Version] = []
 
 
 def _supported_book_slugs_for_version(version: Version) -> frozenset[BookSlug]:
@@ -1673,25 +1707,16 @@ def _canonicalize_version_code(code: VersionCode) -> VersionCode:
     return code.upper()
 
 
-VERSION_LOOKUP: Final[dict[VersionLabel, VersionCode]] = VERSION_CATALOG.version_lookup
-VERSIONS: Final[tuple[VersionCode, ...]] = tuple(VERSION_LOOKUP.values())
-VERSIONS_SET: Final[frozenset[VersionCode]] = frozenset(VERSIONS)
-VERSION_DISPLAY_LABELS: Final[dict[VersionCode, VersionCode]] = (
-    VERSION_CATALOG.version_display_labels
-)
-VERSION_FULL_LABELS: Final[dict[VersionCode, VersionLabel]] = (
-    VERSION_CATALOG.version_full_labels
-)
-VERSIONS_BY_CODE: Final[dict[VersionCode, Version]] = VERSION_CATALOG.versions_by_code
-VERSION_CODE_ALIASES: Final[dict[str, VersionCode]] = (
-    VERSION_CATALOG.version_code_aliases
-)
-VERSIONS_BY_SYSTEM: Final[dict[ScriptureSystemId, frozenset[VersionCode]]] = (
-    VERSION_CATALOG.versions_by_system
-)
-VERSION_SYSTEMS: Final[dict[VersionCode, ScriptureSystemId]] = (
-    VERSION_CATALOG.version_systems
-)
+RUNTIME_BOOK_SLUGS: list[BookSlug] = []
+VERSION_LOOKUP: dict[VersionLabel, VersionCode] = {}
+VERSIONS: list[VersionCode] = []
+VERSIONS_SET: set[VersionCode] = set()
+VERSION_DISPLAY_LABELS: dict[VersionCode, VersionCode] = {}
+VERSION_FULL_LABELS: dict[VersionCode, VersionLabel] = {}
+VERSIONS_BY_CODE: dict[VersionCode, Version] = {}
+VERSION_CODE_ALIASES: dict[str, VersionCode] = {}
+VERSIONS_BY_SYSTEM: dict[ScriptureSystemId, frozenset[VersionCode]] = {}
+VERSION_SYSTEMS: dict[VersionCode, ScriptureSystemId] = {}
 
 
 def format_version_label(version: str) -> str:
@@ -1732,16 +1757,109 @@ def get_sefaria_version_config(version: str) -> SefariaVersionConfig | None:
     return configured.sefaria_config
 
 
-VERSION_PROVIDERS: dict[str, VersionProvider] = VERSION_CATALOG.version_providers
-VERSION_SUPPORTED_BOOK_SLUGS: dict[str, frozenset[str]] = {
-    _canonicalize_version_code(version.code): _supported_book_slugs_for_version(version)
-    for version in ALL_VERSIONS
-}
+VERSION_PROVIDERS: dict[str, VersionProvider] = {}
+VERSION_SUPPORTED_BOOK_SLUGS: dict[str, frozenset[str]] = {}
+BOOKS: list[str] = []
 
-BOOKS: tuple[str, ...] = (
-    PROTESTANT_CANON_BOOK_SLUGS
-    + APOCRYPHA_BOOK_SLUGS
-    + SEFARIA_EXTRA_BOOK_SLUGS
-    + LDS_STANDARD_WORKS_BOOK_SLUGS
-    + QURAN_BOOK_SLUGS
-)
+
+def _refresh_runtime_indexes() -> None:
+    ALL_VERSIONS[:] = list(VERSION_CATALOG.all_versions)
+
+    VERSION_LOOKUP.clear()
+    VERSION_LOOKUP.update(VERSION_CATALOG.version_lookup)
+
+    VERSIONS[:] = list(VERSION_LOOKUP.values())
+    VERSIONS_SET.clear()
+    VERSIONS_SET.update(VERSIONS)
+
+    VERSION_DISPLAY_LABELS.clear()
+    VERSION_DISPLAY_LABELS.update(VERSION_CATALOG.version_display_labels)
+
+    VERSION_FULL_LABELS.clear()
+    VERSION_FULL_LABELS.update(VERSION_CATALOG.version_full_labels)
+
+    VERSIONS_BY_CODE.clear()
+    VERSIONS_BY_CODE.update(VERSION_CATALOG.versions_by_code)
+
+    VERSION_CODE_ALIASES.clear()
+    VERSION_CODE_ALIASES.update(VERSION_CATALOG.version_code_aliases)
+
+    VERSIONS_BY_SYSTEM.clear()
+    VERSIONS_BY_SYSTEM.update(VERSION_CATALOG.versions_by_system)
+
+    VERSION_SYSTEMS.clear()
+    VERSION_SYSTEMS.update(VERSION_CATALOG.version_systems)
+
+    VERSION_PROVIDERS.clear()
+    VERSION_PROVIDERS.update(VERSION_CATALOG.version_providers)
+
+    VERSION_SUPPORTED_BOOK_SLUGS.clear()
+    VERSION_SUPPORTED_BOOK_SLUGS.update(
+        {
+            _canonicalize_version_code(version.code): _supported_book_slugs_for_version(
+                version
+            )
+            for version in ALL_VERSIONS
+        }
+    )
+
+    BOOKS[:] = list(
+        PROTESTANT_CANON_BOOK_SLUGS
+        + APOCRYPHA_BOOK_SLUGS
+        + SEFARIA_EXTRA_BOOK_SLUGS
+        + LDS_STANDARD_WORKS_BOOK_SLUGS
+        + QURAN_BOOK_SLUGS
+        + tuple(RUNTIME_BOOK_SLUGS)
+    )
+
+
+def register_runtime_version(
+    system_id: ScriptureSystemId,
+    language_code: LanguageCode,
+    version: Version,
+) -> None:
+    systems = list(VERSION_CATALOG.systems)
+    system_index = next(
+        index for index, system in enumerate(systems) if system.id is system_id
+    )
+    target_system = systems[system_index]
+    version_data: OrderedDict[LanguageCode, list[Version]] = OrderedDict(
+        (language, list(versions))
+        for language, versions in target_system.version_data.items()
+    )
+
+    language_versions = version_data.setdefault(language_code, [])
+    canonical_code = _canonicalize_version_code(version.code)
+    existing_index = next(
+        (
+            index
+            for index, existing in enumerate(language_versions)
+            if _canonicalize_version_code(existing.code) == canonical_code
+        ),
+        None,
+    )
+    if existing_index is None:
+        language_versions.append(version)
+    else:
+        language_versions[existing_index] = version
+
+    systems[system_index] = ScriptureSystem(
+        id=target_system.id,
+        display_name=target_system.display_name,
+        version_data=version_data,
+    )
+    object.__setattr__(VERSION_CATALOG, "systems", tuple(systems))
+    _refresh_runtime_indexes()
+
+
+def register_runtime_book_slugs(book_slugs: tuple[BookSlug, ...]) -> None:
+    changed = False
+    for slug in book_slugs:
+        if slug not in RUNTIME_BOOK_SLUGS:
+            RUNTIME_BOOK_SLUGS.append(slug)
+            changed = True
+    if changed:
+        _refresh_runtime_indexes()
+
+
+_refresh_runtime_indexes()

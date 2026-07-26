@@ -61,11 +61,7 @@ def configure_runtime_services(application: Application, config) -> None:
     application.bot_data["quran_client"] = AlQuranCloudClient()
     application.bot_data["lds_client"] = LdsScripturesClient()
     application.bot_data["sefaria_client"] = SefariaClient()
-    application.bot_data["local_bible_client"] = (
-        LocalBibleClient(config.offline_bibles_path)
-        if config.offline_bibles_path
-        else None
-    )
+    application.bot_data["local_bible_client"] = LocalBibleClient()
 
 
 async def initialize_runtime_services(application: Application) -> None:

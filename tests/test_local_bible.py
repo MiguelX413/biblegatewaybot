@@ -3,8 +3,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from handlers import build_passage_header_url
+from parsing import (
+    get_version_provider,
+    resolve_auto_version,
+    supported_book_slugs,
+    supported_versions_for_book_slug,
+)
 from services.local_bible import LocalBibleClient, format_local_passage_entry
 from state import EMPTY, InlinePassageResult
+from versions import ScriptureSystemId, get_version_system
 
 
 class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
@@ -65,6 +73,247 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
             client = LocalBibleClient(Path(tmp_dir))
             result = await client.get_passage("John 3:16", "NIV")
             self.assertEqual(EMPTY, result)
+
+    async def test_local_client_composes_same_chapter_ranges_from_verse_entries(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base_path = Path(tmp_dir)
+            (base_path / "versions").mkdir()
+            (base_path / "works").mkdir()
+            (base_path / "versions" / "HERM.json").write_text(
+                json.dumps(
+                    {
+                        "code": "HERM",
+                        "name": "Hermeneia",
+                        "language": "EN",
+                        "system": "bible",
+                        "aliases": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (base_path / "works" / "1enoch.herm.json").write_text(
+                json.dumps(
+                    {
+                        "version_code": "HERM",
+                        "title": "1 Enoch",
+                        "slug": "1enoch",
+                        "aliases": ["1 enoch", "1enoch", "first enoch", "enoch"],
+                        "chapters": [
+                            [
+                                "The words of the blessing.",
+                                "And he took up his discourse.",
+                                "And concerning the chosen I speak now.",
+                            ]
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            client = LocalBibleClient(base_path)
+
+            result = await client.get_passage("1 Enoch 1:1-2", "HERM")
+
+            self.assertEqual(
+                "1 Enoch 1:1–2 HERM\n\n"
+                "1 The words of the blessing.\n\n"
+                "² And he took up his discourse.",
+                result,
+            )
+
+    async def test_local_client_composes_chapter_requests_from_verse_entries(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base_path = Path(tmp_dir)
+            (base_path / "versions").mkdir()
+            (base_path / "works").mkdir()
+            (base_path / "versions" / "HERM.json").write_text(
+                json.dumps(
+                    {
+                        "code": "HERM",
+                        "name": "Hermeneia",
+                        "language": "EN",
+                        "system": "bible",
+                        "aliases": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (base_path / "works" / "1enoch.herm.json").write_text(
+                json.dumps(
+                    {
+                        "version_code": "HERM",
+                        "title": "1 Enoch",
+                        "slug": "1enoch",
+                        "aliases": ["1 enoch", "1enoch", "first enoch", "enoch"],
+                        "chapters": [
+                            [
+                                "The words of the blessing.",
+                                "And he took up his discourse.",
+                            ]
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            client = LocalBibleClient(base_path)
+
+            result = await client.get_passage("1 Enoch 1", "HERM")
+
+            self.assertEqual(
+                "1 Enoch 1 HERM\n\n"
+                "1 The words of the blessing.\n\n"
+                "² And he took up his discourse.",
+                result,
+            )
+
+    async def test_local_client_registers_metadata_driven_versions_and_books(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base_path = Path(tmp_dir)
+            (base_path / "versions").mkdir()
+            (base_path / "works").mkdir()
+            (base_path / "versions" / "HERM.json").write_text(
+                json.dumps(
+                    {
+                        "code": "HERM",
+                        "name": "Hermeneia",
+                        "language": "EN",
+                        "system": "bible",
+                        "aliases": ["H1E"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (base_path / "works" / "1enoch.herm.json").write_text(
+                json.dumps(
+                    {
+                        "version_code": "HERM",
+                        "title": "1 Enoch",
+                        "slug": "1enoch",
+                        "aliases": [
+                            "1 enoch",
+                            "1enoch",
+                            "first enoch",
+                            "enoch",
+                        ],
+                        "source_url": "https://doi.org/10.2307/j.ctt22nm5vn",
+                        "chapters": [["The words of the blessing."]],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            LocalBibleClient(base_path)
+
+            self.assertEqual(ScriptureSystemId.BIBLE, get_version_system("HERM"))
+            self.assertEqual("local", get_version_provider("HERM"))
+            self.assertIn("1enoch", supported_book_slugs("HERM"))
+            self.assertEqual(
+                frozenset({"HERM"}),
+                supported_versions_for_book_slug("1enoch"),
+            )
+            self.assertEqual("HERM", resolve_auto_version("NIV", "Enoch 1:1"))
+            self.assertEqual(
+                "https://doi.org/10.2307/j.ctt22nm5vn",
+                build_passage_header_url("Enoch 1:1", "HERM"),
+            )
+
+    async def test_local_client_merges_multiple_files_for_one_version_family(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base_path = Path(tmp_dir)
+            (base_path / "versions").mkdir()
+            (base_path / "works").mkdir()
+            (base_path / "versions" / "HERM.json").write_text(
+                json.dumps(
+                    {
+                        "code": "HERM",
+                        "name": "Hermeneia",
+                        "language": "EN",
+                        "system": "bible",
+                        "aliases": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (base_path / "works" / "1enoch.herm.json").write_text(
+                json.dumps(
+                    {
+                        "version_code": "HERM",
+                        "title": "1 Enoch",
+                        "slug": "1enoch",
+                        "aliases": ["1 enoch", "enoch"],
+                        "source_url": "https://doi.org/10.2307/j.ctt22nm5vn",
+                        "chapters": [["The words of the blessing."]],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (base_path / "works" / "jubilees.herm.json").write_text(
+                json.dumps(
+                    {
+                        "version_code": "HERM",
+                        "title": "Jubilees",
+                        "slug": "jubilees",
+                        "aliases": ["jubilees", "book of jubilees"],
+                        "chapters": [["These are the words of the division."]],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            client = LocalBibleClient(base_path)
+
+            self.assertEqual(
+                "Jubilees 1:1 HERM\n\n1 These are the words of the division.",
+                await client.get_passage("Jubilees 1:1", "HERM"),
+            )
+            self.assertIn("1enoch", supported_book_slugs("HERM"))
+            self.assertIn("jubilees", supported_book_slugs("HERM"))
+
+    async def test_local_client_marks_new_chapters_with_plain_chapter_numbers(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base_path = Path(tmp_dir)
+            (base_path / "versions").mkdir()
+            (base_path / "works").mkdir()
+            (base_path / "versions" / "HERM.json").write_text(
+                json.dumps(
+                    {
+                        "code": "HERM",
+                        "name": "Hermeneia",
+                        "language": "EN",
+                        "system": "bible",
+                        "aliases": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (base_path / "works" / "1enoch.herm.json").write_text(
+                json.dumps(
+                    {
+                        "version_code": "HERM",
+                        "title": "1 Enoch",
+                        "slug": "1enoch",
+                        "aliases": ["1 enoch", "1enoch", "first enoch", "enoch"],
+                        "chapters": [
+                            [
+                                "The words of the blessing.",
+                                "And he took up his discourse.",
+                            ],
+                            ["Another chapter begins.", "Its second verse follows."],
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            client = LocalBibleClient(base_path)
+
+            result = await client.get_passage("1 Enoch 1:2-2:2", "HERM")
+
+            self.assertEqual(
+                "1 Enoch 1:2–2:2 HERM\n\n"
+                "² And he took up his discourse.\n\n"
+                "2 Another chapter begins.\n\n"
+                "² Its second verse follows.",
+                result,
+            )
 
 
 class LocalBibleFormattingTests(unittest.TestCase):

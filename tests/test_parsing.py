@@ -389,6 +389,7 @@ class ParsingTests(unittest.TestCase):
 
     def test_scripture_systems_keep_bible_lds_and_quran_separate(self):
         self.assertEqual(ScriptureSystemId.BIBLE, get_book_scripture_system("genesis"))
+        self.assertEqual(ScriptureSystemId.BIBLE, get_book_scripture_system("1enoch"))
         self.assertEqual(ScriptureSystemId.LDS, get_book_scripture_system("1nephi"))
         self.assertEqual(ScriptureSystemId.QURAN, get_book_scripture_system("quran"))
         self.assertEqual(

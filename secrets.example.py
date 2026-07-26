@@ -6,5 +6,4 @@ TOKEN = "your-telegram-bot-token"
 # Optional
 ADMIN_ID = "your-telegram-user-id"
 BOTFAMILY_HASH = ""
-OFFLINE_BIBLES_PATH = ""
 OFFLINE_ONLY = "false"

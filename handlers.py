@@ -52,6 +52,7 @@ from services.alquran_cloud import build_quran_passage_url
 from services.bible_com import build_bible_com_passage_url
 from services.bible_gateway import build_bible_gateway_passage_url
 from services.lds_scriptures import build_lds_passage_url
+from services.local_bible import get_local_passage_url
 from services.sefaria import build_sefaria_passage_url, resolve_sefaria_version_query
 from state import (
     BACK_TO_COLLECTIONS,
@@ -127,6 +128,8 @@ def build_passage_header_url(passage: str, version: str) -> str | None:
         return build_sefaria_passage_url(passage, version, version_query)
     if provider is VersionProvider.LDS:
         return build_lds_passage_url(passage, version)
+    if provider is VersionProvider.LOCAL:
+        return get_local_passage_url(passage, version)
     return None
 
 

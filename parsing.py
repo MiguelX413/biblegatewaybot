@@ -17,6 +17,7 @@ from versions import (
     SEFARIA_EXTRA_BOOK_DATA,
     VERSION_PROVIDERS,
     VERSION_SUPPORTED_BOOK_SLUGS,
+    BookData,
     ScriptureSystemId,
     VersionProvider,
     format_version_label,
@@ -915,6 +916,7 @@ BOOK_NAME_ALIASES: dict[str, tuple[str, str]] = {
     "rev": ("revelation", "Revelation"),
     "re": ("revelation", "Revelation"),
 }
+RUNTIME_BOOK_SYSTEMS: dict[str, ScriptureSystemId] = {}
 for book in APOCRYPHA_BOOK_DATA:
     for alias in book["aliases"]:
         BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
@@ -941,6 +943,18 @@ for book in QURAN_BOOK_DATA:
         )
 
 
+def register_runtime_books(
+    book_data: tuple[BookData, ...], scripture_system: ScriptureSystemId
+) -> None:
+    for book in book_data:
+        RUNTIME_BOOK_SYSTEMS[book["slug"]] = scripture_system
+        for alias in book["aliases"]:
+            BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
+                book["slug"],
+                book["title"],
+            )
+
+
 def get_version_provider(version: str) -> VersionProvider | None:
     resolved = resolve_version_code(version)
     if resolved is None:
@@ -949,6 +963,9 @@ def get_version_provider(version: str) -> VersionProvider | None:
 
 
 def get_book_scripture_system(book_slug: str) -> ScriptureSystemId:
+    runtime_system = RUNTIME_BOOK_SYSTEMS.get(book_slug)
+    if runtime_system is not None:
+        return runtime_system
     if book_slug in LDS_STANDARD_WORKS_BOOK_SLUGS:
         return ScriptureSystemId.LDS
     if book_slug in QURAN_BOOK_SLUGS:
