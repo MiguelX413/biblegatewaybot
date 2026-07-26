@@ -75,7 +75,7 @@ class ParsingTests(unittest.TestCase):
         first_paragraph = f"¹ {'x' * 2500}"
         second_paragraph = f"² {'x' * 2500}"
         chunks = format_passage_chunks(
-            f"John 3:1-2 NIV\n\n{first_paragraph}\n\n{second_paragraph}"
+            f"John 3:1–2 NIV\n\n{first_paragraph}\n\n{second_paragraph}"
         )
         self.assertEqual(2, len(chunks))
         self.assertTrue(chunks[0][0].startswith("John 3:1 NIV\n"))
@@ -117,7 +117,7 @@ class ParsingTests(unittest.TestCase):
             f"John 3:1-4:1 NIV\n\n{first_paragraph}\n\n{second_paragraph}"
         )
         self.assertEqual(2, len(chunks))
-        self.assertTrue(chunks[0][0].startswith("John 3:1-2 NIV\n"))
+        self.assertTrue(chunks[0][0].startswith("John 3:1–2 NIV\n"))
         self.assertTrue(chunks[1][0].startswith("John 4:1 NIV\n"))
 
     def test_format_parallel_passage_entities_combines_small_responses(self):

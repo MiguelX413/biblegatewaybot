@@ -50,7 +50,7 @@ class SefariaParsingTests(unittest.TestCase):
         result = parse_passage_payload(PASSAGE_PAYLOAD, version="JPS")
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
-        self.assertIn("Genesis 1:1-2 JPS", result)
+        self.assertIn("Genesis 1:1–2 JPS", result)
         self.assertIn(
             "¹ In the beginning God created the heaven and the earth.", result
         )
@@ -73,7 +73,7 @@ class SefariaParsingTests(unittest.TestCase):
         )
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
-        self.assertIn("Genesis 1:1-2 NEUHAUSEN1914", result)
+        self.assertIn("Genesis 1:1–2 NEUHAUSEN1914", result)
         self.assertIn("¹ אין אנפאנג האט גאט בעשאפען דעם הימעל און די ערד.", result)
         self.assertIn("² און די ערד איז געוועזען וויסט און לעעהר.", result)
 
@@ -83,7 +83,7 @@ class SefariaParsingTests(unittest.TestCase):
         )
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
-        self.assertIn("Genesis 1:1-2 FERRARA", result)
+        self.assertIn("Genesis 1:1–2 FERRARA", result)
         self.assertIn(
             "¹ En Prinçipio crio el Dio: à lost çielos, y à la tierra....",
             result,

@@ -136,7 +136,7 @@ class LdsScripturesParsingTests(unittest.TestCase):
     def test_format_reference_title(self):
         book = LDS_BOOK_BY_ALIAS["1nephi"]
         self.assertEqual(
-            "1 Nephi 3:7-8",
+            "1 Nephi 3:7–8",
             format_reference_title(LdsReference(book, 3, 7, 3, 8)),
         )
 
@@ -145,7 +145,7 @@ class LdsScripturesParsingTests(unittest.TestCase):
         result = parse_passage_html(SAMPLE_HTML, reference)
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
-        self.assertIn("1 Nephi 3:7-8 BOM", result)
+        self.assertIn("1 Nephi 3:7–8 BOM", result)
         self.assertNotIn("6 Therefore", result)
         self.assertIn("⁷ For I know", result)
         self.assertIn("⁸ And it came to pass", result)

@@ -80,6 +80,10 @@ def ensure_text(value) -> str:
     return str(value)
 
 
+def normalize_display_reference(reference: str) -> str:
+    return re.sub(r"(?<=\d)-(?=\d)", "–", reference)
+
+
 def build_bot_handle(application: Any) -> str:
     username = application.bot.username or "scripturebot"
     return f"@{username}"
@@ -330,7 +334,10 @@ def _chunk_header(header: str, body: str) -> str:
     verse_range = (
         first_verse if first_verse == last_verse else f"{first_verse}-{last_verse}"
     )
-    return f"{chapter_reference}:{verse_range} {version}"
+    display_reference = normalize_display_reference(
+        f"{chapter_reference}:{verse_range}"
+    )
+    return f"{display_reference} {version}"
 
 
 def _parse_quran_display_header(
@@ -556,7 +563,9 @@ def format_inline_passage_entities(
 
 
 def build_passage_header(reference: str, version: str) -> str:
-    return f"{reference} {format_version_label(version)}".strip()
+    display_reference = normalize_display_reference(reference)
+    display_version = format_version_label(version)
+    return f"{display_reference} {display_version}".strip()
 
 
 def command_list(application: Any) -> str:

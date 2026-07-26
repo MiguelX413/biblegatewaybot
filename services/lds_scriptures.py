@@ -6,7 +6,11 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 
-from parsing import build_passage_header, format_numbered_verse_text
+from parsing import (
+    build_passage_header,
+    format_numbered_verse_text,
+    normalize_display_reference,
+)
 from state import EMPTY, REQUEST_TIMEOUT_SECONDS, InlinePassageResult
 
 try:
@@ -206,12 +210,12 @@ def format_reference_title(reference: LdsReference) -> str:
         and reference.end_verse is not None
         and reference.start_verse is not None
     ):
-        return f"{start}-{reference.end_verse}"
+        return normalize_display_reference(f"{start}-{reference.end_verse}")
 
     end = str(reference.end_chapter)
     if reference.end_verse is not None:
         end = f"{end}:{reference.end_verse}"
-    return f"{start}-{end}"
+    return normalize_display_reference(f"{start}-{end}")
 
 
 def parse_lds_reference(passage: str) -> LdsReference | None:

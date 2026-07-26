@@ -88,7 +88,7 @@ class BibleGatewayParsingTests(unittest.TestCase):
         result = parse_passage_html(POETRY_HTML, version="KJV")
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
-        self.assertIn("Psalm 23:1-2 KJV", result)
+        self.assertIn("Psalm 23:1–2 KJV", result)
         self.assertIn("The Lord is my shepherd;\nI shall not want.", result)
         self.assertIn(
             "He maketh me to lie down in green pastures:\n"
@@ -109,7 +109,7 @@ class BibleGatewayParsingTests(unittest.TestCase):
     def test_parse_passage_html_without_passage_box_marker(self):
         result = parse_passage_html(POETRY_HTML, version="KJV")
         assert isinstance(result, str)
-        self.assertIn("Psalm 23:1-2 KJV", result)
+        self.assertIn("Psalm 23:1–2 KJV", result)
 
     def test_parse_search_results_html(self):
         result = parse_search_results_html(SEARCH_HTML)

@@ -32,7 +32,7 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
 
             result = await client.get_passage("1co13:4-7", "KJV")
 
-            self.assertEqual("1 Corinthians 13:4-7 KJV\n\nLove suffereth long.", result)
+            self.assertEqual("1 Corinthians 13:4–7 KJV\n\nLove suffereth long.", result)
 
     async def test_local_client_supports_inline_details(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -78,7 +78,7 @@ class LocalBibleFormattingTests(unittest.TestCase):
             version="NIV",
         )
         expected = (
-            "John 3:16-17 NIV\n\n"
+            "John 3:16–17 NIV\n\n"
             "¹⁶ For God so loved the world.\n\n"
             "¹⁷ For God sent not his Son."
         )
