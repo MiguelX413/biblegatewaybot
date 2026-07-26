@@ -1,5 +1,5 @@
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
@@ -188,6 +188,76 @@ def _build_passage_message(
     return message_text, cast(Sequence[MessageEntity], utf16_entities)
 
 
+def _build_multi_header_passage_message(
+    overall_header: str | None,
+    section_header: str,
+    body: str,
+    *,
+    overall_header_url: str | None = None,
+    section_header_url: str | None = None,
+) -> tuple[str, Sequence[MessageEntity]]:
+    lines: list[str] = []
+    entities: list[Any] = []
+    offset = 0
+
+    if overall_header:
+        lines.append(overall_header)
+        entities.append(
+            _RuntimeMessageEntity(
+                type=_RuntimeMessageEntityType.BOLD,
+                offset=offset,
+                length=len(overall_header),
+            )
+        )
+        if overall_header_url:
+            entities.append(
+                _RuntimeMessageEntity(
+                    type=_RuntimeMessageEntityType.TEXT_LINK,
+                    offset=offset,
+                    length=len(overall_header),
+                    url=overall_header_url,
+                )
+            )
+        offset += len(overall_header) + 1
+
+    lines.append(section_header)
+    entities.append(
+        _RuntimeMessageEntity(
+            type=_RuntimeMessageEntityType.BOLD,
+            offset=offset,
+            length=len(section_header),
+        )
+    )
+    if section_header_url:
+        entities.append(
+            _RuntimeMessageEntity(
+                type=_RuntimeMessageEntityType.TEXT_LINK,
+                offset=offset,
+                length=len(section_header),
+                url=section_header_url,
+            )
+        )
+    offset += len(section_header)
+
+    body = body.strip()
+    if body:
+        lines.append(body)
+        offset += 1
+        entities.append(
+            _RuntimeMessageEntity(
+                type=_RuntimeMessageEntityType.EXPANDABLE_BLOCKQUOTE,
+                offset=offset,
+                length=len(body),
+            )
+        )
+
+    message_text = "\n".join(lines)
+    utf16_entities = _RuntimeMessageEntity.adjust_message_entities_to_utf_16(
+        message_text, entities
+    )
+    return message_text, cast(Sequence[MessageEntity], utf16_entities)
+
+
 def format_passage_entities(
     text: str, header_url: str | None = None
 ) -> tuple[str, Sequence[MessageEntity]]:
@@ -296,48 +366,172 @@ def batch_parallel_passage_entities(
     return batched_messages
 
 
+def _chunk_quran_header_info(
+    header: str, body: str
+) -> tuple[str, QuranReference | None, None]:
+    parsed_header = _parse_quran_display_header(header)
+    if parsed_header is None:
+        return header, None, None
+
+    original_reference, translation = parsed_header
+    current_surah: int | None = None
+    first_surah: int | None = None
+    first_ayah: int | None = None
+    last_surah: int | None = None
+    last_ayah: int | None = None
+    surah_marker_pattern = re.compile(r"^.+ \((\d{1,3})\)$")
+    verse_pattern = re.compile(f"^([{SUPERSCRIPT_DIGITS}]+)")
+
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        surah_match = surah_marker_pattern.fullmatch(line)
+        if surah_match is not None and not line.startswith(tuple(SUPERSCRIPT_DIGITS)):
+            current_surah = int(surah_match.group(1))
+            continue
+
+        verse_match = verse_pattern.match(line)
+        if verse_match is None:
+            continue
+
+        ayah = int(verse_match.group(1).translate(SUPERSCRIPT_TO_DIGITS))
+        if first_ayah is None:
+            first_surah = current_surah or original_reference.start_surah
+            first_ayah = ayah
+        last_surah = current_surah or original_reference.end_surah
+        last_ayah = ayah
+
+    if (
+        first_surah is None
+        or first_ayah is None
+        or last_surah is None
+        or last_ayah is None
+    ):
+        return header, None, None
+
+    chunk_reference = QuranReference(first_surah, first_ayah, last_surah, last_ayah)
+    if translation is None:
+        return format_quran_reference(chunk_reference), chunk_reference, None
+    return (
+        f"{format_quran_reference(chunk_reference)} ({translation})",
+        chunk_reference,
+        None,
+    )
+
+
+def _chunk_header_info(
+    header: str,
+    body: str,
+    *,
+    initial_display_context: tuple[int, int] | None = None,
+) -> tuple[str, str | QuranReference | None, tuple[int, int] | None]:
+    if header.startswith("Qurʾān, "):
+        return _chunk_quran_header_info(header, body)
+
+    parsed_header = _parse_display_scripture_header(header)
+    if parsed_header is None:
+        return header, None, None
+
+    book_prefix, version, start_chapter, start_verse = parsed_header
+    if initial_display_context is not None:
+        start_chapter, start_verse = initial_display_context
+    chunk_range = _scan_display_chunk_range(
+        body,
+        initial_chapter=start_chapter,
+        initial_verse=start_verse,
+    )
+    if chunk_range is None:
+        return header, None, None
+
+    first_chapter, first_verse, last_chapter, last_verse = chunk_range
+    end_context = (last_chapter, last_verse)
+    if first_chapter == last_chapter:
+        verse_range = (
+            str(first_verse)
+            if first_verse == last_verse
+            else f"{first_verse}-{last_verse}"
+        )
+        display_reference = normalize_display_reference(
+            f"{book_prefix}{first_chapter}:{verse_range}"
+        )
+        return f"{display_reference} {version}", display_reference, end_context
+
+    display_reference = normalize_display_reference(
+        f"{book_prefix}{first_chapter}:{first_verse}-{last_chapter}:{last_verse}"
+    )
+    return f"{display_reference} {version}", display_reference, end_context
+
+
 def _chunk_header(header: str, body: str) -> str:
     """Build a reference header for the verses that occur in one message chunk."""
+    chunk_header, _, _ = _chunk_header_info(header, body)
+    return chunk_header
 
-    if header.startswith("Qurʾān, "):
-        return _chunk_quran_header(header, body)
 
-    verse_matches = list(re.finditer(f"[{SUPERSCRIPT_DIGITS}]+", body))
-    chapter_match = re.search(r"(?m)^(\d+)\s+", body)
-    if not verse_matches and chapter_match is None:
-        return header
-
-    chapter_starts_chunk = chapter_match is not None and (
-        not verse_matches or chapter_match.start() < verse_matches[0].start()
-    )
-    first_verse = (
-        "1"
-        if chapter_starts_chunk
-        else verse_matches[0].group().translate(SUPERSCRIPT_TO_DIGITS)
-    )
-    last_verse = (
-        verse_matches[-1].group().translate(SUPERSCRIPT_TO_DIGITS)
-        if verse_matches
-        else "1"
-    )
+def _parse_display_scripture_header(
+    header: str,
+) -> tuple[str, str, int, int] | None:
     reference, separator, version = header.rpartition(" ")
     if not separator:
-        return header
+        return None
 
-    reference_match = re.match(r"^(.*?)(\d+)(?::|$)", reference)
-    if reference_match is None:
-        chapter_reference = reference
-    elif chapter_match is None:
-        chapter_reference = f"{reference_match.group(1)}{reference_match.group(2)}"
-    else:
-        chapter_reference = f"{reference_match.group(1)}{chapter_match.group(1)}"
-    verse_range = (
-        first_verse if first_verse == last_verse else f"{first_verse}-{last_verse}"
+    match = re.fullmatch(
+        r"^(.*?)(\d+):(\d+)(?:[–-](?:(\d+):)?(\d+))?$",
+        reference.strip(),
     )
-    display_reference = normalize_display_reference(
-        f"{chapter_reference}:{verse_range}"
-    )
-    return f"{display_reference} {version}"
+    if match is None:
+        return None
+
+    start_chapter = int(match.group(2))
+    start_verse = int(match.group(3))
+    return match.group(1), version, start_chapter, start_verse
+
+
+def _scan_display_chunk_range(
+    body: str, *, initial_chapter: int, initial_verse: int
+) -> tuple[int, int, int, int] | None:
+    current_chapter = initial_chapter
+    first_chapter: int | None = None
+    first_verse: int | None = None
+    last_chapter: int | None = None
+    last_verse: int | None = None
+
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        chapter_line_match = re.match(r"^(\d+)\s+", line)
+        verse_numbers = [
+            int(match.group().translate(SUPERSCRIPT_TO_DIGITS))
+            for match in re.finditer(f"[{SUPERSCRIPT_DIGITS}]+", line)
+        ]
+
+        if chapter_line_match is not None:
+            current_chapter = int(chapter_line_match.group(1))
+            if first_chapter is None:
+                first_chapter = current_chapter
+                first_verse = 1
+            last_chapter = current_chapter
+            last_verse = 1
+
+        if not verse_numbers:
+            continue
+
+        if first_chapter is None:
+            first_chapter = current_chapter
+            first_verse = verse_numbers[0]
+
+        last_chapter = current_chapter
+        last_verse = verse_numbers[-1]
+
+    if first_chapter is None or first_verse is None:
+        return None
+    if last_chapter is None or last_verse is None:
+        return (first_chapter, first_verse, first_chapter, first_verse)
+    return (first_chapter, first_verse, last_chapter, last_verse)
 
 
 def _parse_quran_display_header(
@@ -404,57 +598,12 @@ def _parse_quran_display_header(
     return None
 
 
-def _chunk_quran_header(header: str, body: str) -> str:
-    parsed_header = _parse_quran_display_header(header)
-    if parsed_header is None:
-        return header
-
-    original_reference, translation = parsed_header
-    current_surah: int | None = None
-    first_surah: int | None = None
-    first_ayah: int | None = None
-    last_surah: int | None = None
-    last_ayah: int | None = None
-    surah_marker_pattern = re.compile(r"^.+ \((\d{1,3})\)$")
-    verse_pattern = re.compile(f"^([{SUPERSCRIPT_DIGITS}]+)")
-
-    for raw_line in body.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-
-        surah_match = surah_marker_pattern.fullmatch(line)
-        if surah_match is not None and not line.startswith(tuple(SUPERSCRIPT_DIGITS)):
-            current_surah = int(surah_match.group(1))
-            continue
-
-        verse_match = verse_pattern.match(line)
-        if verse_match is None:
-            continue
-
-        ayah = int(verse_match.group(1).translate(SUPERSCRIPT_TO_DIGITS))
-        if first_ayah is None:
-            first_surah = current_surah or original_reference.start_surah
-            first_ayah = ayah
-        last_surah = current_surah or original_reference.end_surah
-        last_ayah = ayah
-
-    if (
-        first_surah is None
-        or first_ayah is None
-        or last_surah is None
-        or last_ayah is None
-    ):
-        return header
-
-    chunk_reference = QuranReference(first_surah, first_ayah, last_surah, last_ayah)
-    if translation is None:
-        return format_quran_reference(chunk_reference)
-    return f"{format_quran_reference(chunk_reference)} ({translation})"
-
-
 def format_passage_chunks(
-    text: str, header_url: str | None = None
+    text: str,
+    header_url: str | None = None,
+    chunk_header_url_resolver: (
+        Callable[[str | QuranReference | None], str | None] | None
+    ) = None,
 ) -> list[tuple[str, Sequence[MessageEntity]]]:
     blocks = text.split("\n\n", 1)
     if len(blocks) == 2:
@@ -472,11 +621,40 @@ def format_passage_chunks(
         return [(full_message[:TELEGRAM_MESSAGE_LIMIT], full_entities)]
 
     chunks: list[tuple[str, Sequence[MessageEntity]]] = []
+    initial_display_context = None
+    parsed_display_header = _parse_display_scripture_header(header)
+    if parsed_display_header is not None:
+        initial_display_context = (parsed_display_header[2], parsed_display_header[3])
+    next_chunk_display_context = initial_display_context
 
-    def make_chunk(chunk_body: str) -> tuple[str, Sequence[MessageEntity]]:
-        return _build_passage_message(
-            _chunk_header(header, chunk_body), chunk_body, header_url=header_url
+    def make_chunk(
+        chunk_body: str, *, include_overall_header: bool
+    ) -> tuple[str, Sequence[MessageEntity], tuple[int, int] | None]:
+        chunk_header, chunk_reference, end_context = _chunk_header_info(
+            header,
+            chunk_body,
+            initial_display_context=next_chunk_display_context,
         )
+        if include_overall_header and chunk_header != header:
+            return _build_multi_header_passage_message(
+                header,
+                chunk_header,
+                chunk_body,
+                overall_header_url=header_url,
+                section_header_url=(
+                    chunk_header_url_resolver(chunk_reference)
+                    if chunk_header_url_resolver is not None
+                    else None
+                ),
+            ) + (end_context,)
+        chunk_header_url = (
+            chunk_header_url_resolver(chunk_reference)
+            if chunk_header_url_resolver is not None
+            else header_url
+        )
+        return _build_passage_message(
+            chunk_header, chunk_body, header_url=chunk_header_url
+        ) + (end_context,)
 
     paragraphs = [
         paragraph.strip() for paragraph in body.split("\n\n") if paragraph.strip()
@@ -488,48 +666,61 @@ def format_passage_chunks(
     for paragraph in paragraphs:
         candidate_parts = current_parts + [paragraph]
         candidate_body = "\n\n".join(candidate_parts)
-        candidate_text, candidate_entities = make_chunk(candidate_body)
+        candidate_text, candidate_entities, candidate_end_context = make_chunk(
+            candidate_body, include_overall_header=not chunks
+        )
         if len(candidate_text) <= TELEGRAM_MESSAGE_LIMIT:
             current_parts = candidate_parts
-            current_chunk = (candidate_text, candidate_entities)
+            current_chunk = (candidate_text, candidate_entities, candidate_end_context)
             continue
 
         if current_parts:
-            chunks.append(current_chunk)
+            chunks.append((current_chunk[0], current_chunk[1]))
+            if current_chunk[2] is not None:
+                next_chunk_display_context = current_chunk[2]
             current_parts = []
 
         if len(paragraph) <= TELEGRAM_MESSAGE_LIMIT:
             current_parts = [paragraph]
-            current_chunk = make_chunk(paragraph)
+            current_chunk = make_chunk(paragraph, include_overall_header=not chunks)
             continue
 
         lines = paragraph.splitlines() or [paragraph]
         line_buffer: list[str] = []
         for line in lines:
             line_candidate = "\n".join(line_buffer + [line]).strip()
-            line_text, line_entities = make_chunk(line_candidate)
+            line_text, line_entities, line_end_context = make_chunk(
+                line_candidate, include_overall_header=not chunks and not line_buffer
+            )
             if len(line_text) <= TELEGRAM_MESSAGE_LIMIT:
                 line_buffer.append(line)
-                current_chunk = (line_text, line_entities)
+                current_chunk = (line_text, line_entities, line_end_context)
                 continue
 
             if line_buffer:
-                chunks.append(current_chunk)
+                chunks.append((current_chunk[0], current_chunk[1]))
+                if current_chunk[2] is not None:
+                    next_chunk_display_context = current_chunk[2]
                 line_buffer = []
 
             remaining = line.strip()
             available = TELEGRAM_MESSAGE_LIMIT - len(header) - 1
             while remaining:
                 piece = remaining[:available].rstrip()
-                chunk_text, chunk_entities = make_chunk(piece)
+                chunk_text, chunk_entities, piece_end_context = make_chunk(
+                    piece, include_overall_header=not chunks
+                )
                 chunks.append((chunk_text, chunk_entities))
+                if piece_end_context is not None:
+                    next_chunk_display_context = piece_end_context
                 remaining = remaining[len(piece) :].lstrip()
 
         current_parts = ["\n".join(line_buffer).strip()] if line_buffer else []
 
     if current_parts:
         final_body = "\n\n".join(current_parts)
-        chunks.append(make_chunk(final_body))
+        final_chunk = make_chunk(final_body, include_overall_header=not chunks)
+        chunks.append((final_chunk[0], final_chunk[1]))
     return chunks
 
 

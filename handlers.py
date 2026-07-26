@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Sequence
 from typing import Any
 
 from scriptures import extract as extract_refs
@@ -46,6 +47,7 @@ from parsing import (
     resolve_auto_version,
     version_supports_passage,
 )
+from quran import QuranReference
 from services.alquran_cloud import build_quran_passage_url
 from services.bible_com import build_bible_com_passage_url
 from services.bible_gateway import build_bible_gateway_passage_url
@@ -346,13 +348,38 @@ async def enforce_request_throttle(
     return True
 
 
-def count_passage_result_messages(passage_results: list[tuple[str, str | None]]) -> int:
+def count_passage_result_messages(
+    passage_results: Sequence[tuple[str, str | None] | tuple[str, str | None, str]],
+) -> int:
+    normalized_results = [
+        (result[0], result[1], result[2] if len(result) == 3 else "")
+        for result in passage_results
+    ]
     if len(passage_results) > 1:
-        return len(batch_parallel_passage_entities(passage_results))
+        return len(
+            batch_parallel_passage_entities(
+                [
+                    (response, header_url)
+                    for response, header_url, _ in normalized_results
+                ]
+            )
+        )
     return sum(
         len(format_passage_chunks(response, header_url=header_url))
-        for response, header_url in passage_results
+        for response, header_url, _ in normalized_results
     )
+
+
+def resolve_chunk_header_url(
+    chunk_reference: str | QuranReference | None, version: str
+) -> str | None:
+    if chunk_reference is None:
+        return None
+    if get_version_provider(version) is VersionProvider.QURAN:
+        return build_quran_passage_url(chunk_reference, version)
+    if isinstance(chunk_reference, str):
+        return build_passage_header_url(chunk_reference, version)
+    return None
 
 
 async def reply_no_results(
@@ -603,14 +630,14 @@ async def reply_with_passage_result(
         selection, passage, explicit_version=explicit_version
     )
     await send_typing(update, context)
-    passage_results: list[tuple[str, str | None]] = []
+    passage_results: list[tuple[str, str | None, str]] = []
     for candidates in selection:
         result = await fetch_version_group(context, passage, candidates)
         if result is None:
             continue
         version, response = result
         header_url = build_passage_header_url(passage, version)
-        passage_results.append((str(response), header_url))
+        passage_results.append((str(response), header_url, version))
 
     if (
         passage_results
@@ -624,7 +651,9 @@ async def reply_with_passage_result(
         return
 
     if len(passage_results) > 1:
-        combined_messages = batch_parallel_passage_entities(passage_results)
+        combined_messages = batch_parallel_passage_entities(
+            [(response, header_url) for response, header_url, _ in passage_results]
+        )
         if combined_messages:
             for index, (message_text, entities) in enumerate(combined_messages):
                 await message.reply_text(
@@ -636,8 +665,18 @@ async def reply_with_passage_result(
             return
 
     sent_response = False
-    for response, header_url in passage_results:
-        chunks = format_passage_chunks(response, header_url=header_url)
+    for response, header_url, version in passage_results:
+
+        def chunk_header_url_resolver(
+            chunk_reference: str | QuranReference | None,
+        ) -> str | None:
+            return resolve_chunk_header_url(chunk_reference, version)
+
+        chunks = format_passage_chunks(
+            response,
+            header_url=header_url,
+            chunk_header_url_resolver=chunk_header_url_resolver,
+        )
         for index, (message_text, entities) in enumerate(chunks):
             await message.reply_text(
                 message_text,

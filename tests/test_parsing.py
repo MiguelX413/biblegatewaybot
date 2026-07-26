@@ -78,7 +78,7 @@ class ParsingTests(unittest.TestCase):
             f"John 3:1–2 NIV\n\n{first_paragraph}\n\n{second_paragraph}"
         )
         self.assertEqual(2, len(chunks))
-        self.assertTrue(chunks[0][0].startswith("John 3:1 NIV\n"))
+        self.assertTrue(chunks[0][0].startswith("John 3:1–2 NIV\nJohn 3:1 NIV\n"))
         self.assertTrue(chunks[1][0].startswith("John 3:2 NIV\n"))
 
     def test_format_passage_chunks_recalculates_quran_header_within_one_surah(self):
@@ -89,7 +89,10 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual(2, len(chunks))
         self.assertTrue(
-            chunks[0][0].startswith("Qurʾān, al-Baqarah (2):1 (Saheeh International)\n")
+            chunks[0][0].startswith(
+                "Qurʾān, al-Baqarah (2):255–257 (Saheeh International)\n"
+                "Qurʾān, al-Baqarah (2):1 (Saheeh International)\n"
+            )
         )
         self.assertTrue(
             chunks[1][0].startswith("Qurʾān, al-Baqarah (2):1 (Saheeh International)\n")
@@ -104,7 +107,10 @@ class ParsingTests(unittest.TestCase):
         )
         self.assertEqual(2, len(chunks))
         self.assertTrue(
-            chunks[0][0].startswith("Qurʾān, al-Fātiḥah (1):2 (Saheeh International)\n")
+            chunks[0][0].startswith(
+                "Qurʾān, al-Fātiḥah (1):2–Āl ʿImrān (3):2 (Saheeh International)\n"
+                "Qurʾān, al-Fātiḥah (1):2 (Saheeh International)\n"
+            )
         )
         self.assertTrue(
             chunks[1][0].startswith("Qurʾān, Āl ʿImrān (3):1 (Saheeh International)\n")
@@ -117,8 +123,23 @@ class ParsingTests(unittest.TestCase):
             f"John 3:1-4:1 NIV\n\n{first_paragraph}\n\n{second_paragraph}"
         )
         self.assertEqual(2, len(chunks))
-        self.assertTrue(chunks[0][0].startswith("John 3:1–2 NIV\n"))
+        self.assertTrue(chunks[0][0].startswith("John 3:1-4:1 NIV\nJohn 3:1–2 NIV\n"))
         self.assertTrue(chunks[1][0].startswith("John 4:1 NIV\n"))
+
+    def test_format_passage_chunks_recalculates_cross_chapter_bible_ranges(self):
+        first_paragraph = f"¹ {'x' * 2500} ³⁴ {'x' * 10}"
+        second_paragraph = f"2 {'x' * 10}\n¹ {'x' * 10} ¹² {'x' * 2500}"
+        third_paragraph = f"3 {'x' * 10}\n¹ {'x' * 10} ⁴ {'x' * 2500}"
+        chunks = format_passage_chunks(
+            "John 1:2-3:4 NRSVue\n\n"
+            f"{first_paragraph}\n\n{second_paragraph}\n\n{third_paragraph}"
+        )
+        self.assertEqual(3, len(chunks))
+        self.assertTrue(
+            chunks[0][0].startswith("John 1:2-3:4 NRSVue\nJohn 1:1–34 NRSVue\n")
+        )
+        self.assertTrue(chunks[1][0].startswith("John 2:1–12 NRSVue\n"))
+        self.assertTrue(chunks[2][0].startswith("John 3:1–4 NRSVue\n"))
 
     def test_format_parallel_passage_entities_combines_small_responses(self):
         combined = format_parallel_passage_entities(
