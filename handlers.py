@@ -198,7 +198,7 @@ def get_link_preview_options(
     context: CallbackContext[Any, Any, Any, Any],
 ) -> LinkPreviewOptions:
     chat_data = require_chat_data(context)
-    enabled = bool(chat_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, True))
+    enabled = bool(chat_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, False))
     return LinkPreviewOptions(is_disabled=not enabled)
 
 
@@ -212,7 +212,7 @@ def get_inline_link_preview_options(
         # chat-level setting once so DMs configured before inline support keep
         # their preference too.
         direct_message_data = context.application.chat_data.get(user_id, {})
-        enabled = direct_message_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, True)
+        enabled = direct_message_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, False)
         user_data[USER_INLINE_LINK_EMBEDS_ENABLED_KEY] = enabled
     return LinkPreviewOptions(is_disabled=not enabled)
 
@@ -619,7 +619,7 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         f"{format_default_selection(get_lds_default_version(context))}\n"
         f"Qurʾan: {format_default_selection(get_quran_default_version(context))}\n\n"
         "Use /setdefault to change them.\n"
-        f"Link embeds: {link_embeds} (/linkembeds on|off)"
+        f"Link embeds: {link_embeds} (/linkembeds off|on)"
     )
 
 
@@ -644,11 +644,11 @@ async def link_embeds_command(
         await message.reply_text("Link embeds are now disabled for this chat.")
         return
 
-    enabled = bool(chat_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, True))
+    enabled = bool(chat_data.get(CHAT_LINK_EMBEDS_ENABLED_KEY, False))
     status = "enabled" if enabled else "disabled"
     await message.reply_text(
         f"Link embeds are currently {status} for this chat.\n"
-        "Use /linkembeds on or /linkembeds off."
+        "Use /linkembeds off or /linkembeds on."
     )
 
 

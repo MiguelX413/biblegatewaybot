@@ -62,7 +62,7 @@ Notes:
 - the default Bible selection is `NIV,NRSVue`, so apocryphal passages unavailable in NIV naturally fall back to NRSVue
 - the same syntax works for defaults: `/setdefault NIV,NRSVue&GNADC`; all versions in one default selection must belong to the same scripture system
 - Qurʾan examples: `/get Quran 1 QURAN`, `/get Quran 2:255 QSI`, `/get Quran 112 QPICK`
-- `/linkembeds on` or `/linkembeds off` enables or suppresses link previews for passage headers and welcome/source links in the current DM or group; DM settings also apply to that user's inline results
+- `/linkembeds off` or `/linkembeds on` enables or suppresses link previews for passage headers and welcome/source links in the current DM or group; DM settings also apply to that user's inline results
 - chapter requests are supported, but whole-book requests are not
 - Bible.com Arabic examples: `/get Matthew 3 TMA`, `/get Tobit 9 GNADC25`, `/get 2 Maccabees 6 TKA`
 - LDS scripture examples: `/get 1 Nephi 3:7 BOM`, `/get D&C 1:1 DC`, `/get Abraham 3:22 PGP`
