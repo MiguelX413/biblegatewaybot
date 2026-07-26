@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import StrEnum
@@ -9,6 +10,13 @@ class BookData(TypedDict):
     title: str
     slug: str
     aliases: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class QuranSurahData:
+    number: int
+    name: str
+    aliases: tuple[str, ...] = ()
 
 
 type VersionLabel = str
@@ -118,6 +126,50 @@ class VersionProvider(StrEnum):
 
 def _language_group(label: str, code: LanguageCode) -> LanguageGroup:
     return f"—{label} ({code})—"
+
+
+def _ascii_text(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", text)
+    return "".join(character for character in normalized if ord(character) < 128)
+
+
+def _quran_surah_aliases(name: str, *extras: str) -> tuple[str, ...]:
+    alias_set = {name}
+    ascii_name = _ascii_text(name)
+    alias_set.add(ascii_name)
+    alias_set.add(ascii_name.replace("'", ""))
+    alias_set.add(ascii_name.replace("-", " "))
+    alias_set.add(ascii_name.replace("-", " ").replace("'", ""))
+    alias_set.update(extras)
+
+    lower_ascii_name = ascii_name.lower()
+    for prefix in (
+        "al-",
+        "al ",
+        "an-",
+        "an ",
+        "ar-",
+        "ar ",
+        "as-",
+        "as ",
+        "ash-",
+        "ash ",
+        "at-",
+        "at ",
+        "az-",
+        "az ",
+        "ad-",
+        "ad ",
+        "adh-",
+        "adh ",
+    ):
+        if lower_ascii_name.startswith(prefix):
+            remainder = ascii_name[len(prefix) :].strip()
+            if remainder:
+                alias_set.add(remainder)
+            break
+
+    return tuple(sorted(alias_set))
 
 
 LANGUAGE_NAMES: Final[dict[LanguageCode, str]] = {
@@ -665,6 +717,146 @@ QURAN_BOOK_DATA: tuple[BookData, ...] = (
         ),
     },
 )
+QURAN_SURAH_DATA: Final[tuple[QuranSurahData, ...]] = (
+    QuranSurahData(1, "Al-Fatiha", _quran_surah_aliases("Al-Fatiha", "Al-Fatihah")),
+    QuranSurahData(2, "Al-Baqarah", _quran_surah_aliases("Al-Baqarah")),
+    QuranSurahData(3, "Ali 'Imran", _quran_surah_aliases("Ali 'Imran", "Aal Imran")),
+    QuranSurahData(4, "An-Nisa", _quran_surah_aliases("An-Nisa")),
+    QuranSurahData(5, "Al-Ma'idah", _quran_surah_aliases("Al-Ma'idah", "Al-Maidah")),
+    QuranSurahData(6, "Al-An'am", _quran_surah_aliases("Al-An'am", "Al-Anaam")),
+    QuranSurahData(7, "Al-A'raf", _quran_surah_aliases("Al-A'raf", "Al-Araf")),
+    QuranSurahData(8, "Al-Anfal", _quran_surah_aliases("Al-Anfal")),
+    QuranSurahData(9, "At-Tawbah", _quran_surah_aliases("At-Tawbah", "At-Taubah")),
+    QuranSurahData(10, "Yunus", _quran_surah_aliases("Yunus")),
+    QuranSurahData(11, "Hud", _quran_surah_aliases("Hud")),
+    QuranSurahData(12, "Yusuf", _quran_surah_aliases("Yusuf")),
+    QuranSurahData(13, "Ar-Ra'd", _quran_surah_aliases("Ar-Ra'd", "Ar-Rad")),
+    QuranSurahData(14, "Ibrahim", _quran_surah_aliases("Ibrahim")),
+    QuranSurahData(15, "Al-Hijr", _quran_surah_aliases("Al-Hijr")),
+    QuranSurahData(16, "An-Nahl", _quran_surah_aliases("An-Nahl")),
+    QuranSurahData(17, "Al-Isra", _quran_surah_aliases("Al-Isra", "Bani Israil")),
+    QuranSurahData(18, "Al-Kahf", _quran_surah_aliases("Al-Kahf")),
+    QuranSurahData(19, "Maryam", _quran_surah_aliases("Maryam")),
+    QuranSurahData(20, "Ta-Ha", _quran_surah_aliases("Ta-Ha", "Taha")),
+    QuranSurahData(21, "Al-Anbiya", _quran_surah_aliases("Al-Anbiya")),
+    QuranSurahData(22, "Al-Hajj", _quran_surah_aliases("Al-Hajj")),
+    QuranSurahData(
+        23,
+        "Al-Mu'minun",
+        _quran_surah_aliases("Al-Mu'minun", "Al-Muminun"),
+    ),
+    QuranSurahData(24, "An-Nur", _quran_surah_aliases("An-Nur")),
+    QuranSurahData(25, "Al-Furqan", _quran_surah_aliases("Al-Furqan")),
+    QuranSurahData(
+        26,
+        "Ash-Shu'ara",
+        _quran_surah_aliases("Ash-Shu'ara", "Ash-Shuara"),
+    ),
+    QuranSurahData(27, "An-Naml", _quran_surah_aliases("An-Naml")),
+    QuranSurahData(28, "Al-Qasas", _quran_surah_aliases("Al-Qasas")),
+    QuranSurahData(29, "Al-Ankabut", _quran_surah_aliases("Al-Ankabut")),
+    QuranSurahData(30, "Ar-Rum", _quran_surah_aliases("Ar-Rum")),
+    QuranSurahData(31, "Luqman", _quran_surah_aliases("Luqman")),
+    QuranSurahData(32, "As-Sajdah", _quran_surah_aliases("As-Sajdah")),
+    QuranSurahData(33, "Al-Ahzab", _quran_surah_aliases("Al-Ahzab")),
+    QuranSurahData(34, "Saba", _quran_surah_aliases("Saba", "Saba'")),
+    QuranSurahData(35, "Fatir", _quran_surah_aliases("Fatir")),
+    QuranSurahData(36, "Ya-Sin", _quran_surah_aliases("Ya-Sin", "Yasin")),
+    QuranSurahData(37, "As-Saffat", _quran_surah_aliases("As-Saffat")),
+    QuranSurahData(38, "Sad", _quran_surah_aliases("Sad", "Saad")),
+    QuranSurahData(39, "Az-Zumar", _quran_surah_aliases("Az-Zumar")),
+    QuranSurahData(
+        40,
+        "Ghafir",
+        _quran_surah_aliases("Ghafir", "Al-Mu'min", "Al-Mumin"),
+    ),
+    QuranSurahData(41, "Fussilat", _quran_surah_aliases("Fussilat")),
+    QuranSurahData(42, "Ash-Shura", _quran_surah_aliases("Ash-Shura", "Ash-Shuraa")),
+    QuranSurahData(43, "Az-Zukhruf", _quran_surah_aliases("Az-Zukhruf")),
+    QuranSurahData(44, "Ad-Dukhan", _quran_surah_aliases("Ad-Dukhan")),
+    QuranSurahData(45, "Al-Jathiyah", _quran_surah_aliases("Al-Jathiyah")),
+    QuranSurahData(46, "Al-Ahqaf", _quran_surah_aliases("Al-Ahqaf")),
+    QuranSurahData(47, "Muhammad", _quran_surah_aliases("Muhammad")),
+    QuranSurahData(48, "Al-Fath", _quran_surah_aliases("Al-Fath")),
+    QuranSurahData(49, "Al-Hujurat", _quran_surah_aliases("Al-Hujurat")),
+    QuranSurahData(50, "Qaf", _quran_surah_aliases("Qaf")),
+    QuranSurahData(
+        51,
+        "Adh-Dhariyat",
+        _quran_surah_aliases("Adh-Dhariyat", "Az-Zariyat"),
+    ),
+    QuranSurahData(52, "At-Tur", _quran_surah_aliases("At-Tur")),
+    QuranSurahData(53, "An-Najm", _quran_surah_aliases("An-Najm")),
+    QuranSurahData(54, "Al-Qamar", _quran_surah_aliases("Al-Qamar")),
+    QuranSurahData(55, "Ar-Rahman", _quran_surah_aliases("Ar-Rahman")),
+    QuranSurahData(56, "Al-Waqi'ah", _quran_surah_aliases("Al-Waqi'ah", "Al-Waqiah")),
+    QuranSurahData(57, "Al-Hadid", _quran_surah_aliases("Al-Hadid")),
+    QuranSurahData(58, "Al-Mujadilah", _quran_surah_aliases("Al-Mujadilah")),
+    QuranSurahData(59, "Al-Hashr", _quran_surah_aliases("Al-Hashr")),
+    QuranSurahData(60, "Al-Mumtahanah", _quran_surah_aliases("Al-Mumtahanah")),
+    QuranSurahData(61, "As-Saff", _quran_surah_aliases("As-Saff")),
+    QuranSurahData(62, "Al-Jumu'ah", _quran_surah_aliases("Al-Jumu'ah", "Al-Jumuah")),
+    QuranSurahData(63, "Al-Munafiqun", _quran_surah_aliases("Al-Munafiqun")),
+    QuranSurahData(64, "At-Taghabun", _quran_surah_aliases("At-Taghabun")),
+    QuranSurahData(65, "At-Talaq", _quran_surah_aliases("At-Talaq")),
+    QuranSurahData(66, "At-Tahrim", _quran_surah_aliases("At-Tahrim")),
+    QuranSurahData(67, "Al-Mulk", _quran_surah_aliases("Al-Mulk")),
+    QuranSurahData(68, "Al-Qalam", _quran_surah_aliases("Al-Qalam")),
+    QuranSurahData(69, "Al-Haqqah", _quran_surah_aliases("Al-Haqqah", "Al-Haaqqah")),
+    QuranSurahData(70, "Al-Ma'arij", _quran_surah_aliases("Al-Ma'arij", "Al-Maarij")),
+    QuranSurahData(71, "Nuh", _quran_surah_aliases("Nuh")),
+    QuranSurahData(72, "Al-Jinn", _quran_surah_aliases("Al-Jinn")),
+    QuranSurahData(73, "Al-Muzzammil", _quran_surah_aliases("Al-Muzzammil")),
+    QuranSurahData(74, "Al-Muddaththir", _quran_surah_aliases("Al-Muddaththir")),
+    QuranSurahData(75, "Al-Qiyamah", _quran_surah_aliases("Al-Qiyamah")),
+    QuranSurahData(76, "Al-Insan", _quran_surah_aliases("Al-Insan", "Ad-Dahr")),
+    QuranSurahData(77, "Al-Mursalat", _quran_surah_aliases("Al-Mursalat")),
+    QuranSurahData(78, "An-Naba", _quran_surah_aliases("An-Naba", "An-Nabaa")),
+    QuranSurahData(79, "An-Nazi'at", _quran_surah_aliases("An-Nazi'at", "An-Naziat")),
+    QuranSurahData(80, "Abasa", _quran_surah_aliases("Abasa", "'Abasa")),
+    QuranSurahData(81, "At-Takwir", _quran_surah_aliases("At-Takwir")),
+    QuranSurahData(82, "Al-Infitar", _quran_surah_aliases("Al-Infitar")),
+    QuranSurahData(83, "Al-Mutaffifin", _quran_surah_aliases("Al-Mutaffifin")),
+    QuranSurahData(84, "Al-Inshiqaq", _quran_surah_aliases("Al-Inshiqaq")),
+    QuranSurahData(85, "Al-Buruj", _quran_surah_aliases("Al-Buruj")),
+    QuranSurahData(86, "At-Tariq", _quran_surah_aliases("At-Tariq")),
+    QuranSurahData(87, "Al-A'la", _quran_surah_aliases("Al-A'la", "Al-Ala")),
+    QuranSurahData(88, "Al-Ghashiyah", _quran_surah_aliases("Al-Ghashiyah")),
+    QuranSurahData(89, "Al-Fajr", _quran_surah_aliases("Al-Fajr")),
+    QuranSurahData(90, "Al-Balad", _quran_surah_aliases("Al-Balad")),
+    QuranSurahData(91, "Ash-Shams", _quran_surah_aliases("Ash-Shams")),
+    QuranSurahData(92, "Al-Layl", _quran_surah_aliases("Al-Layl")),
+    QuranSurahData(93, "Ad-Duha", _quran_surah_aliases("Ad-Duha")),
+    QuranSurahData(94, "Ash-Sharh", _quran_surah_aliases("Ash-Sharh", "Al-Inshirah")),
+    QuranSurahData(95, "At-Tin", _quran_surah_aliases("At-Tin")),
+    QuranSurahData(96, "Al-Alaq", _quran_surah_aliases("Al-Alaq")),
+    QuranSurahData(97, "Al-Qadr", _quran_surah_aliases("Al-Qadr")),
+    QuranSurahData(98, "Al-Bayyinah", _quran_surah_aliases("Al-Bayyinah")),
+    QuranSurahData(99, "Az-Zalzalah", _quran_surah_aliases("Az-Zalzalah")),
+    QuranSurahData(100, "Al-Adiyat", _quran_surah_aliases("Al-Adiyat")),
+    QuranSurahData(101, "Al-Qari'ah", _quran_surah_aliases("Al-Qari'ah", "Al-Qariah")),
+    QuranSurahData(102, "At-Takathur", _quran_surah_aliases("At-Takathur")),
+    QuranSurahData(103, "Al-Asr", _quran_surah_aliases("Al-Asr", "Al-'Asr")),
+    QuranSurahData(104, "Al-Humazah", _quran_surah_aliases("Al-Humazah")),
+    QuranSurahData(105, "Al-Fil", _quran_surah_aliases("Al-Fil")),
+    QuranSurahData(106, "Quraysh", _quran_surah_aliases("Quraysh", "Quraish")),
+    QuranSurahData(107, "Al-Ma'un", _quran_surah_aliases("Al-Ma'un", "Al-Maun")),
+    QuranSurahData(108, "Al-Kawthar", _quran_surah_aliases("Al-Kawthar")),
+    QuranSurahData(109, "Al-Kafirun", _quran_surah_aliases("Al-Kafirun")),
+    QuranSurahData(110, "An-Nasr", _quran_surah_aliases("An-Nasr")),
+    QuranSurahData(111, "Al-Masad", _quran_surah_aliases("Al-Masad", "Al-Lahab")),
+    QuranSurahData(112, "Al-Ikhlas", _quran_surah_aliases("Al-Ikhlas")),
+    QuranSurahData(113, "Al-Falaq", _quran_surah_aliases("Al-Falaq")),
+    QuranSurahData(114, "An-Nas", _quran_surah_aliases("An-Nas")),
+)
+QURAN_SURAH_ALIAS_TO_NUMBER: Final[dict[str, int]] = {
+    re.sub(r"[^a-z0-9]+", "", alias.lower()): surah.number
+    for surah in QURAN_SURAH_DATA
+    for alias in surah.aliases
+}
+QURAN_SURAH_NUMBER_TO_NAME: Final[dict[int, str]] = {
+    surah.number: surah.name for surah in QURAN_SURAH_DATA
+}
 QURAN_BOOK_SLUGS: tuple[str, ...] = tuple(book["slug"] for book in QURAN_BOOK_DATA)
 LDS_STANDARD_WORKS_BOOK_DATA: tuple[BookData, ...] = (
     BOOK_OF_MORMON_BOOK_DATA

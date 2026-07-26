@@ -41,6 +41,25 @@ class QuranParsingTests(unittest.TestCase):
         self.assertIsNone(reference.start_ayah)
         self.assertIsNone(reference.end_ayah)
 
+    def test_parse_quran_reference_accepts_surah_names(self):
+        reference = parse_quran_reference("Al-Fatiha 1-3")
+        assert reference is not None
+        self.assertEqual(1, reference.surah)
+        self.assertEqual(1, reference.start_ayah)
+        self.assertEqual(3, reference.end_ayah)
+
+        reference = parse_quran_reference("Surah Al-Baqarah 255")
+        assert reference is not None
+        self.assertEqual(2, reference.surah)
+        self.assertEqual(255, reference.start_ayah)
+        self.assertEqual(255, reference.end_ayah)
+
+        reference = parse_quran_reference("An-Nas")
+        assert reference is not None
+        self.assertEqual(114, reference.surah)
+        self.assertIsNone(reference.start_ayah)
+        self.assertIsNone(reference.end_ayah)
+
     def test_parse_quran_reference_rejects_invalid_ranges(self):
         self.assertIsNone(parse_quran_reference("Quran 0:1"))
         self.assertIsNone(parse_quran_reference("Quran 2:257-255"))
