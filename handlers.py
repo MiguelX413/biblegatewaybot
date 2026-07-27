@@ -51,6 +51,7 @@ from parsing import (
     version_supports_passage,
 )
 from quran import QuranReference
+from runtime_services import reload_runtime_services
 from services.alquran_cloud import build_quran_passage_url
 from services.bible_com import build_bible_com_passage_url
 from services.bible_gateway import build_bible_gateway_passage_url
@@ -901,6 +902,20 @@ async def shutdown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     logging.info("Shutdown requested by admin user %s", user.id)
     await message.reply_text("Shutting down.")
     context.application.stop_running()
+
+
+async def reload_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = require_message(update)
+    if not is_admin_user(update, context):
+        await message.reply_text("Sorry, only the admin may reload runtime state.")
+        return
+
+    user = require_user(update)
+    logging.info("Runtime reload requested by admin user %s", user.id)
+    await reload_runtime_services(context.application)
+    config: BotConfig = context.application.bot_data["config"]
+    quran_backend = config.quran_backend or "auto"
+    await message.reply_text(f"Runtime reloaded. Qurʾān backend: {quran_backend}.")
 
 
 async def get_command_entry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

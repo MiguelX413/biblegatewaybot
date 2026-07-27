@@ -770,6 +770,7 @@ def command_list(application: Any) -> str:
         "/setdefault <version selection>\n\n"
         "/linkembeds off|on\n\n"
         "/version\n"
+        "/reload\n"
         "/shutdown\n\n"
         "Examples:\n"
         "/get John 3:16\n"
@@ -918,6 +919,7 @@ BOOK_NAME_ALIASES: dict[str, tuple[str, str]] = {
     "re": ("revelation", "Revelation"),
 }
 RUNTIME_BOOK_SYSTEMS: dict[str, ScriptureSystemId] = {}
+RUNTIME_BOOK_ALIAS_KEYS: set[str] = set()
 for book in APOCRYPHA_BOOK_DATA:
     for alias in book["aliases"]:
         BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
@@ -950,10 +952,19 @@ def register_runtime_books(
     for book in book_data:
         RUNTIME_BOOK_SYSTEMS[book["slug"]] = scripture_system
         for alias in book["aliases"]:
-            BOOK_NAME_ALIASES[re.sub(r"[^a-z0-9]+", "", alias.lower())] = (
+            alias_key = re.sub(r"[^a-z0-9]+", "", alias.lower())
+            BOOK_NAME_ALIASES[alias_key] = (
                 book["slug"],
                 book["title"],
             )
+            RUNTIME_BOOK_ALIAS_KEYS.add(alias_key)
+
+
+def clear_runtime_books() -> None:
+    RUNTIME_BOOK_SYSTEMS.clear()
+    for alias_key in RUNTIME_BOOK_ALIAS_KEYS:
+        BOOK_NAME_ALIASES.pop(alias_key, None)
+    RUNTIME_BOOK_ALIAS_KEYS.clear()
 
 
 def get_version_provider(version: str) -> VersionProvider | None:

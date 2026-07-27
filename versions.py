@@ -2046,4 +2046,40 @@ def register_runtime_book_slugs(book_slugs: tuple[BookSlug, ...]) -> None:
         _refresh_runtime_indexes()
 
 
+def clear_runtime_book_slugs() -> None:
+    if not RUNTIME_BOOK_SLUGS:
+        return
+    RUNTIME_BOOK_SLUGS.clear()
+    _refresh_runtime_indexes()
+
+
+def clear_runtime_versions() -> None:
+    systems = list(VERSION_CATALOG.systems)
+    changed = False
+    for system_index, system in enumerate(systems):
+        version_data: OrderedDict[LanguageCode, list[Version]] = OrderedDict()
+        system_changed = False
+        for language, versions in system.version_data.items():
+            filtered_versions = [
+                version
+                for version in versions
+                if version.provider is not VersionProvider.LOCAL
+            ]
+            if len(filtered_versions) != len(versions):
+                system_changed = True
+            version_data[language] = filtered_versions
+        if not system_changed:
+            continue
+        systems[system_index] = ScriptureSystem(
+            id=system.id,
+            display_name=system.display_name,
+            version_data=version_data,
+        )
+        changed = True
+
+    if changed:
+        object.__setattr__(VERSION_CATALOG, "systems", tuple(systems))
+        _refresh_runtime_indexes()
+
+
 _refresh_runtime_indexes()
