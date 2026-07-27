@@ -66,7 +66,7 @@ class HandlerGuardrailTests(unittest.TestCase):
             Any,
             SimpleNamespace(
                 application=SimpleNamespace(
-                    bot_data={"config": SimpleNamespace(admin_id=123)}
+                    bot_data={"config": SimpleNamespace(admin_ids=frozenset({123}))}
                 ),
                 user_data={},
                 chat_data={},

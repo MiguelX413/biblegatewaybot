@@ -26,7 +26,9 @@ Basic commands:
 Configuration:
 
 - set `TOKEN` in the environment, or copy `secrets.example.py` to a local `secrets.py` and fill it in
-- optional: `ADMIN_ID`
+- optional: `ADMIN_IDS`
+  - in `secrets.py`, may be a Python collection like `{123456789, 987654321}`
+  - in environment variables, use a comma-separated string like `123456789,987654321`
 - optional: `BOTFAMILY_HASH`
 - optional: `OFFLINE_ONLY=1`
 - optional: `QURAN_BACKEND` (`auto`, `qf`, or `alquran_cloud`)

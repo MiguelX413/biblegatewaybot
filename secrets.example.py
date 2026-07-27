@@ -4,8 +4,10 @@
 TOKEN = "your-telegram-bot-token"
 
 # Optional
-# Telegram user ID allowed to run admin-only commands like /shutdown.
-ADMIN_ID = "your-telegram-user-id"
+# Telegram user IDs allowed to run admin-only commands like /shutdown and /reload.
+# In secrets.py, you may use a Python collection like {123456789, 987654321}.
+# Environment variables should still use a comma-separated string.
+ADMIN_IDS = {123456789, 987654321}
 BOTFAMILY_HASH = ""
 OFFLINE_ONLY = "false"
 # Qurʾān backend selector: "auto", "qf", or "alquran_cloud".

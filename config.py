@@ -1,11 +1,12 @@
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class BotConfig:
     token: str
-    admin_id: int | None
+    admin_ids: frozenset[int]
     botfamily_hash: str | None
     offline_only: bool
     quran_backend: str | None
@@ -25,6 +26,27 @@ def load_secret(name: str, default: str | None = None) -> str | None:
     return getattr(local_secrets, name, default)
 
 
+def _parse_admin_ids(raw_value: object) -> frozenset[int]:
+    if raw_value is None:
+        return frozenset()
+    if isinstance(raw_value, str):
+        return frozenset(
+            int(value.strip()) for value in raw_value.split(",") if value.strip()
+        )
+    if isinstance(raw_value, Iterable):
+        normalized: set[int] = set()
+        for value in raw_value:
+            if isinstance(value, str):
+                stripped = value.strip()
+                if not stripped:
+                    continue
+                normalized.add(int(stripped))
+                continue
+            normalized.add(int(value))
+        return frozenset(normalized)
+    raise TypeError("ADMIN_IDS must be a comma-separated string or an iterable of IDs.")
+
+
 def load_config() -> BotConfig:
     token = load_secret("TOKEN")
     if not token:
@@ -32,8 +54,7 @@ def load_config() -> BotConfig:
             "Missing TOKEN. Set it in the environment or provide secrets.py."
         )
 
-    admin_id_value = load_secret("ADMIN_ID")
-    admin_id = int(admin_id_value) if admin_id_value else None
+    admin_ids = _parse_admin_ids(load_secret("ADMIN_IDS"))
     offline_only = (load_secret("OFFLINE_ONLY", "") or "").lower() in {
         "1",
         "true",
@@ -42,7 +63,7 @@ def load_config() -> BotConfig:
     }
     return BotConfig(
         token=token,
-        admin_id=admin_id,
+        admin_ids=admin_ids,
         botfamily_hash=load_secret("BOTFAMILY_HASH"),
         offline_only=offline_only,
         quran_backend=load_secret("QURAN_BACKEND"),

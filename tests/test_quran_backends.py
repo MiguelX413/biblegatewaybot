@@ -29,7 +29,7 @@ class QuranBackendTests(unittest.TestCase):
     def test_create_quran_client_uses_alquran_cloud_without_qf_credentials(self):
         config = BotConfig(
             token="token",
-            admin_id=None,
+            admin_ids=frozenset(),
             botfamily_hash=None,
             offline_only=False,
             quran_backend="auto",
@@ -43,7 +43,7 @@ class QuranBackendTests(unittest.TestCase):
     def test_create_quran_client_prefers_qf_with_credentials(self):
         config = BotConfig(
             token="token",
-            admin_id=None,
+            admin_ids=frozenset(),
             botfamily_hash=None,
             offline_only=False,
             quran_backend="auto",

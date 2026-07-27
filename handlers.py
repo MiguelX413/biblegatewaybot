@@ -359,11 +359,11 @@ def record_request_timestamp(
 
 def is_admin_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     config: BotConfig = context.application.bot_data["config"]
-    admin_id = config.admin_id
-    if admin_id is None:
+    admin_ids = config.admin_ids
+    if not admin_ids:
         return False
     user = update.effective_user
-    return user is not None and user.id == admin_id
+    return user is not None and user.id in admin_ids
 
 
 async def enforce_request_throttle(
@@ -577,12 +577,13 @@ async def send_typing(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 async def notify_admin(context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
     config: BotConfig = context.application.bot_data["config"]
-    if not config.admin_id:
+    if not config.admin_ids:
         return
-    try:
-        await context.bot.send_message(chat_id=config.admin_id, text=text)
-    except Exception as exc:
-        logging.warning("Failed to notify admin: %s", exc)
+    for admin_id in config.admin_ids:
+        try:
+            await context.bot.send_message(chat_id=admin_id, text=text)
+        except Exception as exc:
+            logging.warning("Failed to notify admin %s: %s", admin_id, exc)
 
 
 async def fetch_passage(
