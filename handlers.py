@@ -120,20 +120,27 @@ def build_input_message_content(
 
 
 @lru_cache(maxsize=1)
-def get_git_version_details() -> tuple[str, str | None]:
+def get_git_version_details() -> tuple[str, str, str | None]:
     try:
-        sha_result = subprocess.run(
+        full_sha_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        short_sha_result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
             capture_output=True,
             text=True,
             check=True,
         )
-        short_sha = sha_result.stdout.strip()
+        full_sha = full_sha_result.stdout.strip()
+        short_sha = short_sha_result.stdout.strip()
     except OSError, subprocess.SubprocessError:
-        return "unknown", None
+        return "unknown", "unknown", None
 
-    if not short_sha:
-        return "unknown", None
+    if not full_sha or not short_sha:
+        return "unknown", "unknown", None
 
     try:
         remote_result = subprocess.run(
@@ -143,15 +150,15 @@ def get_git_version_details() -> tuple[str, str | None]:
             check=True,
         )
     except OSError, subprocess.SubprocessError:
-        return short_sha, None
+        return short_sha, full_sha, None
 
     remote_url = remote_result.stdout.strip()
     match = GITHUB_REMOTE_PATTERN.match(remote_url)
     if match is None:
-        return short_sha, None
+        return short_sha, full_sha, None
     owner = match.group("owner")
     repo = match.group("repo")
-    return short_sha, f"https://github.com/{owner}/{repo}/commit/{short_sha}"
+    return short_sha, full_sha, f"https://github.com/{owner}/{repo}/commit/{full_sha}"
 
 
 def build_passage_header_url(passage: str, version: str) -> str | None:
@@ -823,7 +830,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def version_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     del context
     message = require_message(update)
-    short_sha, github_url = get_git_version_details()
+    short_sha, _, github_url = get_git_version_details()
     text = f"Version: {short_sha}"
     if github_url is None:
         await message.reply_text(text)
