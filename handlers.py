@@ -186,7 +186,9 @@ def build_welcome_message(
     ]
     sources_text = ", ".join(label for label, _ in source_links[:-1])
     sources_text += f", and {source_links[-1][0]}"
-    welcome_command_list = command_list(application).replace("/search <keyword>\n", "")
+    welcome_command_list = command_list(
+        application, include_admin_commands=False
+    ).replace("/search <keyword>\n", "")
     welcome_command_list = welcome_command_list.replace(
         "/search the greatest commandment\n", ""
     )
@@ -807,9 +809,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message = require_message(update)
     display_name, _, _ = get_identity(update)
+    command_text = command_list(
+        context.application,
+        include_admin_commands=is_admin_user(update, context),
+    )
     await message.reply_text(
         f"Hi {display_name}! Please enter one of the following commands:\n"
-        f"{command_list(context.application)}",
+        f"{command_text}",
         reply_markup=get_try_inline_keyboard(),
     )
 

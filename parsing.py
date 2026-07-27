@@ -760,8 +760,9 @@ def build_passage_header(reference: str, version: str) -> str:
     return f"{display_reference} {display_version}".strip()
 
 
-def command_list(application: Any) -> str:
+def command_list(application: Any, *, include_admin_commands: bool = False) -> str:
     bot_handle = build_bot_handle(application)
+    admin_commands = "/shutdown\n\n" if include_admin_commands else ""
     return (
         "/get <reference>\n"
         "/get <reference> <version>\n"
@@ -770,7 +771,7 @@ def command_list(application: Any) -> str:
         "/setdefault <version selection>\n\n"
         "/linkembeds off|on\n\n"
         "/version\n"
-        "/shutdown\n\n"
+        f"{admin_commands}"
         "Examples:\n"
         "/get John 3:16\n"
         "/get 1 cor 13:4-7 NLT\n"
