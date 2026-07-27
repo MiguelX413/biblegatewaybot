@@ -37,11 +37,12 @@ from handlers import (
     start,
     start_setdefault_entry,
 )
-from services.alquran_cloud import AlQuranCloudClient
 from services.bible_com import BibleComClient
 from services.bible_gateway import BibleGatewayClient
 from services.lds_scriptures import LdsScripturesClient
 from services.local_bible import LocalBibleClient
+from services.quran_client import create_quran_client
+from services.quran_foundation import QuranFoundationClient
 from services.sefaria import SefariaClient
 from state import (
     GET_PASSAGE_STATE,
@@ -51,14 +52,20 @@ from state import (
     SETDEFAULT_LANGUAGE_STATE,
     SETDEFAULT_VERSION_STATE,
 )
-from versions import BOOKS
+from versions import (
+    BOOKS,
+    QURAN_FOUNDATION_RUNTIME_VERSIONS,
+    ScriptureSystemId,
+    register_runtime_version,
+    unregister_runtime_version,
+)
 
 
 def configure_runtime_services(application: Application, config) -> None:
     application.bot_data["config"] = config
     application.bot_data["bible_client"] = BibleGatewayClient()
     application.bot_data["bible_com_client"] = BibleComClient()
-    application.bot_data["quran_client"] = AlQuranCloudClient()
+    application.bot_data["quran_client"] = create_quran_client(config)
     application.bot_data["lds_client"] = LdsScripturesClient()
     application.bot_data["sefaria_client"] = SefariaClient()
     application.bot_data["local_bible_client"] = LocalBibleClient()
@@ -67,6 +74,21 @@ def configure_runtime_services(application: Application, config) -> None:
 async def initialize_runtime_services(application: Application) -> None:
     config = load_config()
     configure_runtime_services(application, config)
+    quran_client = application.bot_data.get("quran_client")
+    if isinstance(quran_client, QuranFoundationClient):
+        if await quran_client.initialize():
+            for language_code, version in QURAN_FOUNDATION_RUNTIME_VERSIONS:
+                register_runtime_version(
+                    ScriptureSystemId.QURAN,
+                    language_code,
+                    version,
+                )
+        else:
+            for _, version in QURAN_FOUNDATION_RUNTIME_VERSIONS:
+                unregister_runtime_version(ScriptureSystemId.QURAN, version.code)
+    else:
+        for _, version in QURAN_FOUNDATION_RUNTIME_VERSIONS:
+            unregister_runtime_version(ScriptureSystemId.QURAN, version.code)
 
 
 async def close_http_client(application: Application) -> None:
@@ -74,7 +96,7 @@ async def close_http_client(application: Application) -> None:
     bible_com_client: BibleComClient | None = application.bot_data.get(
         "bible_com_client"
     )
-    quran_client: AlQuranCloudClient | None = application.bot_data.get("quran_client")
+    quran_client = application.bot_data.get("quran_client")
     lds_client: LdsScripturesClient | None = application.bot_data.get("lds_client")
     sefaria_client: SefariaClient | None = application.bot_data.get("sefaria_client")
     local_bible_client: LocalBibleClient | None = application.bot_data.get(

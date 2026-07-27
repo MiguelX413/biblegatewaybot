@@ -9,6 +9,23 @@ from services.alquran_cloud import (
     parse_surah_payload,
 )
 from state import EMPTY, InlinePassageResult
+from versions import (
+    QURAN_FOUNDATION_RUNTIME_VERSIONS,
+    ScriptureSystemId,
+    register_runtime_version,
+    unregister_runtime_version,
+)
+
+
+def setUpModule():
+    for language_code, version in QURAN_FOUNDATION_RUNTIME_VERSIONS:
+        register_runtime_version(ScriptureSystemId.QURAN, language_code, version)
+
+
+def tearDownModule():
+    for _, version in QURAN_FOUNDATION_RUNTIME_VERSIONS:
+        unregister_runtime_version(ScriptureSystemId.QURAN, version.code)
+
 
 SURAH_ONE_PAYLOAD = {
     "code": 200,
@@ -224,6 +241,10 @@ class QuranParsingTests(unittest.TestCase):
             format_quran_reference(reference, "QYUSUF"),
         )
         self.assertEqual(
+            "Qurʾān, al-Baqarah (2):255 (Abdel Haleem)",
+            format_quran_reference(reference, "QHALEEM"),
+        )
+        self.assertEqual(
             "Qurʾān, al-Baqarah (2):255",
             format_quran_reference(reference, "UTHMANI"),
         )
@@ -258,10 +279,26 @@ class QuranParsingTests(unittest.TestCase):
         assert reference is not None
         self.assertEqual("1:2-2:4", format_quran_machine_reference(reference))
         self.assertEqual(
-            "https://quran.com/1?startingVerse=2",
+            "https://quran.com/1/2?translations=20",
             build_quran_passage_url(reference, "ṢI"),
         )
         self.assertEqual("https://quran.com/1", build_quran_passage_url("Quran 1-2"))
+        self.assertEqual(
+            "https://quran.com/1/1-3?translations=19",
+            build_quran_passage_url("Quran 1:1-3", "QPICK"),
+        )
+        self.assertEqual(
+            "https://quran.com/1/1?translations=22",
+            build_quran_passage_url("Quran 1:1", "QYUSUF"),
+        )
+        self.assertEqual(
+            "https://quran.com/1/1?translations=74",
+            build_quran_passage_url("Quran 1:1", "QAYATI"),
+        )
+        self.assertEqual(
+            "https://quran.com/1/1?translations=85",
+            build_quran_passage_url("Quran 1:1", "QHALEEM"),
+        )
 
     def test_parse_surah_payload_uses_reader_facing_header(self):
         reference = parse_quran_reference("Quran 1:1-3")
@@ -293,7 +330,7 @@ class QuranParsingTests(unittest.TestCase):
             "Qurʾān, al-Fātiḥah (1):1–3 (Ṣaḥīḥ International)",
             result.title,
         )
-        self.assertEqual("https://quran.com/1?startingVerse=1", result.header_url)
+        self.assertEqual("https://quran.com/1/1-3?translations=20", result.header_url)
 
     def test_parse_surah_payload_empty(self):
         reference = parse_quran_reference("Quran 1:1")

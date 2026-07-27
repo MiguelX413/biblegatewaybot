@@ -2,13 +2,17 @@ import logging
 from importlib import import_module
 from typing import Any
 
-from parsing import format_numbered_verse_text
 from quran import (
     QuranReference,
-    format_quran_machine_reference,
-    format_quran_reference,
     parse_quran_reference,
-    quran_surah_display_name,
+)
+from quran import (
+    format_quran_reference as _format_quran_reference,
+)
+from services.quran_common import (
+    build_inline_result,
+    build_quran_passage_text,
+    extract_formatted_ayahs,
 )
 from state import (
     DEFAULT_QURAN_VERSION,
@@ -16,6 +20,7 @@ from state import (
     REQUEST_TIMEOUT_SECONDS,
     InlinePassageResult,
 )
+from versions import ALL_VERSIONS, get_alquran_cloud_edition_id, get_qf_translation_id
 
 try:
     httpx: Any = import_module("httpx")
@@ -26,23 +31,15 @@ except ImportError:  # pragma: no cover - exercised only in dependency-missing e
 ALQURAN_CLOUD_API_BASE_URL = "https://api.alquran.cloud/v1"
 QURAN_PUBLIC_BASE_URL = "https://quran.com"
 ALQURAN_CLOUD_EDITION_IDS: dict[str, str] = {
-    "UTHMANI": "quran-uthmani",
-    "ṢI": "en.sahih",
-    "QPICK": "en.pickthall",
-    "QYUSUF": "en.yusufali",
-    "QAYATI": "fa.ayati",
-    "QFOOL": "fa.fooladvand",
-    "QSODIK": "uz.sodik",
-    "QJAL": "ur.jalandhry",
-    "QDIYANET": "tr.diyanet",
-    "QKULIEV": "ru.kuliev",
+    version.code.upper(): version.alquran_cloud_edition_id
+    for version in ALL_VERSIONS
+    if version.alquran_cloud_edition_id is not None
 }
 
 
 def build_quran_passage_url(
     passage: str | QuranReference, version: str = DEFAULT_QURAN_VERSION
 ) -> str | None:
-    del version
     reference = (
         passage
         if isinstance(passage, QuranReference)
@@ -50,12 +47,37 @@ def build_quran_passage_url(
     )
     if reference is None:
         return None
+    translation_id = get_qf_translation_id(version)
+    query_suffix = f"?translations={translation_id}" if translation_id else ""
     if reference.start_ayah is None:
-        return f"{QURAN_PUBLIC_BASE_URL}/{reference.start_surah}"
+        return f"{QURAN_PUBLIC_BASE_URL}/{reference.start_surah}{query_suffix}"
+    if reference.start_surah == reference.end_surah:
+        if reference.end_ayah is None or reference.start_ayah == reference.end_ayah:
+            return (
+                f"{QURAN_PUBLIC_BASE_URL}/{reference.start_surah}/"
+                f"{reference.start_ayah}{query_suffix}"
+            )
+        return (
+            f"{QURAN_PUBLIC_BASE_URL}/{reference.start_surah}/"
+            f"{reference.start_ayah}-{reference.end_ayah}{query_suffix}"
+        )
     return (
-        f"{QURAN_PUBLIC_BASE_URL}/{reference.start_surah}"
-        f"?startingVerse={reference.start_ayah}"
+        f"{QURAN_PUBLIC_BASE_URL}/{reference.start_surah}/{reference.start_ayah}"
+        f"{query_suffix}"
     )
+
+
+def format_quran_reference(
+    reference: str | QuranReference, version: str = DEFAULT_QURAN_VERSION
+) -> str:
+    parsed_reference = (
+        reference
+        if isinstance(reference, QuranReference)
+        else parse_quran_reference(reference)
+    )
+    if parsed_reference is None:
+        return str(reference)
+    return _format_quran_reference(parsed_reference, version)
 
 
 def _extract_formatted_ayahs(
@@ -71,64 +93,11 @@ def _extract_formatted_ayahs(
     ayahs = data.get("ayahs")
     if not isinstance(ayahs, list) or not ayahs:
         return []
-
-    formatted_ayahs: list[str] = []
-    for ayah in ayahs:
-        if not isinstance(ayah, dict):
-            continue
-        number = ayah.get("numberInSurah")
-        text = ayah.get("text")
-        if not isinstance(number, int):
-            continue
-        if start_ayah is not None and number < start_ayah:
-            continue
-        if end_ayah is not None and number > end_ayah:
-            continue
-        formatted = format_numbered_verse_text(number, str(text or ""))
-        if formatted:
-            formatted_ayahs.append(formatted)
-    return formatted_ayahs
-
-
-def _build_quran_passage_text(
-    reference: QuranReference,
-    version: str,
-    surah_sections: list[tuple[int, list[str]]],
-) -> str:
-    header = format_quran_reference(reference, version)
-    if not surah_sections:
-        return EMPTY
-
-    if len(surah_sections) == 1:
-        body = "\n".join(surah_sections[0][1]).strip()
-    else:
-        blocks = []
-        for surah_number, ayahs in surah_sections:
-            if not ayahs:
-                continue
-            surah_header = f"{quran_surah_display_name(surah_number)} ({surah_number})"
-            blocks.append(f"{surah_header}\n\n" + "\n".join(ayahs))
-        body = "\n\n".join(blocks).strip()
-
-    if not body:
-        return EMPTY
-    return f"{header}\n\n{body}"
-
-
-def _build_inline_result(
-    final_text: str,
-    *,
-    reference: QuranReference,
-    version: str,
-) -> InlinePassageResult:
-    content = " ".join(final_text.split())
-    description = f"{content[:150]}..." if len(content) > 153 else content
-    return InlinePassageResult(
-        passage=final_text,
-        result_id=f"quran/{format_quran_machine_reference(reference)}/{version}",
-        title=format_quran_reference(reference, version),
-        description=description,
-        header_url=build_quran_passage_url(reference, version),
+    return extract_formatted_ayahs(
+        ayahs,
+        start_ayah=start_ayah,
+        end_ayah=end_ayah,
+        text_getter=lambda ayah: str(ayah.get("text") or "").strip(),
     )
 
 
@@ -147,7 +116,7 @@ def parse_surah_payload(
     if not formatted_ayahs:
         return EMPTY
 
-    final_text = _build_quran_passage_text(
+    final_text = build_quran_passage_text(
         reference,
         version,
         [(reference.start_surah, formatted_ayahs)],
@@ -156,7 +125,12 @@ def parse_surah_payload(
         return EMPTY
     if not inline_details:
         return final_text
-    return _build_inline_result(final_text, reference=reference, version=version)
+    return build_inline_result(
+        final_text,
+        reference=reference,
+        version=version,
+        header_url=build_quran_passage_url(reference, version),
+    )
 
 
 class AlQuranCloudClient:
@@ -211,7 +185,7 @@ class AlQuranCloudClient:
         if reference is None:
             return EMPTY
 
-        edition_id = ALQURAN_CLOUD_EDITION_IDS.get(version.upper())
+        edition_id = get_alquran_cloud_edition_id(version)
         if edition_id is None:
             logging.warning("No AlQuran Cloud edition configured for %s", version)
             return None
@@ -235,9 +209,14 @@ class AlQuranCloudClient:
                 return EMPTY
             surah_sections.append((surah, formatted_ayahs))
 
-        final_text = _build_quran_passage_text(reference, version, surah_sections)
+        final_text = build_quran_passage_text(reference, version, surah_sections)
         if final_text == EMPTY:
             return EMPTY
         if not inline_details:
             return final_text
-        return _build_inline_result(final_text, reference=reference, version=version)
+        return build_inline_result(
+            final_text,
+            reference=reference,
+            version=version,
+            header_url=build_quran_passage_url(reference, version),
+        )

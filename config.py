@@ -8,6 +8,10 @@ class BotConfig:
     admin_id: int | None
     botfamily_hash: str | None
     offline_only: bool
+    quran_backend: str | None
+    qf_client_id: str | None
+    qf_client_secret: str | None
+    qf_env: str | None
 
 
 def load_secret(name: str, default: str | None = None) -> str | None:
@@ -41,4 +45,8 @@ def load_config() -> BotConfig:
         admin_id=admin_id,
         botfamily_hash=load_secret("BOTFAMILY_HASH"),
         offline_only=offline_only,
+        quran_backend=load_secret("QURAN_BACKEND"),
+        qf_client_id=load_secret("QF_CLIENT_ID"),
+        qf_client_secret=load_secret("QF_CLIENT_SECRET"),
+        qf_env=load_secret("QF_ENV"),
     )

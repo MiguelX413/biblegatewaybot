@@ -208,6 +208,9 @@ class Version:
     aliases: tuple[str, ...] = ()
     sefaria_config: SefariaVersionConfig | None = None
     source_url: str | None = None
+    alquran_cloud_edition_id: str | None = None
+    qf_translation_id: int | None = None
+    qf_translation_hints: tuple[str, ...] = ()
     support_scope: VersionSupportScope = VersionSupportScope.BIBLE
     supported_book_slugs: frozenset[BookSlug] = frozenset()
     additional_supported_book_slugs: frozenset[BookSlug] = frozenset()
@@ -228,6 +231,9 @@ class Version:
             aliases,
             None,
             None,
+            None,
+            None,
+            (),
             VersionSupportScope.BIBLE,
             frozenset(),
             additional_supported_book_slugs,
@@ -244,6 +250,9 @@ class Version:
             aliases,
             None,
             None,
+            None,
+            None,
+            (),
             VersionSupportScope.NEW_TESTAMENT,
         )
 
@@ -258,6 +267,9 @@ class Version:
             aliases,
             None,
             None,
+            None,
+            None,
+            (),
             VersionSupportScope.OLD_TESTAMENT,
         )
 
@@ -272,12 +284,22 @@ class Version:
             aliases,
             None,
             None,
+            None,
+            None,
+            (),
             VersionSupportScope.TORAH,
         )
 
     @classmethod
     def quran(
-        cls, name: str, abbreviation: str, *, aliases: tuple[str, ...] = ()
+        cls,
+        name: str,
+        abbreviation: str,
+        *,
+        aliases: tuple[str, ...] = (),
+        alquran_cloud_edition_id: str | None = None,
+        qf_translation_id: int | None = None,
+        qf_translation_hints: tuple[str, ...] = (),
     ) -> Version:
         return cls(
             name,
@@ -286,6 +308,9 @@ class Version:
             aliases,
             None,
             None,
+            alquran_cloud_edition_id,
+            qf_translation_id,
+            qf_translation_hints,
             VersionSupportScope.QURAN,
         )
 
@@ -305,6 +330,9 @@ class Version:
             aliases,
             None,
             None,
+            None,
+            None,
+            (),
             VersionSupportScope.CUSTOM,
             supported_book_slugs,
         )
@@ -325,6 +353,9 @@ class Version:
             aliases,
             None,
             None,
+            None,
+            None,
+            (),
             VersionSupportScope.BIBLE,
             frozenset(),
             additional_supported_book_slugs,
@@ -347,6 +378,9 @@ class Version:
             aliases,
             sefaria_config,
             None,
+            None,
+            None,
+            (),
             VersionSupportScope.CUSTOM,
             supported_book_slugs,
         )
@@ -368,6 +402,9 @@ class Version:
             aliases,
             None,
             source_url,
+            None,
+            None,
+            (),
             VersionSupportScope.CUSTOM,
             supported_book_slugs,
         )
@@ -389,6 +426,9 @@ class Version:
             aliases,
             None,
             source_url,
+            None,
+            None,
+            (),
             VersionSupportScope.CUSTOM,
             supported_book_slugs,
         )
@@ -1486,40 +1526,130 @@ QURAN_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
     [
         (
             LanguageCode.AR,
-            [Version.quran("Uthmani Arabic", "UTHMANI", aliases=("QURAN",))],
+            [
+                Version.quran(
+                    "Uthmani Arabic",
+                    "UTHMANI",
+                    aliases=("QURAN",),
+                    alquran_cloud_edition_id="quran-uthmani",
+                )
+            ],
         ),
         (
             LanguageCode.EN,
             [
-                Version.quran("Ṣaḥīḥ International", "ṢI", aliases=("SI",)),
-                Version.quran("Marmaduke Pickthall", "QPICK"),
-                Version.quran("Abdullah Yusuf Ali", "QYUSUF"),
+                Version.quran(
+                    "Ṣaḥīḥ International",
+                    "ṢI",
+                    aliases=("SI",),
+                    alquran_cloud_edition_id="en.sahih",
+                    qf_translation_id=20,
+                    qf_translation_hints=(
+                        "Saheeh International",
+                        "Sahih International",
+                    ),
+                ),
+                Version.quran(
+                    "Marmaduke Pickthall",
+                    "QPICK",
+                    alquran_cloud_edition_id="en.pickthall",
+                    qf_translation_id=19,
+                    qf_translation_hints=(
+                        "M. Pickthall",
+                        "Mohammed Marmaduke William Pickthall",
+                    ),
+                ),
+                Version.quran(
+                    "Abdullah Yusuf Ali",
+                    "QYUSUF",
+                    alquran_cloud_edition_id="en.yusufali",
+                    qf_translation_id=22,
+                    qf_translation_hints=("A. Yusuf Ali", "Abdullah Yusuf Ali"),
+                ),
             ],
         ),
         (
             LanguageCode.FA,
             [
-                Version.quran("AbdolMohammad Ayati", "QAYATI"),
-                Version.quran("Mohammad Mahdi Fooladvand", "QFOOL"),
+                Version.quran(
+                    "AbdolMohammad Ayati",
+                    "QAYATI",
+                    alquran_cloud_edition_id="fa.ayati",
+                    qf_translation_id=74,
+                    qf_translation_hints=("Ayati", "AbdolMohammad Ayati"),
+                ),
+                Version.quran(
+                    "Mohammad Mahdi Fooladvand",
+                    "QFOOL",
+                    alquran_cloud_edition_id="fa.fooladvand",
+                    qf_translation_hints=(
+                        "Fooladvand",
+                        "Mohammad Mahdi Fooladvand",
+                    ),
+                ),
             ],
         ),
         (
             LanguageCode.UZ,
-            [Version.quran("Muhammad Sodik Muhammad Yusuf", "QSODIK")],
+            [
+                Version.quran(
+                    "Muhammad Sodik Muhammad Yusuf",
+                    "QSODIK",
+                    alquran_cloud_edition_id="uz.sodik",
+                    qf_translation_hints=("Muhammad Sodik Muhammad Yusuf",),
+                )
+            ],
         ),
         (
             LanguageCode.UR,
-            [Version.quran("Fateh Muhammad Jalandhry", "QJAL")],
+            [
+                Version.quran(
+                    "Fateh Muhammad Jalandhry",
+                    "QJAL",
+                    alquran_cloud_edition_id="ur.jalandhry",
+                    qf_translation_hints=("Jalandhry", "Fateh Muhammad Jalandhry"),
+                )
+            ],
         ),
         (
             LanguageCode.TR,
-            [Version.quran("Diyanet İşleri", "QDIYANET")],
+            [
+                Version.quran(
+                    "Diyanet İşleri",
+                    "QDIYANET",
+                    alquran_cloud_edition_id="tr.diyanet",
+                    qf_translation_hints=("Diyanet", "Diyanet Isleri"),
+                )
+            ],
         ),
         (
             LanguageCode.RU,
-            [Version.quran("Elmir Kuliev", "QKULIEV")],
+            [
+                Version.quran(
+                    "Elmir Kuliev",
+                    "QKULIEV",
+                    alquran_cloud_edition_id="ru.kuliev",
+                    qf_translation_hints=("Kuliev", "Elmir Kuliev"),
+                )
+            ],
         ),
     ]
+)
+QURAN_FOUNDATION_RUNTIME_VERSIONS: Final[tuple[tuple[LanguageCode, Version], ...]] = (
+    (
+        LanguageCode.EN,
+        Version.quran(
+            "M.A.S. Abdel Haleem",
+            "QHALEEM",
+            aliases=("QABDEL",),
+            qf_translation_id=85,
+            qf_translation_hints=(
+                "M.A.S. Abdel Haleem",
+                "Abdul Haleem",
+                "Abdel Haleem",
+            ),
+        ),
+    ),
 )
 
 
@@ -1757,6 +1887,27 @@ def get_sefaria_version_config(version: str) -> SefariaVersionConfig | None:
     return configured.sefaria_config
 
 
+def get_alquran_cloud_edition_id(version: str) -> str | None:
+    configured = get_version(version)
+    if configured is None:
+        return None
+    return configured.alquran_cloud_edition_id
+
+
+def get_qf_translation_id(version: str) -> int | None:
+    configured = get_version(version)
+    if configured is None:
+        return None
+    return configured.qf_translation_id
+
+
+def get_qf_translation_hints(version: str) -> tuple[str, ...]:
+    configured = get_version(version)
+    if configured is None:
+        return ()
+    return configured.qf_translation_hints
+
+
 VERSION_PROVIDERS: dict[str, VersionProvider] = {}
 VERSION_SUPPORTED_BOOK_SLUGS: dict[str, frozenset[str]] = {}
 BOOKS: list[str] = []
@@ -1842,6 +1993,39 @@ def register_runtime_version(
         language_versions.append(version)
     else:
         language_versions[existing_index] = version
+
+    systems[system_index] = ScriptureSystem(
+        id=target_system.id,
+        display_name=target_system.display_name,
+        version_data=version_data,
+    )
+    object.__setattr__(VERSION_CATALOG, "systems", tuple(systems))
+    _refresh_runtime_indexes()
+
+
+def unregister_runtime_version(
+    system_id: ScriptureSystemId,
+    version_code: VersionCode,
+) -> None:
+    systems = list(VERSION_CATALOG.systems)
+    system_index = next(
+        index for index, system in enumerate(systems) if system.id is system_id
+    )
+    target_system = systems[system_index]
+    canonical_code = _canonicalize_version_code(version_code)
+    changed = False
+    version_data: OrderedDict[LanguageCode, list[Version]] = OrderedDict()
+    for language, versions in target_system.version_data.items():
+        filtered_versions = [
+            version
+            for version in versions
+            if _canonicalize_version_code(version.code) != canonical_code
+        ]
+        if len(filtered_versions) != len(versions):
+            changed = True
+        version_data[language] = filtered_versions
+    if not changed:
+        return
 
     systems[system_index] = ScriptureSystem(
         id=target_system.id,

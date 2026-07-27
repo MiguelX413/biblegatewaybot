@@ -29,6 +29,10 @@ Configuration:
 - optional: `ADMIN_ID`
 - optional: `BOTFAMILY_HASH`
 - optional: `OFFLINE_ONLY=1`
+- optional: `QURAN_BACKEND` (`auto`, `qf`, or `alquran_cloud`)
+- optional: `QF_CLIENT_ID`
+- optional: `QF_CLIENT_SECRET`
+- optional: `QF_ENV` (`prelive` or `production`)
 
 Runtime model:
 
