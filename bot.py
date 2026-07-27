@@ -36,6 +36,7 @@ from handlers import (
     shutdown_command,
     start,
     start_setdefault_entry,
+    version_command,
 )
 from services.bible_com import BibleComClient
 from services.bible_gateway import BibleGatewayClient
@@ -190,6 +191,7 @@ def build_application() -> Application:
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("version", version_command))
     application.add_handler(CommandHandler("settings", settings_command))
     application.add_handler(CommandHandler("linkembeds", link_embeds_command))
     application.add_handler(CommandHandler("more", more_command))

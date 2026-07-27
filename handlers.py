@@ -1,6 +1,9 @@
 import logging
+import re
+import subprocess
 import time
 from collections.abc import Sequence
+from functools import lru_cache
 from typing import Any
 
 from scriptures import extract as extract_refs
@@ -97,6 +100,9 @@ REQUEST_THROTTLE_WINDOW_SECONDS = 10.0
 REQUEST_THROTTLE_MIN_INTERVAL_SECONDS = 1.0
 MAX_USER_REQUESTS_PER_WINDOW = 4
 MAX_CHAT_REQUESTS_PER_WINDOW = 10
+GITHUB_REMOTE_PATTERN = re.compile(
+    r"^(?:git@github\.com:|https://github\.com/)(?P<owner>[^/]+)/(?P<repo>[^/.]+)(?:\.git)?$"
+)
 
 
 def build_input_message_content(
@@ -111,6 +117,41 @@ def build_input_message_content(
         entities=entities,
         link_preview_options=link_preview_options,
     )
+
+
+@lru_cache(maxsize=1)
+def get_git_version_details() -> tuple[str, str | None]:
+    try:
+        sha_result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        short_sha = sha_result.stdout.strip()
+    except OSError, subprocess.SubprocessError:
+        return "unknown", None
+
+    if not short_sha:
+        return "unknown", None
+
+    try:
+        remote_result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except OSError, subprocess.SubprocessError:
+        return short_sha, None
+
+    remote_url = remote_result.stdout.strip()
+    match = GITHUB_REMOTE_PATTERN.match(remote_url)
+    if match is None:
+        return short_sha, None
+    owner = match.group("owner")
+    repo = match.group("repo")
+    return short_sha, f"https://github.com/{owner}/{repo}/commit/{short_sha}"
 
 
 def build_passage_header_url(passage: str, version: str) -> str | None:
@@ -770,6 +811,28 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         f"{command_list(context.application)}",
         reply_markup=get_try_inline_keyboard(),
     )
+
+
+async def version_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    del context
+    message = require_message(update)
+    short_sha, github_url = get_git_version_details()
+    text = f"Version: {short_sha}"
+    if github_url is None:
+        await message.reply_text(text)
+        return
+
+    sha_offset = len("Version: ")
+    entities = [
+        MessageEntity(
+            type=MessageEntityType.TEXT_LINK,
+            offset=sha_offset,
+            length=len(short_sha),
+            url=github_url,
+        ),
+    ]
+    utf16_entities = MessageEntity.adjust_message_entities_to_utf_16(text, entities)
+    await message.reply_text(text, entities=list(utf16_entities))
 
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

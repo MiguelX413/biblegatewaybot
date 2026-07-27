@@ -769,6 +769,7 @@ def command_list(application: Any) -> str:
         "/search <keyword>\n"
         "/setdefault <version selection>\n\n"
         "/linkembeds off|on\n\n"
+        "/version\n"
         "/shutdown\n\n"
         "Examples:\n"
         "/get John 3:16\n"
