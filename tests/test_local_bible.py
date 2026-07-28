@@ -52,7 +52,7 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
                         "title": "John",
                         "slug": "john",
                         "aliases": ["john", "jn"],
-                        "passages": {"John 3:16": "For God so loved the world."},
+                        "passages": {"John 3:16": "Synthetic local passage."},
                     }
                 ),
                 encoding="utf-8",
@@ -61,7 +61,7 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
 
             result = await client.get_passage("john 3:16", "LONIV")
 
-            self.assertEqual("John 3:16 LONIV\n\nFor God so loved the world.", result)
+            self.assertEqual("John 3:16 LONIV\n\nSynthetic local passage.", result)
 
     async def test_local_client_normalizes_abbreviated_lookup_keys(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -451,13 +451,13 @@ class LocalBibleFormattingTests(unittest.TestCase):
     def test_format_local_passage_entry_superscripts_leading_verse_numbers(self):
         result = format_local_passage_entry(
             "John 3:16-17",
-            ["16 For God so loved the world.", "17 For God sent not his Son."],
+            ["16 Synthetic sixteenth verse.", "17 Synthetic seventeenth verse."],
             version="NIV",
         )
         expected = (
             "John 3:16–17 NIV\n\n"
-            "¹⁶ For God so loved the world.\n"
-            "¹⁷ For God sent not his Son."
+            "¹⁶ Synthetic sixteenth verse.\n"
+            "¹⁷ Synthetic seventeenth verse."
         )
         self.assertEqual(
             expected,

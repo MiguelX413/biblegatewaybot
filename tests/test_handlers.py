@@ -35,8 +35,8 @@ class HandlerGuardrailTests(unittest.TestCase):
     def test_count_passage_result_messages_collapses_small_parallel_responses(self):
         count = count_passage_result_messages(
             [
-                ("John 3:16 NIV\n\nFor God so loved the world.", "https://niv"),
-                ("John 3:16 NRSVue\n\nFor God so loved the world.", "https://nrsvue"),
+                ("John 3:16 NIV\n\nSynthetic passage text.", "https://niv"),
+                ("John 3:16 NRSVue\n\nSynthetic passage text.", "https://nrsvue"),
             ]
         )
         self.assertEqual(1, count)

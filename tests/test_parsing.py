@@ -34,23 +34,23 @@ from versions import VERSION_CATALOG, ScriptureSystemId, get_version_system
 class ParsingTests(unittest.TestCase):
     def test_format_passage_entities_uses_expandable_blockquote(self):
         text, entities = format_passage_entities(
-            "John 3:16 NIV\n\nFor God so loved the world."
+            "John 3:16 NIV\n\nSynthetic passage text."
         )
-        self.assertEqual("John 3:16 NIV\nFor God so loved the world.", text)
+        self.assertEqual("John 3:16 NIV\nSynthetic passage text.", text)
         self.assertEqual(2, len(entities))
         self.assertEqual("bold", entities[0].type)
         self.assertEqual(0, entities[0].offset)
         self.assertEqual(len("John 3:16 NIV"), entities[0].length)
         self.assertEqual("expandable_blockquote", entities[1].type)
         self.assertEqual(len("John 3:16 NIV\n"), entities[1].offset)
-        self.assertEqual(len("For God so loved the world."), entities[1].length)
+        self.assertEqual(len("Synthetic passage text."), entities[1].length)
 
     def test_format_passage_entities_can_link_header(self):
         text, entities = format_passage_entities(
-            "John 3:16 NIV\n\nFor God so loved the world.",
+            "John 3:16 NIV\n\nSynthetic passage text.",
             header_url="https://biblegateway.com/passage/?search=John%203:16&version=NIV",
         )
-        self.assertEqual("John 3:16 NIV\nFor God so loved the world.", text)
+        self.assertEqual("John 3:16 NIV\nSynthetic passage text.", text)
         self.assertEqual(3, len(entities))
         self.assertEqual("bold", entities[0].type)
         self.assertEqual("text_link", entities[1].type)
@@ -146,17 +146,17 @@ class ParsingTests(unittest.TestCase):
     def test_format_parallel_passage_entities_combines_small_responses(self):
         combined = format_parallel_passage_entities(
             [
-                ("John 3:16 NIV\n\nFor God so loved the world.", "https://niv"),
-                ("John 3:16 NRSVue\n\nFor God so loved the world.", "https://nrsvue"),
-                ("John 3:16 WLC\n\nFor God so loved the world.", "https://wlc"),
+                ("John 3:16 NIV\n\nSynthetic passage text.", "https://niv"),
+                ("John 3:16 NRSVue\n\nSynthetic passage text.", "https://nrsvue"),
+                ("John 3:16 WLC\n\nSynthetic passage text.", "https://wlc"),
             ]
         )
         assert combined is not None
         text, entities = combined
         self.assertEqual(
-            "John 3:16 NIV\nFor God so loved the world.\n"
-            "John 3:16 NRSVue\nFor God so loved the world.\n"
-            "John 3:16 WLC\nFor God so loved the world.",
+            "John 3:16 NIV\nSynthetic passage text.\n"
+            "John 3:16 NRSVue\nSynthetic passage text.\n"
+            "John 3:16 WLC\nSynthetic passage text.",
             text,
         )
         self.assertEqual(9, len(entities))
@@ -177,7 +177,7 @@ class ParsingTests(unittest.TestCase):
         )
 
     def test_batch_parallel_passage_entities_packs_whole_passages_greedily(self):
-        small = "John 3:16 NIV\n\nFor God so loved the world."
+        small = "John 3:16 NIV\n\nSynthetic passage text."
         large = f"John 3 NIV\n\n{'x' * 3000}"
         batches = batch_parallel_passage_entities(
             [

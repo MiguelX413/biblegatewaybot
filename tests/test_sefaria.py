@@ -17,8 +17,8 @@ PASSAGE_PAYLOAD = {
         {
             "versionTitle": "The Holy Scriptures: A New Translation (JPS 1917)",
             "text": [
-                "In the beginning God created the heaven and the earth.",
-                "Now the earth was unformed and void.",
+                "Synthetic Sefaria passage.",
+                "Second synthetic Sefaria passage.",
             ],
         }
     ],
@@ -30,8 +30,8 @@ V1_HE_PASSAGE_PAYLOAD = {
         "Tanakh in Yiddish. Translated by Ch. Neuhausen, A. Hyman Charlap; NY 1914 [yi]"
     ),
     "he": [
-        "אין אנפאנג האט גאט בעשאפען דעם הימעל און די ערד.",
-        "און די ערד איז געוועזען וויסט און לעעהר.",
+        "סינטעטישער ערשטער זאַץ.",
+        "סינטעטישער צווייטער זאַץ.",
     ],
 }
 
@@ -39,8 +39,8 @@ V1_TEXT_PASSAGE_PAYLOAD = {
     "ref": "Genesis 1:1-2",
     "versionTitle": "Biblia de Ferrara [lad]",
     "text": [
-        "En Prinçipio crio el Dio: à lost çielos, y à la tierra....",
-        "Y la tierra era vazia y vazia.",
+        "Fraza sintetika primera.",
+        "Fraza sintetika segunda.",
     ],
 }
 
@@ -51,10 +51,8 @@ class SefariaParsingTests(unittest.TestCase):
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
         self.assertIn("Genesis 1:1–2 JPS", result)
-        self.assertIn(
-            "¹ In the beginning God created the heaven and the earth.", result
-        )
-        self.assertIn("² Now the earth was unformed and void.", result)
+        self.assertIn("¹ Synthetic Sefaria passage.", result)
+        self.assertIn("² Second synthetic Sefaria passage.", result)
 
     def test_parse_passage_payload_inline(self):
         result = parse_passage_payload(
@@ -74,8 +72,8 @@ class SefariaParsingTests(unittest.TestCase):
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
         self.assertIn("Genesis 1:1–2 NEUHAUSEN1914", result)
-        self.assertIn("¹ אין אנפאנג האט גאט בעשאפען דעם הימעל און די ערד.", result)
-        self.assertIn("² און די ערד איז געוועזען וויסט און לעעהר.", result)
+        self.assertIn("¹ סינטעטישער ערשטער זאַץ.", result)
+        self.assertIn("² סינטעטישער צווייטער זאַץ.", result)
 
     def test_parse_v1_text_passage_payload(self):
         result = parse_v1_text_passage_payload(
@@ -84,11 +82,8 @@ class SefariaParsingTests(unittest.TestCase):
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
         self.assertIn("Genesis 1:1–2 FERRARA", result)
-        self.assertIn(
-            "¹ En Prinçipio crio el Dio: à lost çielos, y à la tierra....",
-            result,
-        )
-        self.assertIn("² Y la tierra era vazia y vazia.", result)
+        self.assertIn("¹ Fraza sintetika primera.", result)
+        self.assertIn("² Fraza sintetika segunda.", result)
 
     def test_normalize_sefaria_passage_reference_for_apocrypha(self):
         self.assertEqual(

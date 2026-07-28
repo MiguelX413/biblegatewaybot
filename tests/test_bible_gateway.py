@@ -14,11 +14,11 @@ PASSAGE_HTML = """
     <div class="passage-col">
       <span class="bcv">John 3:16</span>
       <div class="passage-text">
-        <h3>For God So Loved the World</h3>
+        <h3>Synthetic Section Heading</h3>
         <p>
           <span class="chapternum">3</span><span class="versenum">16</span>
-          <span class="text">For God so loved the world</span>
-          <br/><span class="text">that he gave his one and only Son.</span>
+          <span class="text">Synthetic passage opening</span>
+          <br/><span class="text">and synthetic continuation.</span>
         </p>
         <div class="footnote">remove me</div>
       </div>
@@ -37,13 +37,13 @@ POETRY_HTML = """
       <div class="passage-text">
         <p>
           <span class="chapternum">23</span><span class="versenum">1</span>
-          <span class="text">The Lord is my shepherd;</span>
-          <br/><span class="text">I shall not want.</span>
+          <span class="text">Synthetic poetic opening;</span>
+          <br/><span class="text">synthetic poetic continuation.</span>
         </p>
         <p>
           <span class="versenum">2</span>
-          <span class="text">He maketh me to lie down in green pastures:</span>
-          <br/><span class="text">he leadeth me beside the still waters.</span>
+          <span class="text">Second synthetic poetic opening:</span>
+          <br/><span class="text">second synthetic poetic continuation.</span>
         </p>
       </div>
     </div>
@@ -55,9 +55,9 @@ SEARCH_HTML = """
 <html>
   <body>
     <div class="l">John 3:16 Something</div>
-    <div class="s">For God so loved the world //biblehub.com</div>
+    <div class="s">Synthetic search snippet //biblehub.com</div>
     <div class="l">Romans 8:28 Something</div>
-    <div class="s">All things work together //biblehub.com</div>
+    <div class="s">Second synthetic search snippet //biblehub.com</div>
   </body>
 </html>
 """
@@ -81,7 +81,7 @@ class BibleGatewayParsingTests(unittest.TestCase):
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
         self.assertIn("John 3:16 NIV", result)
-        self.assertIn("For God so loved the world", result)
+        self.assertIn("Synthetic passage opening", result)
         self.assertNotIn("remove me", result)
 
     def test_parse_passage_html_preserves_poetry_line_breaks(self):
@@ -89,10 +89,11 @@ class BibleGatewayParsingTests(unittest.TestCase):
         self.assertIsInstance(result, str)
         assert isinstance(result, str)
         self.assertIn("Psalm 23:1–2 KJV", result)
-        self.assertIn("The Lord is my shepherd;\nI shall not want.", result)
         self.assertIn(
-            "He maketh me to lie down in green pastures:\n"
-            "he leadeth me beside the still waters.",
+            "Synthetic poetic opening;\nsynthetic poetic continuation.", result
+        )
+        self.assertIn(
+            "Second synthetic poetic opening:\nsecond synthetic poetic continuation.",
             result,
         )
 
