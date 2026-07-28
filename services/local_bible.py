@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,7 +28,15 @@ from versions import (
 OFFLINE_BIBLES_PATH = Path(__file__).resolve().parent.parent / "offline"
 OFFLINE_VERSIONS_PATH = OFFLINE_BIBLES_PATH / "versions"
 OFFLINE_WORKS_PATH = OFFLINE_BIBLES_PATH / "works"
-LOCAL_SOURCE_URLS: dict[str, dict[str, str]] = {}
+
+
+@dataclass(frozen=True)
+class LocalSourceLinks:
+    work_url: str | None
+    chapter_urls: tuple[str | None, ...]
+
+
+LOCAL_SOURCE_URLS: dict[str, dict[str, LocalSourceLinks]] = {}
 
 
 @dataclass(frozen=True)
@@ -45,19 +53,38 @@ class LocalWorkMetadata:
     version_code: str
     book: BookData
     path: Path
+    source_links: LocalSourceLinks
 
 
-def _normalize_local_text(value) -> list[str]:
+@dataclass(frozen=True)
+class LocalPassageBlock:
+    text: str
+    is_verse: bool
+
+
+def _normalize_local_text(value) -> list[LocalPassageBlock]:
     if isinstance(value, str):
         text = superscript_leading_verse_numbers(value)
-        return [text] if text else []
+        return [LocalPassageBlock(text, is_verse=True)] if text else []
     if isinstance(value, list):
-        result = []
+        result: list[LocalPassageBlock] = []
         for item in value:
             if isinstance(item, str):
                 text = superscript_leading_verse_numbers(item)
                 if text:
-                    result.append(text)
+                    result.append(LocalPassageBlock(text, is_verse=True))
+        return result
+    return []
+
+
+def _normalize_local_headers(value: object) -> list[str]:
+    if isinstance(value, Sequence) and not isinstance(value, str):
+        result: list[str] = []
+        for item in value:
+            if isinstance(item, str):
+                header = item.strip()
+                if header:
+                    result.append(header)
         return result
     return []
 
@@ -82,8 +109,11 @@ def _format_structured_local_verse(chapter: int, verse: int, text: str) -> str:
     return f"{marker} {verse_text}"
 
 
-def _normalize_local_passage_part(entry: object) -> list[str]:
+def _normalize_local_passage_part(entry: object) -> list[LocalPassageBlock]:
+    if isinstance(entry, LocalPassageBlock):
+        return [entry]
     if isinstance(entry, dict):
+        parts: list[LocalPassageBlock] = []
         chapter = entry.get("chapter")
         verse = entry.get("verse")
         text = entry.get("text")
@@ -93,8 +123,33 @@ def _normalize_local_passage_part(entry: object) -> list[str]:
             and isinstance(text, str)
         ):
             formatted = _format_structured_local_verse(chapter, verse, text)
-            return [formatted] if formatted else []
+            if formatted:
+                parts.append(LocalPassageBlock(formatted, is_verse=True))
+        return parts
+    if isinstance(entry, Sequence) and not isinstance(entry, str):
+        parts = []
+        for item in entry:
+            parts.extend(_normalize_local_passage_part(item))
+        return parts
     return _normalize_local_text(entry)
+
+
+def _join_local_passage_blocks(blocks: Sequence[LocalPassageBlock]) -> str:
+    paragraphs: list[str] = []
+    verse_run: list[str] = []
+
+    for block in blocks:
+        if block.is_verse:
+            verse_run.append(block.text)
+            continue
+        if verse_run:
+            paragraphs.append("\n".join(verse_run))
+            verse_run.clear()
+        paragraphs.append(block.text)
+
+    if verse_run:
+        paragraphs.append("\n".join(verse_run))
+    return "\n\n".join(paragraphs)
 
 
 def _parse_reference_components(
@@ -239,26 +294,82 @@ def _entries_from_chapters(
         return None
 
     entries: dict[str, tuple[str, object]] = {}
+    work_zero: tuple[object, ...] = ()
     for chapter_index, chapter in enumerate(chapters):
         if chapter is None:
             continue
-        if not isinstance(chapter, list):
+        if not isinstance(chapter, dict):
             return None
-        for verse_index, verse in enumerate(chapter):
+
+        verses = chapter.get("verses")
+        headers = chapter.get("headers", {})
+        if not isinstance(verses, list):
+            return None
+        if not isinstance(headers, Mapping):
+            return None
+
+        normalized_headers: dict[int, list[str]] = {}
+        for raw_verse, raw_headers in headers.items():
+            try:
+                verse_number = int(raw_verse)
+            except TypeError, ValueError:
+                return None
+            if verse_number < 0:
+                return None
+            if not isinstance(raw_headers, list):
+                return None
+            header_values = _normalize_local_headers(raw_headers)
+            if not header_values:
+                continue
+            normalized_headers[verse_number] = header_values
+
+        for verse in verses:
+            if verse is not None and not isinstance(verse, str):
+                return None
+
+        chapter_number = chapter_index
+        zero_text = verses[0].strip() if verses and verses[0] else ""
+        zero_content: list[object] = [
+            *(
+                LocalPassageBlock(header, is_verse=False)
+                for header in normalized_headers.get(0, ())
+            ),
+            *([LocalPassageBlock(zero_text, is_verse=False)] if zero_text else []),
+        ]
+
+        if chapter_number == 0:
+            if any(verse is not None for verse in verses[1:]):
+                return None
+            work_zero = tuple(zero_content)
+            continue
+
+        for verse_index, verse in enumerate(verses):
+            if verse_index == 0:
+                continue
             if verse is None:
                 continue
             if not isinstance(verse, str):
                 return None
-            chapter_number = chapter_index + 1
-            verse_number = verse_index + 1
-            reference = f"{book_title} {chapter_index + 1}:{verse_index + 1}"
-            entries[normalize_reference_lookup_key(reference)] = (
-                reference,
+            reference = f"{book_title} {chapter_number}:{verse_index}"
+            entry: list[object] = []
+            if chapter_number == 1 and verse_index == 1:
+                entry.extend(work_zero)
+            if verse_index == 1:
+                entry.extend(zero_content)
+            entry.extend(
+                LocalPassageBlock(header, is_verse=False)
+                for header in normalized_headers.get(verse_index, ())
+            )
+            entry.append(
                 {
                     "chapter": chapter_number,
-                    "verse": verse_number,
+                    "verse": verse_index,
                     "text": verse,
-                },
+                }
+            )
+            entries[normalize_reference_lookup_key(reference)] = (
+                reference,
+                tuple(entry),
             )
     return entries
 
@@ -271,7 +382,7 @@ def format_local_passage_entry(
 ) -> str | InlinePassageResult:
     title = reference.strip()
     description = None
-    text_parts: list[str]
+    text_parts: list[LocalPassageBlock]
 
     if isinstance(entry, Sequence) and not isinstance(entry, str):
         text_parts = []
@@ -294,7 +405,8 @@ def format_local_passage_entry(
         return EMPTY
 
     header = build_passage_header(title, version)
-    final_text = "\n\n".join([header, *text_parts]).strip()
+    passage_body = _join_local_passage_blocks(text_parts)
+    final_text = f"{header}\n\n{passage_body}".strip()
     if not inline_details:
         return final_text
 
@@ -318,7 +430,20 @@ def get_local_passage_url(passage: str, version: str) -> str | None:
     if requested_book is None:
         return None
     book_slug, _ = requested_book
-    return LOCAL_SOURCE_URLS.get(version.upper(), {}).get(book_slug)
+    source_links = LOCAL_SOURCE_URLS.get(version.upper(), {}).get(book_slug)
+    if source_links is None:
+        return None
+
+    components = _parse_reference_components(passage)
+    if components is None:
+        return source_links.work_url
+
+    _, start_chapter, _, _, _ = components
+    if 0 <= start_chapter < len(source_links.chapter_urls):
+        chapter_url = source_links.chapter_urls[start_chapter]
+        if chapter_url:
+            return chapter_url
+    return source_links.work_url
 
 
 class LocalBibleClient:
@@ -386,6 +511,7 @@ class LocalBibleClient:
         slug = raw_data.get("slug")
         aliases = raw_data.get("aliases")
         source_url = raw_data.get("source_url")
+        chapters = raw_data.get("chapters")
         if (
             not isinstance(version_code, str)
             or not version_code.strip()
@@ -399,8 +525,27 @@ class LocalBibleClient:
                 source_url is not None
                 and (not isinstance(source_url, str) or not source_url.strip())
             )
+            or not isinstance(chapters, list)
         ):
             return None
+
+        chapter_urls: list[str | None] = []
+        for chapter in chapters:
+            if chapter is None:
+                chapter_urls.append(None)
+                continue
+            if not isinstance(chapter, dict):
+                return None
+            chapter_source_url = chapter.get("source_url")
+            if chapter_source_url is None:
+                chapter_urls.append(None)
+                continue
+            if (
+                not isinstance(chapter_source_url, str)
+                or not chapter_source_url.strip()
+            ):
+                return None
+            chapter_urls.append(chapter_source_url.strip())
 
         book: BookData = {
             "title": title.strip(),
@@ -414,6 +559,10 @@ class LocalBibleClient:
             version_code=version_code.strip().upper(),
             book=book,
             path=path,
+            source_links=LocalSourceLinks(
+                work_url=source_url.strip() if isinstance(source_url, str) else None,
+                chapter_urls=tuple(chapter_urls),
+            ),
         )
 
     def _merge_books(self, works: list[LocalWorkMetadata]) -> tuple[BookData, ...]:
@@ -491,9 +640,7 @@ class LocalBibleClient:
                 continue
 
             LOCAL_SOURCE_URLS[version_code] = {
-                book["slug"]: book["source_url"]
-                for book in books
-                if "source_url" in book
+                work.book["slug"]: work.source_links for work in works
             }
             register_runtime_books(books, version_metadata.scripture_system)
             register_runtime_book_slugs(tuple(book["slug"] for book in books))

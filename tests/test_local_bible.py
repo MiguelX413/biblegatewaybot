@@ -15,6 +15,20 @@ from state import EMPTY, InlinePassageResult
 from versions import ScriptureSystemId, get_version_system
 
 
+def structured_chapter(
+    *verses: str | None,
+    headers: dict[str, list[str]] | None = None,
+    source_url: str | None = None,
+) -> dict[str, object]:
+    chapter: dict[str, object] = {
+        "verses": [None, *verses],
+        "headers": headers or {},
+    }
+    if source_url is not None:
+        chapter["source_url"] = source_url
+    return chapter
+
+
 class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
     async def test_local_client_returns_exact_passage(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -99,11 +113,12 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
                         "slug": "1enoch",
                         "aliases": ["1 enoch", "1enoch", "first enoch", "enoch"],
                         "chapters": [
-                            [
-                                "The words of the blessing.",
-                                "And he took up his discourse.",
-                                "And concerning the chosen I speak now.",
-                            ]
+                            None,
+                            structured_chapter(
+                                "Synthetic first verse.",
+                                "Synthetic second verse.",
+                                "Synthetic third verse.",
+                            ),
                         ],
                     }
                 ),
@@ -115,8 +130,8 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual(
                 "1 Enoch 1:1–2 HERM\n\n"
-                "1 The words of the blessing.\n\n"
-                "² And he took up his discourse.",
+                "1 Synthetic first verse.\n"
+                "² Synthetic second verse.",
                 result,
             )
 
@@ -145,10 +160,11 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
                         "slug": "1enoch",
                         "aliases": ["1 enoch", "1enoch", "first enoch", "enoch"],
                         "chapters": [
-                            [
-                                "The words of the blessing.",
-                                "And he took up his discourse.",
-                            ]
+                            None,
+                            structured_chapter(
+                                "Synthetic first verse.",
+                                "Synthetic second verse.",
+                            ),
                         ],
                     }
                 ),
@@ -159,9 +175,7 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
             result = await client.get_passage("1 Enoch 1", "HERM")
 
             self.assertEqual(
-                "1 Enoch 1 HERM\n\n"
-                "1 The words of the blessing.\n\n"
-                "² And he took up his discourse.",
+                "1 Enoch 1 HERM\n\n1 Synthetic first verse.\n² Synthetic second verse.",
                 result,
             )
 
@@ -195,7 +209,10 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
                             "enoch",
                         ],
                         "source_url": "https://doi.org/10.2307/j.ctt22nm5vn",
-                        "chapters": [["The words of the blessing."]],
+                        "chapters": [
+                            None,
+                            structured_chapter("Synthetic first verse."),
+                        ],
                     }
                 ),
                 encoding="utf-8",
@@ -241,7 +258,10 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
                         "slug": "1enoch",
                         "aliases": ["1 enoch", "enoch"],
                         "source_url": "https://doi.org/10.2307/j.ctt22nm5vn",
-                        "chapters": [["The words of the blessing."]],
+                        "chapters": [
+                            None,
+                            structured_chapter("Synthetic first verse."),
+                        ],
                     }
                 ),
                 encoding="utf-8",
@@ -253,7 +273,10 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
                         "title": "Jubilees",
                         "slug": "jubilees",
                         "aliases": ["jubilees", "book of jubilees"],
-                        "chapters": [["These are the words of the division."]],
+                        "chapters": [
+                            None,
+                            structured_chapter("These are the words of the division."),
+                        ],
                     }
                 ),
                 encoding="utf-8",
@@ -293,11 +316,15 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
                         "slug": "1enoch",
                         "aliases": ["1 enoch", "1enoch", "first enoch", "enoch"],
                         "chapters": [
-                            [
-                                "The words of the blessing.",
-                                "And he took up his discourse.",
-                            ],
-                            ["Another chapter begins.", "Its second verse follows."],
+                            None,
+                            structured_chapter(
+                                "Synthetic first verse.",
+                                "Synthetic second verse.",
+                            ),
+                            structured_chapter(
+                                "Another chapter begins.",
+                                "Its second verse follows.",
+                            ),
                         ],
                     }
                 ),
@@ -309,10 +336,66 @@ class LocalBibleTests(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual(
                 "1 Enoch 1:2–2:2 HERM\n\n"
-                "² And he took up his discourse.\n\n"
-                "2 Another chapter begins.\n\n"
+                "² Synthetic second verse.\n"
+                "2 Another chapter begins.\n"
                 "² Its second verse follows.",
                 result,
+            )
+
+    async def test_local_client_supports_structured_headers_and_prefaces(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base_path = Path(tmp_dir)
+            (base_path / "versions").mkdir()
+            (base_path / "works").mkdir()
+            (base_path / "versions" / "HERM.json").write_text(
+                json.dumps(
+                    {
+                        "code": "HERM",
+                        "name": "Hermeneia",
+                        "language": "EN",
+                        "system": "bible",
+                        "aliases": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (base_path / "works" / "1enoch.herm.json").write_text(
+                json.dumps(
+                    {
+                        "version_code": "HERM",
+                        "title": "1 Enoch",
+                        "slug": "1enoch",
+                        "aliases": ["1 enoch", "1enoch", "first enoch", "enoch"],
+                        "chapters": [
+                            {"verses": ["General preface"], "headers": {}},
+                            {
+                                "verses": [
+                                    "Chapter preface",
+                                    "Synthetic first verse.",
+                                ],
+                                "headers": {"1": ["Primary Section"]},
+                                "source_url": "https://example.com/1enoch/ch1",
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            client = LocalBibleClient(base_path)
+
+            result = await client.get_passage("1 Enoch 1:1", "HERM")
+
+            self.assertEqual(
+                "1 Enoch 1:1 HERM\n\n"
+                "General preface\n\n"
+                "Chapter preface\n\n"
+                "Primary Section\n\n"
+                "1 Synthetic first verse.",
+                result,
+            )
+            self.assertEqual(
+                "https://example.com/1enoch/ch1",
+                build_passage_header_url("1 Enoch 1:1", "HERM"),
             )
 
 
@@ -328,7 +411,7 @@ class LocalBibleFormattingTests(unittest.TestCase):
         )
         expected = (
             "John 3:16–17 NIV\n\n"
-            "¹⁶ For God so loved the world.\n\n"
+            "¹⁶ For God so loved the world.\n"
             "¹⁷ For God sent not his Son."
         )
         self.assertEqual(
