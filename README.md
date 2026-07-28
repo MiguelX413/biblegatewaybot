@@ -79,6 +79,7 @@ Notes:
 - apocrypha defaults to `NRSVue` when available and otherwise falls back to supported Sefaria-backed versions
 - Sefaria/apocrypha examples: `/get Tobit 4:7 NABRE`, `/get 3 Maccabees 1:1`, `/get Jubilees 1:1`
 - offline 1 Enoch example: `/get 1 Enoch 1:1 HERM`
+- offline OSB/SAAS example: `/get Genesis 1:1 SAAS`
 - accepted Bible.com version aliases include `GNADC`, `TMA-C`, `TKA`, `TKʿ`, and `ت.ك.ع`
 - offline passage files live under the hardcoded `offline/` directory and are discovered automatically at startup
 - offline version-family files live under `offline/<VERSION>/version.json`
@@ -87,3 +88,4 @@ Notes:
 - book files declare `title`, `slug`, `aliases`, optional `source_url`, and `chapters` or `passages`
 - `tools/import_1_enoch_epub.py` converts the Hermeneia 1 Enoch EPUB into `offline/HERM/version.json` and `offline/HERM/books/1enoch.json`, stripping footnote markers entirely
 - `tools/import_nets_epub.py` converts the NETS EPUB into `offline/NETS/version.json` and one JSON file per book under `offline/NETS/books/`
+- `tools/import_saas_epub.py` converts the Orthodox Study Bible EPUB into `offline/SAAS/version.json` and one JSON file per Old Testament book under `offline/SAAS/books/`
