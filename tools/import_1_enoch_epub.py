@@ -279,9 +279,8 @@ def version_payload() -> dict[str, object]:
     }
 
 
-def work_payload(chapters: list[ChapterData | None]) -> dict[str, object]:
+def book_payload(chapters: list[ChapterData | None]) -> dict[str, object]:
     return {
-        "version_code": "HERM",
         "title": "1 Enoch",
         "slug": "1enoch",
         "aliases": ["1 enoch", "1enoch", "first enoch", "enoch"],
@@ -302,21 +301,21 @@ def main() -> int:
     offline_dir = Path(sys.argv[2])
     chapters = import_epub(epub_path)
 
-    versions_dir = offline_dir / "versions"
-    works_dir = offline_dir / "works"
-    version_path = versions_dir / "HERM.json"
-    work_path = works_dir / "1enoch.herm.json"
+    version_dir = offline_dir / "HERM"
+    books_dir = version_dir / "books"
+    version_path = version_dir / "version.json"
+    book_path = books_dir / "1enoch.json"
 
-    versions_dir.mkdir(parents=True, exist_ok=True)
-    works_dir.mkdir(parents=True, exist_ok=True)
+    version_dir.mkdir(parents=True, exist_ok=True)
+    books_dir.mkdir(parents=True, exist_ok=True)
 
     version_path.write_text(
         json_dumps(version_payload(), ensure_ascii=False, indent=2, sort_keys=True)
         + "\n",
         encoding="utf-8",
     )
-    work_path.write_text(
-        json_dumps(work_payload(chapters), ensure_ascii=False, indent=2, sort_keys=True)
+    book_path.write_text(
+        json_dumps(book_payload(chapters), ensure_ascii=False, indent=2, sort_keys=True)
         + "\n",
         encoding="utf-8",
     )
@@ -332,7 +331,7 @@ def main() -> int:
             for verse_index, verse in enumerate(verses)
             if verse_index > 0 and isinstance(verse, str) and verse
         )
-    print(f"Wrote {version_path} and {work_path} with {verse_count} verse entries")
+    print(f"Wrote {version_path} and {book_path} with {verse_count} verse entries")
     return 0
 
 

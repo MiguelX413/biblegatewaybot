@@ -26,8 +26,6 @@ from versions import (
 )
 
 OFFLINE_BIBLES_PATH = Path(__file__).resolve().parent.parent / "offline"
-OFFLINE_VERSIONS_PATH = OFFLINE_BIBLES_PATH / "versions"
-OFFLINE_WORKS_PATH = OFFLINE_BIBLES_PATH / "works"
 
 
 @dataclass(frozen=True)
@@ -49,7 +47,7 @@ class LocalVersionMetadata:
 
 
 @dataclass(frozen=True)
-class LocalWorkMetadata:
+class LocalBookMetadata:
     version_code: str
     book: BookData
     path: Path
@@ -451,12 +449,9 @@ class LocalBibleClient:
         self._base_path = (
             Path(base_path) if base_path is not None else OFFLINE_BIBLES_PATH
         )
-        self._versions_path = self._base_path / "versions"
-        self._works_path = self._base_path / "works"
         self._cache: dict[str, dict[str, tuple[str, object]]] = {}
         self._version_metadata_by_code: dict[str, LocalVersionMetadata] = {}
-        self._works_by_version: dict[str, list[LocalWorkMetadata]] = {}
-        self._legacy_paths_by_version: dict[str, Path] = {}
+        self._books_by_version: dict[str, list[LocalBookMetadata]] = {}
         self._scan_offline_versions()
 
     async def close(self) -> None:
@@ -500,22 +495,20 @@ class LocalBibleClient:
             ),
         )
 
-    def _parse_work_metadata(
-        self, path: Path, raw_data: object
-    ) -> LocalWorkMetadata | None:
+    def _parse_book_metadata(
+        self, path: Path, raw_data: object, version_code: str
+    ) -> LocalBookMetadata | None:
         if not isinstance(raw_data, dict):
             return None
 
-        version_code = raw_data.get("version_code")
         title = raw_data.get("title")
         slug = raw_data.get("slug")
         aliases = raw_data.get("aliases")
         source_url = raw_data.get("source_url")
         chapters = raw_data.get("chapters")
+        passages = raw_data.get("passages")
         if (
-            not isinstance(version_code, str)
-            or not version_code.strip()
-            or not isinstance(title, str)
+            not isinstance(title, str)
             or not title.strip()
             or not isinstance(slug, str)
             or not slug.strip()
@@ -525,27 +518,28 @@ class LocalBibleClient:
                 source_url is not None
                 and (not isinstance(source_url, str) or not source_url.strip())
             )
-            or not isinstance(chapters, list)
+            or (not isinstance(chapters, list) and not isinstance(passages, dict))
         ):
             return None
 
         chapter_urls: list[str | None] = []
-        for chapter in chapters:
-            if chapter is None:
-                chapter_urls.append(None)
-                continue
-            if not isinstance(chapter, dict):
-                return None
-            chapter_source_url = chapter.get("source_url")
-            if chapter_source_url is None:
-                chapter_urls.append(None)
-                continue
-            if (
-                not isinstance(chapter_source_url, str)
-                or not chapter_source_url.strip()
-            ):
-                return None
-            chapter_urls.append(chapter_source_url.strip())
+        if isinstance(chapters, list):
+            for chapter in chapters:
+                if chapter is None:
+                    chapter_urls.append(None)
+                    continue
+                if not isinstance(chapter, dict):
+                    return None
+                chapter_source_url = chapter.get("source_url")
+                if chapter_source_url is None:
+                    chapter_urls.append(None)
+                    continue
+                if (
+                    not isinstance(chapter_source_url, str)
+                    or not chapter_source_url.strip()
+                ):
+                    return None
+                chapter_urls.append(chapter_source_url.strip())
 
         book: BookData = {
             "title": title.strip(),
@@ -555,8 +549,8 @@ class LocalBibleClient:
         if isinstance(source_url, str) and source_url.strip():
             book["source_url"] = source_url.strip()
 
-        return LocalWorkMetadata(
-            version_code=version_code.strip().upper(),
+        return LocalBookMetadata(
+            version_code=version_code,
             book=book,
             path=path,
             source_links=LocalSourceLinks(
@@ -565,10 +559,12 @@ class LocalBibleClient:
             ),
         )
 
-    def _merge_books(self, works: list[LocalWorkMetadata]) -> tuple[BookData, ...]:
+    def _merge_books(
+        self, metadata_entries: list[LocalBookMetadata]
+    ) -> tuple[BookData, ...]:
         books_by_slug: dict[str, BookData] = {}
-        for work in works:
-            book = work.book
+        for metadata in metadata_entries:
+            book = metadata.book
             existing = books_by_slug.get(book["slug"])
             if existing is None:
                 books_by_slug[book["slug"]] = book
@@ -576,12 +572,12 @@ class LocalBibleClient:
             if existing["title"] != book["title"]:
                 raise ValueError(
                     "Conflicting offline book metadata for "
-                    f"{work.version_code}/{book['slug']}"
+                    f"{metadata.version_code}/{book['slug']}"
                 )
             if existing.get("source_url") != book.get("source_url"):
                 raise ValueError(
                     "Conflicting offline book URLs for "
-                    f"{work.version_code}/{book['slug']}"
+                    f"{metadata.version_code}/{book['slug']}"
                 )
             merged: BookData = {
                 "title": book["title"],
@@ -596,51 +592,65 @@ class LocalBibleClient:
     def _scan_offline_versions(self) -> None:
         LOCAL_SOURCE_URLS.clear()
 
-        if self._versions_path.exists():
-            for path in sorted(self._versions_path.glob("*.json")):
-                try:
-                    raw_data = json_loads(path.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError) as exc:
-                    logging.warning(
-                        "Error loading offline version file %s: %s", path, exc
-                    )
-                    continue
+        if not self._base_path.exists():
+            return
 
-                metadata = self._parse_version_metadata(raw_data)
-                if metadata is None:
-                    logging.warning("Invalid offline version metadata file %s", path)
-                    continue
-                self._version_metadata_by_code[metadata.code] = metadata
-
-        if self._works_path.exists():
-            for path in sorted(self._works_path.glob("*.json")):
-                try:
-                    raw_data = json_loads(path.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError) as exc:
-                    logging.warning("Error loading offline work file %s: %s", path, exc)
-                    continue
-
-                work = self._parse_work_metadata(path, raw_data)
-                if work is None:
-                    logging.warning("Invalid offline work metadata file %s", path)
-                    continue
-                self._works_by_version.setdefault(work.version_code, []).append(work)
-
-        for path in sorted(self._base_path.glob("*.json")):
-            self._legacy_paths_by_version[path.stem.upper()] = path
-
-        for version_code, version_metadata in self._version_metadata_by_code.items():
-            works = self._works_by_version.get(version_code, [])
-            if not works:
+        for version_dir in sorted(
+            path for path in self._base_path.iterdir() if path.is_dir()
+        ):
+            version_path = version_dir / "version.json"
+            if not version_path.exists():
                 continue
             try:
-                books = self._merge_books(works)
+                raw_version_data = json_loads(version_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                logging.warning(
+                    "Error loading offline version file %s: %s", version_path, exc
+                )
+                continue
+
+            metadata = self._parse_version_metadata(raw_version_data)
+            if metadata is None:
+                logging.warning(
+                    "Invalid offline version metadata file %s", version_path
+                )
+                continue
+            if version_dir.name.upper() != metadata.code:
+                logging.warning(
+                    "Offline version directory %s does not match code %s",
+                    version_dir,
+                    metadata.code,
+                )
+                continue
+
+            self._version_metadata_by_code[metadata.code] = metadata
+            books_dir = version_dir / "books"
+            if not books_dir.exists():
+                continue
+            for path in sorted(books_dir.glob("*.json")):
+                try:
+                    raw_book_data = json_loads(path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as exc:
+                    logging.warning("Error loading offline book file %s: %s", path, exc)
+                    continue
+
+                book = self._parse_book_metadata(path, raw_book_data, metadata.code)
+                if book is None:
+                    logging.warning("Invalid offline book metadata file %s", path)
+                    continue
+                self._books_by_version.setdefault(book.version_code, []).append(book)
+        for version_code, version_metadata in self._version_metadata_by_code.items():
+            book_metadata = self._books_by_version.get(version_code, [])
+            if not book_metadata:
+                continue
+            try:
+                books = self._merge_books(book_metadata)
             except ValueError as exc:
                 logging.warning("%s", exc)
                 continue
 
             LOCAL_SOURCE_URLS[version_code] = {
-                work.book["slug"]: work.source_links for work in works
+                book.book["slug"]: book.source_links for book in book_metadata
             }
             register_runtime_books(books, version_metadata.scripture_system)
             register_runtime_book_slugs(tuple(book["slug"] for book in books))
@@ -655,30 +665,30 @@ class LocalBibleClient:
                 ),
             )
 
-    def _load_structured_work_entries(
+    def _load_structured_book_entries(
         self, version_code: str
     ) -> dict[str, tuple[str, object]] | None:
-        works = self._works_by_version.get(version_code, [])
-        if not works:
+        books = self._books_by_version.get(version_code, [])
+        if not books:
             return {}
 
         normalized_entries: dict[str, tuple[str, object]] = {}
-        for work in works:
+        for book in books:
             try:
-                raw_data = json_loads(work.path.read_text(encoding="utf-8"))
+                raw_data = json_loads(book.path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError) as exc:
                 logging.warning(
-                    "Error loading offline work file %s: %s", work.path, exc
+                    "Error loading offline book file %s: %s", book.path, exc
                 )
                 return None
 
             chapters = raw_data.get("chapters")
             if chapters is not None:
-                chapter_entries = _entries_from_chapters(work.book["title"], chapters)
+                chapter_entries = _entries_from_chapters(book.book["title"], chapters)
                 if chapter_entries is None:
                     logging.warning(
-                        "Offline work file %s must contain valid chapter arrays",
-                        work.path,
+                        "Offline book file %s must contain valid chapter arrays",
+                        book.path,
                     )
                     return None
                 normalized_entries.update(chapter_entries)
@@ -687,8 +697,8 @@ class LocalBibleClient:
             passages = raw_data.get("passages")
             if not isinstance(passages, dict):
                 logging.warning(
-                    "Offline work file %s must contain either chapters or passages",
-                    work.path,
+                    "Offline book file %s must contain either chapters or passages",
+                    book.path,
                 )
                 return None
 
@@ -701,29 +711,6 @@ class LocalBibleClient:
             )
         return normalized_entries
 
-    def _load_legacy_version_entries(
-        self, version_code: str
-    ) -> dict[str, tuple[str, object]] | None:
-        path = self._legacy_paths_by_version.get(version_code)
-        if path is None:
-            return {}
-
-        try:
-            raw_data = json_loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            logging.warning("Error loading offline Bible file %s: %s", path, exc)
-            return None
-
-        if not isinstance(raw_data, dict):
-            logging.warning("Offline Bible file %s must contain a JSON object", path)
-            return None
-
-        return {
-            normalize_reference_lookup_key(reference): (reference, entry)
-            for reference, entry in raw_data.items()
-            if isinstance(reference, str)
-        }
-
     def _load_version_entries(
         self, version: str
     ) -> dict[str, tuple[str, object]] | None:
@@ -731,18 +718,11 @@ class LocalBibleClient:
         if version_code in self._cache:
             return self._cache[version_code]
 
-        structured_entries = self._load_structured_work_entries(version_code)
+        structured_entries = self._load_structured_book_entries(version_code)
         if structured_entries is None:
             return None
-        if structured_entries:
-            self._cache[version_code] = structured_entries
-            return structured_entries
-
-        legacy_entries = self._load_legacy_version_entries(version_code)
-        if legacy_entries is None:
-            return None
-        self._cache[version_code] = legacy_entries
-        return legacy_entries
+        self._cache[version_code] = structured_entries
+        return structured_entries
 
     async def get_passage(
         self,
