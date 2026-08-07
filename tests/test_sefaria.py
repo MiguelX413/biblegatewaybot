@@ -78,6 +78,19 @@ class SefariaParsingTests(unittest.TestCase):
         self.assertIn("Genesis 1:1 ONKELOS", result)
         self.assertNotIn("Onkelos Genesis", result)
 
+    def test_parse_rasag_payload_uses_canonical_book_reference(self):
+        payload = {
+            "ref": "Tafsir Rasag, Genesis 1:1",
+            "versions": [{"text": ["אול מא כלק אללה"]}],
+        }
+
+        result = parse_passage_payload(payload, version="RASAG")
+
+        self.assertIsInstance(result, str)
+        assert isinstance(result, str)
+        self.assertIn("Genesis 1:1 RASAG", result)
+        self.assertNotIn("Tafsir Rasag", result)
+
     def test_parse_v1_he_passage_payload(self):
         result = parse_v1_he_passage_payload(
             V1_HE_PASSAGE_PAYLOAD, version="NEUHAUSEN1914"
@@ -124,6 +137,16 @@ class SefariaParsingTests(unittest.TestCase):
         self.assertEqual(
             "Onkelos Deuteronomy 6:4",
             normalize_sefaria_passage_reference("Deuteronomy 6:4", "ONKELOS"),
+        )
+
+    def test_normalize_sefaria_passage_reference_for_rasag(self):
+        self.assertEqual(
+            "Tafsir Rasag, Genesis 1:1",
+            normalize_sefaria_passage_reference("Genesis 1:1", "RASAG"),
+        )
+        self.assertEqual(
+            "Tafsir Rasag, Deuteronomy 6:4",
+            normalize_sefaria_passage_reference("Deuteronomy 6:4", "RASAG"),
         )
 
     def test_build_sefaria_passage_url_includes_specific_version(self):
@@ -174,6 +197,21 @@ class SefariaParsingTests(unittest.TestCase):
         self.assertEqual(
             "hebrew|Targum Onkelos, vocalized according to the Yemenite Taj",
             exodus_query,
+        )
+
+    def test_rasag_version_query_and_source_url(self):
+        version_query = resolve_sefaria_version_query(
+            "Genesis 1:1",
+            get_sefaria_version_config("RASAG"),
+        )
+        self.assertEqual(
+            "hebrew|Tafsir al-Torah bi-al-Arabiya, Paris, 1893",
+            version_query,
+        )
+        self.assertEqual(
+            "https://sefaria.org/Tafsir_Rasag%2C_Genesis.1:1"
+            "?lang=bi&vhe=hebrew%7CTafsir%20al-Torah%20bi-al-Arabiya%2C%20Paris%2C%201893",
+            build_sefaria_passage_url("Genesis 1:1", "RASAG", version_query),
         )
 
 

@@ -29,7 +29,15 @@ SEFARIA_API_BASE_URL = "https://www.sefaria.org/api/v3/texts"
 SEFARIA_V1_API_BASE_URL = "https://www.sefaria.org/api/texts"
 SEFARIA_V1_HE_FIELD_VERSIONS = frozenset({"NEUHAUSEN1914"})
 SEFARIA_V1_TEXT_FIELD_VERSIONS = frozenset({"FERRARA"})
-SEFARIA_INDEX_PREFIX_BY_VERSION = {"ONKELOS": "Onkelos"}
+SEFARIA_HEBREW_SOURCE_VERSIONS = frozenset({"ONKELOS", "RASAG"})
+SEFARIA_INDEX_TEMPLATE_BY_VERSION = {
+    "ONKELOS": "Onkelos {book}",
+    "RASAG": "Tafsir Rasag, {book}",
+}
+SEFARIA_REFERENCE_PREFIX_BY_VERSION = {
+    "ONKELOS": "Onkelos ",
+    "RASAG": "Tafsir Rasag, ",
+}
 SEFARIA_INDEX_TITLE_BY_BOOK_SLUG = {
     "sirach": "Ben Sira",
     "wisdom": "The Wisdom of Solomon",
@@ -60,7 +68,9 @@ def build_sefaria_passage_url(
     url = f"https://sefaria.org/{quote(path, safe='._:-')}"
     if version_query:
         encoded_version = quote(version_query, safe="")
-        version_parameter = "vhe" if version.upper() == "ONKELOS" else "ven"
+        version_parameter = (
+            "vhe" if version.upper() in SEFARIA_HEBREW_SOURCE_VERSIONS else "ven"
+        )
         return f"{url}?lang=bi&{version_parameter}={encoded_version}"
     return url
 
@@ -106,9 +116,9 @@ def normalize_sefaria_passage_reference(passage: str, version: str) -> str:
         return normalized
     book_slug, book_title = requested_book
     index_title = SEFARIA_INDEX_TITLE_BY_BOOK_SLUG.get(book_slug)
-    index_prefix = SEFARIA_INDEX_PREFIX_BY_VERSION.get(version.upper())
-    if index_title is None and index_prefix is not None:
-        index_title = f"{index_prefix} {book_title}"
+    index_template = SEFARIA_INDEX_TEMPLATE_BY_VERSION.get(version.upper())
+    if index_title is None and index_template is not None:
+        index_title = index_template.format(book=book_title)
     if index_title is None:
         return normalized
     return re.sub(r"^.+?(?=\s+\d)", index_title, normalized, count=1)
@@ -124,8 +134,9 @@ def parse_passage_payload(
         return EMPTY
 
     reference = str(payload.get("ref") or "").strip() or "Requested passage"
-    if version.upper() == "ONKELOS":
-        reference = re.sub(r"^Onkelos\s+", "", reference)
+    reference_prefix = SEFARIA_REFERENCE_PREFIX_BY_VERSION.get(version.upper())
+    if reference_prefix is not None:
+        reference = reference.removeprefix(reference_prefix)
     text_parts = _format_text_parts(reference, versions[0].get("text"))
     if not text_parts:
         return EMPTY

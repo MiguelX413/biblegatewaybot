@@ -56,6 +56,7 @@ class LanguageCode(StrEnum):
     IS = "IS"
     IT = "IT"
     JAC = "JAC"
+    JRB = "JRB"
     KEK = "KEK"
     LAD = "LAD"
     LA = "LA"
@@ -155,6 +156,7 @@ LANGUAGE_NAMES: Final[dict[LanguageCode, str]] = {
     LanguageCode.IS: "Íslenska",
     LanguageCode.IT: "Italiano",
     LanguageCode.JAC: "Jacalteco, Oriental",
+    LanguageCode.JRB: "ערביה יהודיה",
     LanguageCode.KEK: "Kekchi",
     LanguageCode.LAD: "Ladino",
     LanguageCode.LA: "Latīna",
@@ -1254,6 +1256,20 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
                         "Transkrito por Yehuda Sidi, 2021 [lad]"
                     ),
                 ),
+            ],
+        ),
+        (
+            LanguageCode.JRB,
+            [
+                Version.sefaria(
+                    "Tafsir Rasag",
+                    "RASAG",
+                    frozenset(TORAH_BOOK_SLUGS),
+                    aliases=("TAFSIRRASAG", "SAADIAGAON"),
+                    sefaria_config=(
+                        "hebrew|Tafsir al-Torah bi-al-Arabiya, Paris, 1893"
+                    ),
+                )
             ],
         ),
         (

@@ -14,6 +14,26 @@ from versions import (
 
 
 class LanguageGroupTests(unittest.TestCase):
+    def test_tafsir_rasag_is_judeo_arabic_torah(self):
+        system = get_scripture_system(ScriptureSystemId.BIBLE)
+        label = format_language_group(LanguageCode.JRB)
+
+        self.assertIn(label, system.language_group_labels)
+        self.assertEqual(
+            ("Tafsir Rasag (RASAG)",),
+            system.get_versions_for_language(LanguageCode.JRB),
+        )
+        self.assertEqual("RASAG", resolve_version_code("Tafsir Rasag"))
+        self.assertEqual("RASAG", resolve_version_code("Saadia Gaon"))
+
+        version = get_version("RASAG")
+        self.assertIsNotNone(version)
+        assert version is not None
+        self.assertEqual(
+            frozenset({"genesis", "exodus", "leviticus", "numbers", "deuteronomy"}),
+            version.supported_book_slugs,
+        )
+
     def test_targum_onkelos_is_jewish_babylonian_aramaic_torah(self):
         system = get_scripture_system(ScriptureSystemId.BIBLE)
         label = format_language_group(LanguageCode.TMR)
