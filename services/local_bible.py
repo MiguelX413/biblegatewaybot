@@ -60,15 +60,20 @@ class LocalPassageBlock:
     is_verse: bool
 
 
+def _clean_local_source_text(text: str) -> str:
+    normalized = text.replace("\u00ad", "")
+    return re.sub(r"\s+,", ",", normalized).strip()
+
+
 def _normalize_local_text(value) -> list[LocalPassageBlock]:
     if isinstance(value, str):
-        text = superscript_leading_verse_numbers(value)
+        text = superscript_leading_verse_numbers(_clean_local_source_text(value))
         return [LocalPassageBlock(text, is_verse=True)] if text else []
     if isinstance(value, list):
         result: list[LocalPassageBlock] = []
         for item in value:
             if isinstance(item, str):
-                text = superscript_leading_verse_numbers(item)
+                text = superscript_leading_verse_numbers(_clean_local_source_text(item))
                 if text:
                     result.append(LocalPassageBlock(text, is_verse=True))
         return result
@@ -80,7 +85,7 @@ def _normalize_local_headers(value: object) -> list[str]:
         result: list[str] = []
         for item in value:
             if isinstance(item, str):
-                header = item.strip()
+                header = _clean_local_source_text(item)
                 if header:
                     result.append(header)
         return result
@@ -88,7 +93,7 @@ def _normalize_local_headers(value: object) -> list[str]:
 
 
 def _strip_leading_verse_number(text: str, verse: int) -> str:
-    normalized = text.strip()
+    normalized = _clean_local_source_text(text)
     if not normalized:
         return ""
     return re.sub(

@@ -8,6 +8,31 @@ from tools.import_1_enoch_epub import (
 
 
 class Import1EnochEpubTests(unittest.TestCase):
+    def test_extract_text_removes_epub_artifacts_from_chapter_93(self):
+        html = """
+        <html><body>
+        <p class="indent">
+        93:1 After this Enoch took up his discourse
+        <sup class="footnote">1</sup>, saying he understood the
+        \u00adrevelation.
+        </p>
+        </body></html>
+        """
+
+        verses = extract_text_from_html(html).verses
+
+        self.assertEqual(
+            {
+                93: {
+                    1: (
+                        "After this Enoch took up his discourse, "
+                        "saying he understood the revelation."
+                    )
+                }
+            },
+            verses,
+        )
+
     def test_extract_verses_splits_inline_slash_verse_markers(self):
         html = """
         <html><body>

@@ -46,20 +46,26 @@ class ExtractedText:
     headers: HeaderMap
 
 
+def clean_source_text(text: str) -> str:
+    normalized = text.replace("\u00ad", "")
+    return re.sub(r"\s+,", ",", normalized).strip()
+
+
 def clean_paragraph_text(paragraph) -> str:
     paragraph_copy = BeautifulSoup(str(paragraph), "lxml")
     for tag in paragraph_copy.select("sup.footnote, a.footnote"):
         tag.decompose()
     text = " ".join(paragraph_copy.get_text(" ", strip=True).split())
     text = FOOTNOTE_NUMBER_PATTERN.sub("", text)
-    return text.strip()
+    return clean_source_text(text)
 
 
 def clean_heading_text(heading) -> str:
     heading_copy = BeautifulSoup(str(heading), "lxml")
     for tag in heading_copy.select("sup.footnote, a.footnote"):
         tag.decompose()
-    return " ".join(heading_copy.get_text(" ", strip=True).split()).strip()
+    text = " ".join(heading_copy.get_text(" ", strip=True).split())
+    return clean_source_text(text)
 
 
 def split_inline_verse_segments(text: str) -> list[tuple[int | None, int, str]]:

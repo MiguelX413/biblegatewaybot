@@ -464,6 +464,26 @@ class LocalBibleFormattingTests(unittest.TestCase):
             result,
         )
 
+    def test_format_local_passage_entry_cleans_hermeneia_epub_artifacts(self):
+        result = format_local_passage_entry(
+            "1 Enoch 93:1",
+            {
+                "chapter": 93,
+                "verse": 1,
+                "text": (
+                    "After this Enoch took up his discourse , saying he "
+                    "\u00adunderstood."
+                ),
+            },
+            version="HERM",
+        )
+
+        self.assertEqual(
+            "1 Enoch 93:1 HERM\n\n"
+            "93 After this Enoch took up his discourse, saying he understood.",
+            result,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
