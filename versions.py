@@ -78,6 +78,7 @@ class LanguageCode(StrEnum):
     RO = "RO"
     RU = "RU"
     SK = "SK"
+    SMP = "SMP"
     SO = "SO"
     SQ = "SQ"
     SR = "SR"
@@ -174,6 +175,7 @@ LANGUAGE_NAMES: Final[dict[LanguageCode, str]] = {
     LanguageCode.RO: "Română",
     LanguageCode.RU: "Ру́сский",
     LanguageCode.SK: "Slovenčina",
+    LanguageCode.SMP: "ࠏࠁࠓࠉࠕ ࠔࠌࠓࠉࠕ",
     LanguageCode.SO: "Somali",
     LanguageCode.SQ: "Shqip",
     LanguageCode.SR: "Српски",

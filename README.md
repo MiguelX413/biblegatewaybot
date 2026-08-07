@@ -79,6 +79,7 @@ Notes:
 - apocrypha defaults to `NRSVue` when available and otherwise falls back to supported Sefaria-backed versions
 - Sefaria/apocrypha examples: `/get Tobit 4:7 NABRE`, `/get 3 Maccabees 1:1`, `/get Jubilees 1:1`
 - offline 1 Enoch example: `/get 1 Enoch 1:1 HERM`
+- Samaritan Pentateuch examples: `/get Genesis 1:1 SP` for Samaritan script or `/get Genesis 1:1 SPSQ` for Square script
 - accepted Bible.com version aliases include `GNADC`, `TMA-C`, `TKA`, `TKʿ`, and `ت.ك.ع`
 - offline passage files live under the hardcoded `offline/` directory and are discovered automatically at startup
 - offline version-family files live under `offline/<VERSION>/version.json`
@@ -87,3 +88,6 @@ Notes:
 - book files declare `title`, `slug`, `aliases`, optional `source_url`, and `chapters` or `passages`
 - `tools/import_1_enoch_epub.py` converts the Hermeneia 1 Enoch EPUB into `offline/HERM/version.json` and `offline/HERM/books/1enoch.json`, stripping footnote markers entirely
 - `tools/import_nets_epub.py` converts the NETS EPUB into `offline/NETS/version.json` and one JSON file per book under `offline/NETS/books/`
+- `tools/import_samaritan_pentateuch.py` downloads the latest [Text-Fabric Samaritan Pentateuch dataset](https://doi.org/10.5281/zenodo.7734632) and creates `SP` (Samaritan script) and `SPSQUARE`/`SPSQ` (Square script) offline versions; run `python -m tools.import_samaritan_pentateuch offline`, or supply a downloaded source with `python -m tools.import_samaritan_pentateuch <dataset-directory-or-zip> offline`
+- automatically downloaded Samaritan Pentateuch files link to the DOI of the exact Zenodo version imported; explicit directory or ZIP imports use the concept DOI
+- the Samaritan Pentateuch source text is licensed under CC BY-NC 4.0; review its attribution and noncommercial-use terms before distributing generated files
