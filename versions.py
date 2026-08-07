@@ -44,6 +44,7 @@ class LanguageCode(StrEnum):
     FA = "FA"
     FI = "FI"
     FR = "FR"
+    GEZ = "GEZ"
     GRC = "GRC"
     HE = "HE"
     HI = "HI"
@@ -141,6 +142,7 @@ LANGUAGE_NAMES: Final[dict[LanguageCode, str]] = {
     LanguageCode.FA: "فارسی",
     LanguageCode.FI: "Suomi",
     LanguageCode.FR: "Français",
+    LanguageCode.GEZ: "ግዕዝ",
     LanguageCode.GRC: "Ἀρχαίᾱ Ἑλληνική",
     LanguageCode.HE: "עִבְרִית",
     LanguageCode.HI: "हिन्दी",
@@ -1675,11 +1677,15 @@ class ScriptureSystem:
 
     @property
     def language_group_labels(self) -> tuple[LanguageGroup, ...]:
-        return tuple(format_language_group(language) for language in self.version_data)
+        return tuple(
+            format_language_group(language)
+            for language, versions in self.version_data.items()
+            if versions
+        )
 
     def resolve_language_group(self, label: str) -> LanguageCode | None:
         language = LANGUAGE_GROUP_CODES.get(label)
-        if language in self.version_data:
+        if language is not None and self.version_data.get(language):
             return language
         return None
 
@@ -1687,7 +1693,7 @@ class ScriptureSystem:
         self, language: LanguageCode
     ) -> tuple[VersionLabel, ...] | None:
         versions = self.version_data.get(language)
-        if versions is None:
+        if not versions:
             return None
         return tuple(version.full_label for version in versions)
 
@@ -2025,7 +2031,8 @@ def unregister_runtime_version(
         ]
         if len(filtered_versions) != len(versions):
             changed = True
-        version_data[language] = filtered_versions
+        if filtered_versions:
+            version_data[language] = filtered_versions
     if not changed:
         return
 
