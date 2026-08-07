@@ -88,6 +88,7 @@ class LanguageCode(StrEnum):
     TA = "TA"
     TH = "TH"
     TL = "TL"
+    TMR = "TMR"
     TR = "TR"
     TWI = "TWI"
     UK = "UK"
@@ -186,6 +187,7 @@ LANGUAGE_NAMES: Final[dict[LanguageCode, str]] = {
     LanguageCode.TA: "தமிழ்",
     LanguageCode.TH: "ภาษาไทย",
     LanguageCode.TL: "Tagalog",
+    LanguageCode.TMR: "אֲרָמִית",
     LanguageCode.TR: "Türkçe",
     LanguageCode.TWI: "Twi",
     LanguageCode.UK: "Украї́нська",
@@ -1419,6 +1421,30 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             [
                 Version.gateway("Ang Dating Biblia (1905)", "ADB1905"),
                 Version.gateway("Ang Salita ng Diyos", "SND"),
+            ],
+        ),
+        (
+            LanguageCode.TMR,
+            [
+                Version.sefaria(
+                    "Targum Onkelos, vocalized according to the Yemenite Taj",
+                    "ONKELOS",
+                    frozenset(TORAH_BOOK_SLUGS),
+                    aliases=("ONQ", "TARGUMONKELOS"),
+                    sefaria_config={
+                        "genesis": (
+                            "hebrew|Targum Onkelos, vocalized according to the "
+                            "Yemenite Taj "
+                        ),
+                        **{
+                            book_slug: (
+                                "hebrew|Targum Onkelos, vocalized according to the "
+                                "Yemenite Taj"
+                            )
+                            for book_slug in TORAH_BOOK_SLUGS[1:]
+                        },
+                    },
+                )
             ],
         ),
         (

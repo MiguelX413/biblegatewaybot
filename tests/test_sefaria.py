@@ -65,6 +65,19 @@ class SefariaParsingTests(unittest.TestCase):
     def test_parse_passage_payload_empty(self):
         self.assertEqual(EMPTY, parse_passage_payload({"versions": []}, version="JPS"))
 
+    def test_parse_onkelos_payload_uses_canonical_book_reference(self):
+        payload = {
+            "ref": "Onkelos Genesis 1:1",
+            "versions": [{"text": ["בְּקַדְמִין"]}],
+        }
+
+        result = parse_passage_payload(payload, version="ONKELOS")
+
+        self.assertIsInstance(result, str)
+        assert isinstance(result, str)
+        self.assertIn("Genesis 1:1 ONKELOS", result)
+        self.assertNotIn("Onkelos Genesis", result)
+
     def test_parse_v1_he_passage_payload(self):
         result = parse_v1_he_passage_payload(
             V1_HE_PASSAGE_PAYLOAD, version="NEUHAUSEN1914"
@@ -103,6 +116,16 @@ class SefariaParsingTests(unittest.TestCase):
             normalize_sefaria_passage_reference("Letter of Aristeas 1:1", "ARISTEAS"),
         )
 
+    def test_normalize_sefaria_passage_reference_for_onkelos(self):
+        self.assertEqual(
+            "Onkelos Genesis 1:1",
+            normalize_sefaria_passage_reference("Genesis 1:1", "ONKELOS"),
+        )
+        self.assertEqual(
+            "Onkelos Deuteronomy 6:4",
+            normalize_sefaria_passage_reference("Deuteronomy 6:4", "ONKELOS"),
+        )
+
     def test_build_sefaria_passage_url_includes_specific_version(self):
         version_query = resolve_sefaria_version_query(
             "Genesis 1:1",
@@ -127,6 +150,30 @@ class SefariaParsingTests(unittest.TestCase):
             "https://sefaria.org/Genesis.1:1"
             "?lang=bi&ven=yiddish%7CYehoyesh%27s%20Yiddish%20Tanakh%20Translation%20%5Byi%5D",
             build_sefaria_passage_url("Genesis 1:1", "YEHOYESH", version_query),
+        )
+
+    def test_onkelos_version_query_and_source_url(self):
+        version_query = resolve_sefaria_version_query(
+            "Genesis 1:1",
+            get_sefaria_version_config("ONKELOS"),
+        )
+        self.assertEqual(
+            "hebrew|Targum Onkelos, vocalized according to the Yemenite Taj ",
+            version_query,
+        )
+        self.assertEqual(
+            "https://sefaria.org/Onkelos_Genesis.1:1"
+            "?lang=bi&vhe=hebrew%7CTargum%20Onkelos%2C%20vocalized%20according%20to%20the%20Yemenite%20Taj%20",
+            build_sefaria_passage_url("Genesis 1:1", "ONKELOS", version_query),
+        )
+
+        exodus_query = resolve_sefaria_version_query(
+            "Exodus 1:1",
+            get_sefaria_version_config("ONKELOS"),
+        )
+        self.assertEqual(
+            "hebrew|Targum Onkelos, vocalized according to the Yemenite Taj",
+            exodus_query,
         )
 
 

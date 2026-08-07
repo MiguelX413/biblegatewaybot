@@ -6,12 +6,34 @@ from versions import (
     Version,
     format_language_group,
     get_scripture_system,
+    get_version,
     register_runtime_version,
+    resolve_version_code,
     unregister_runtime_version,
 )
 
 
 class LanguageGroupTests(unittest.TestCase):
+    def test_targum_onkelos_is_jewish_babylonian_aramaic_torah(self):
+        system = get_scripture_system(ScriptureSystemId.BIBLE)
+        label = format_language_group(LanguageCode.TMR)
+
+        self.assertIn(label, system.language_group_labels)
+        self.assertEqual(
+            ("Targum Onkelos, vocalized according to the Yemenite Taj (ONKELOS)",),
+            system.get_versions_for_language(LanguageCode.TMR),
+        )
+        self.assertEqual("ONKELOS", resolve_version_code("ONQ"))
+        self.assertEqual("ONKELOS", resolve_version_code("Targum Onkelos"))
+
+        version = get_version("ONKELOS")
+        self.assertIsNotNone(version)
+        assert version is not None
+        self.assertEqual(
+            frozenset({"genesis", "exodus", "leviticus", "numbers", "deuteronomy"}),
+            version.supported_book_slugs,
+        )
+
     def test_language_appears_only_while_it_has_a_version(self):
         label = format_language_group(LanguageCode.GEZ)
         version = Version.local(
