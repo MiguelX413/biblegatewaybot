@@ -6,6 +6,8 @@ from handlers import (
     MAX_PASSAGE_RESPONSE_MESSAGES,
     REQUEST_THROTTLE_MIN_INTERVAL_SECONDS,
     REQUEST_THROTTLE_WINDOW_SECONDS,
+    build_inline_result_id,
+    build_input_message_content,
     count_passage_result_messages,
     enforce_request_throttle,
     get_request_throttle_retry_after,
@@ -14,6 +16,41 @@ from handlers import (
 
 
 class HandlerGuardrailTests(unittest.TestCase):
+    def test_inline_result_id_is_valid_for_multiple_translations(self):
+        source_ids = [
+            "Genesis 1:1-10/SP",
+            "Genesis 1:1-10/SPSQ",
+            "Genesis.1.1-Genesis.1.10/WLC",
+        ]
+        self.assertGreater(len("&".join(source_ids).encode("utf-8")), 64)
+
+        result_id = build_inline_result_id(source_ids)
+
+        self.assertEqual(64, len(result_id.encode("utf-8")))
+        self.assertEqual(result_id, build_inline_result_id(source_ids))
+        self.assertNotEqual(result_id, build_inline_result_id(source_ids[::-1]))
+
+    def test_inline_result_id_handles_unicode_source_ids(self):
+        result_id = build_inline_result_id(["quran/1:1-3/ṢI", "בראשית א/WLC"])
+
+        self.assertEqual(64, len(result_id.encode("utf-8")))
+
+    def test_inline_input_embeds_multiple_translations_separately(self):
+        content = build_input_message_content(
+            [
+                ("John 3:16 NIV\n\nFirst translation.", "https://niv"),
+                ("John 3:16 NRSVue\n\nSecond translation.", "https://nrsvue"),
+            ]
+        )
+
+        self.assertEqual(
+            "John 3:16 NIV\nFirst translation.\nJohn 3:16 NRSVue\nSecond translation.",
+            content.message_text,
+        )
+        assert content.entities is not None
+        self.assertEqual("https://niv", content.entities[1].url)
+        self.assertEqual("https://nrsvue", content.entities[4].url)
+
     def test_count_passage_result_messages_counts_split_messages(self):
         paragraph = "x" * 3000
         count = count_passage_result_messages(

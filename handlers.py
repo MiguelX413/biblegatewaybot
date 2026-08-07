@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import re
 import subprocess
@@ -37,8 +38,8 @@ from parsing import (
     decode_linked_reference,
     ensure_text,
     find_requested_book,
+    format_inline_parallel_passage_entities,
     format_passage_chunks,
-    format_passage_entities,
     format_version_selection,
     get_passage_scripture_system,
     get_version_provider,
@@ -106,17 +107,25 @@ GITHUB_REMOTE_PATTERN = re.compile(
 
 
 def build_input_message_content(
-    text: str,
+    passages: Sequence[tuple[str, str | None]],
     *,
-    header_url: str | None = None,
     link_preview_options: LinkPreviewOptions | None = None,
 ) -> InputTextMessageContent:
-    message_text, entities = format_passage_entities(text, header_url=header_url)
+    message_text, entities = format_inline_parallel_passage_entities(passages)
     return InputTextMessageContent(
         message_text=message_text,
         entities=entities,
         link_preview_options=link_preview_options,
     )
+
+
+def build_inline_result_id(result_ids: Sequence[str]) -> str:
+    digest = hashlib.sha256()
+    for result_id in result_ids:
+        encoded = result_id.encode("utf-8")
+        digest.update(len(encoded).to_bytes(4, "big"))
+        digest.update(encoded)
+    return digest.hexdigest()
 
 
 @lru_cache(maxsize=1)
@@ -1267,22 +1276,27 @@ async def handle_inline_query(
     passage_text = "\n\n".join(result.passage for _, result in inline_results)
     titles = " & ".join(result.title for _, result in inline_results)
     description = " ".join(passage_text.split())
-    header_url = inline_results[0][1].header_url or build_passage_header_url(
-        passage, inline_results[0][0]
-    )
+    inline_passages = [
+        (
+            result.passage,
+            result.header_url or build_passage_header_url(passage, version),
+        )
+        for version, result in inline_results
+    ]
     link_preview_options = get_inline_link_preview_options(
         context, inline_query.from_user.id
     )
     results = [
         InlineQueryResultArticle(
-            id="&".join(result.result_id for _, result in inline_results),
+            id=build_inline_result_id(
+                [result.result_id for _, result in inline_results]
+            ),
             title=titles,
             description=(
                 description[:150] + "..." if len(description) > 153 else description
             ),
             input_message_content=build_input_message_content(
-                passage_text,
-                header_url=header_url,
+                inline_passages,
                 link_preview_options=link_preview_options,
             ),
         )

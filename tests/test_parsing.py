@@ -8,6 +8,7 @@ from parsing import (
     decode_linked_reference,
     extract_leading_book_name,
     find_requested_book,
+    format_inline_parallel_passage_entities,
     format_inline_passage_entities,
     format_parallel_passage_entities,
     format_passage_chunks,
@@ -206,6 +207,47 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(2, len(entities))
         self.assertEqual("bold", entities[0].type)
         self.assertEqual("expandable_blockquote", entities[1].type)
+
+    def test_format_inline_parallel_passages_formats_each_translation(self):
+        text, entities = format_inline_parallel_passage_entities(
+            [
+                ("John 3:16 NIV\n\nFirst translation.", "https://niv"),
+                ("John 3:16 NRSVue\n\nSecond translation.", "https://nrsvue"),
+            ]
+        )
+
+        self.assertEqual(
+            "John 3:16 NIV\nFirst translation.\nJohn 3:16 NRSVue\nSecond translation.",
+            text,
+        )
+        self.assertEqual(
+            [
+                "bold",
+                "text_link",
+                "expandable_blockquote",
+                "bold",
+                "text_link",
+                "expandable_blockquote",
+            ],
+            [entity.type for entity in entities],
+        )
+        self.assertEqual("https://niv", entities[1].url)
+        self.assertEqual("https://nrsvue", entities[4].url)
+
+    def test_format_inline_parallel_passages_truncates_all_translations(self):
+        paragraph = "x" * 3000
+        text, entities = format_inline_parallel_passage_entities(
+            [
+                (f"John 3 NIV\n\n{paragraph}", "https://niv"),
+                (f"John 3 NRSVue\n\n{paragraph}", "https://nrsvue"),
+            ]
+        )
+
+        self.assertLessEqual(len(text), TELEGRAM_MESSAGE_LIMIT)
+        self.assertIn("John 3 NIV", text)
+        self.assertIn("John 3 NRSVue", text)
+        self.assertIn("…continued; use /get for the full passage.", text)
+        self.assertEqual(6, len(entities))
 
     def test_parse_get_uses_default_version(self):
         version, passage, explicit = parse_get_request("/get John 3:16", "NIV")

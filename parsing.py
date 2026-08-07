@@ -754,6 +754,65 @@ def format_inline_passage_entities(
     return _build_passage_message(header, preview_body, header_url=header_url)
 
 
+def format_inline_parallel_passage_entities(
+    passages: Sequence[tuple[str, str | None]],
+) -> tuple[str, Sequence[MessageEntity]]:
+    combined = format_parallel_passage_entities(passages)
+    if combined is not None:
+        return combined
+    if not passages:
+        return "", ()
+
+    parsed_passages: list[tuple[str, str, str | None]] = []
+    for text, header_url in passages:
+        blocks = text.split("\n\n", 1)
+        header, body = (blocks[0], blocks[1]) if len(blocks) == 2 else (text, "")
+        parsed_passages.append((header.strip(), body.strip(), header_url))
+
+    body_indexes = [index for index, (_, body, _) in enumerate(parsed_passages) if body]
+    fixed_length = sum(len(header) for header, _, _ in parsed_passages)
+    fixed_length += max(0, len(parsed_passages) - 1)
+    fixed_length += len(body_indexes)
+    fixed_length += len(INLINE_CONTINUATION_NOTICE) + 1
+    available = TELEGRAM_MESSAGE_LIMIT - fixed_length
+    if available <= 0 or not body_indexes:
+        text, header_url = passages[0]
+        return format_inline_passage_entities(text, header_url=header_url)
+
+    allocations = [0] * len(parsed_passages)
+    remaining = available
+    active = set(body_indexes)
+    while active and remaining:
+        share = max(1, remaining // len(active))
+        for index in tuple(active):
+            body = parsed_passages[index][1]
+            consumed = allocations[index]
+            amount = min(share, len(body) - consumed, remaining)
+            allocations[index] += amount
+            remaining -= amount
+            if allocations[index] == len(body):
+                active.remove(index)
+            if not remaining:
+                break
+
+    preview_passages: list[tuple[str, str | None]] = []
+    last_body_index = body_indexes[-1]
+    for index, (header, body, header_url) in enumerate(parsed_passages):
+        allocation = allocations[index]
+        preview_body = body[:allocation].rstrip()
+        if preview_body and allocation < len(body):
+            preview_body = f"{preview_body[:-1].rstrip()}…"
+        if index == last_body_index:
+            preview_body = "\n".join(
+                part for part in (preview_body, INLINE_CONTINUATION_NOTICE) if part
+            )
+        preview_passages.append((f"{header}\n\n{preview_body}", header_url))
+
+    preview = format_parallel_passage_entities(preview_passages)
+    assert preview is not None
+    return preview
+
+
 def build_passage_header(reference: str, version: str) -> str:
     display_reference = normalize_display_reference(reference)
     display_version = format_version_label(version)
