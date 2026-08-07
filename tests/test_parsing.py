@@ -277,6 +277,14 @@ class ParsingTests(unittest.TestCase):
             ((("TMA-C",),), "Matthew 3", True), (version, passage, explicit)
         )
 
+    def test_parse_get_accepts_onkelos_as_an_onqelos_alias(self):
+        selection, passage, explicit = parse_get_request(
+            "/get Genesis 1:1 ONKELOS", "NIV"
+        )
+        self.assertEqual((("ONQELOS",),), selection)
+        self.assertEqual("Genesis 1:1", passage)
+        self.assertTrue(explicit)
+
     def test_parse_get_prompts_for_passage_when_only_version_is_given(self):
         version, passage, explicit = parse_get_request("/get NASB", "NIV")
         self.assertEqual(((("NASB",),), None, True), (version, passage, explicit))

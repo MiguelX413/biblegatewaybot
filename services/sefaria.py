@@ -29,13 +29,13 @@ SEFARIA_API_BASE_URL = "https://www.sefaria.org/api/v3/texts"
 SEFARIA_V1_API_BASE_URL = "https://www.sefaria.org/api/texts"
 SEFARIA_V1_HE_FIELD_VERSIONS = frozenset({"NEUHAUSEN1914"})
 SEFARIA_V1_TEXT_FIELD_VERSIONS = frozenset({"FERRARA"})
-SEFARIA_HEBREW_SOURCE_VERSIONS = frozenset({"ONKELOS", "RASAG"})
+SEFARIA_HEBREW_SOURCE_VERSIONS = frozenset({"ONQELOS", "RASAG"})
 SEFARIA_INDEX_TEMPLATE_BY_VERSION = {
-    "ONKELOS": "Onkelos {book}",
+    "ONQELOS": "Onkelos {book}",
     "RASAG": "Tafsir Rasag, {book}",
 }
 SEFARIA_REFERENCE_PREFIX_BY_VERSION = {
-    "ONKELOS": "Onkelos ",
+    "ONQELOS": "Onkelos ",
     "RASAG": "Tafsir Rasag, ",
 }
 SEFARIA_INDEX_TITLE_BY_BOOK_SLUG = {

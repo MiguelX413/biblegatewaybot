@@ -34,21 +34,24 @@ class LanguageGroupTests(unittest.TestCase):
             version.supported_book_slugs,
         )
 
-    def test_targum_onkelos_is_jewish_babylonian_aramaic_torah(self):
+    def test_targum_onqelos_is_jewish_babylonian_aramaic_torah(self):
         system = get_scripture_system(ScriptureSystemId.BIBLE)
         label = format_language_group(LanguageCode.TMR)
 
         self.assertIn(label, system.language_group_labels)
         self.assertEqual(
-            ("Targum Onkelos, vocalized according to the Yemenite Taj (ONKELOS)",),
+            ("Targum Onqelos, vocalized according to the Yemenite Taj (ONQELOS)",),
             system.get_versions_for_language(LanguageCode.TMR),
         )
-        self.assertEqual("ONKELOS", resolve_version_code("ONQ"))
-        self.assertEqual("ONKELOS", resolve_version_code("Targum Onkelos"))
+        self.assertEqual("ONQELOS", resolve_version_code("ONQ"))
+        self.assertEqual("ONQELOS", resolve_version_code("ONKELOS"))
+        self.assertEqual("ONQELOS", resolve_version_code("Targum Onkelos"))
+        self.assertEqual("ONQELOS", resolve_version_code("Targum Onqelos"))
 
         version = get_version("ONKELOS")
         self.assertIsNotNone(version)
         assert version is not None
+        self.assertEqual("ONQELOS", version.code)
         self.assertEqual(
             frozenset({"genesis", "exodus", "leviticus", "numbers", "deuteronomy"}),
             version.supported_book_slugs,

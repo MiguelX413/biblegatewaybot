@@ -1443,10 +1443,15 @@ BIBLE_VERSION_DATA: Final[VersionDataMap] = OrderedDict(
             LanguageCode.TMR,
             [
                 Version.sefaria(
-                    "Targum Onkelos, vocalized according to the Yemenite Taj",
-                    "ONKELOS",
+                    "Targum Onqelos, vocalized according to the Yemenite Taj",
+                    "ONQELOS",
                     frozenset(TORAH_BOOK_SLUGS),
-                    aliases=("ONQ", "TARGUMONKELOS"),
+                    aliases=(
+                        "ONKELOS",
+                        "ONQ",
+                        "TARGUMONKELOS",
+                        "TARGUMONQELOS",
+                    ),
                     sefaria_config={
                         "genesis": (
                             "hebrew|Targum Onkelos, vocalized according to the "
